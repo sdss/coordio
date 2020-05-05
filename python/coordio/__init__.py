@@ -9,7 +9,7 @@ NAME = 'sdss-coordio'
 config = get_config('coordio')
 
 # Inits the logging system as NAME. Only shell logging, and exception and warning catching.
-# File logging can be started by calling log.start_file_logger(path).  Filename can be different
+# File logging can be started by calling log.start_file_logger(path). Filename can be different
 # than NAME.
 log = get_logger(NAME)
 
