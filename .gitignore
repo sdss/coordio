@@ -42,7 +42,7 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
-.coverage*
+.coverage
 .coverage.*
 .cache
 nosetests.xml
@@ -105,11 +105,4 @@ ENV/
 # mypy
 .mypy_cache/
 
-.vscode
-
-.pytest_cache
-
-# Vim temporary files
-*~
-*.swp
-*.swo
+setup.py
