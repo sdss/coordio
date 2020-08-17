@@ -1,4 +1,5 @@
 # encoding: utf-8
+# isort:skip_file
 
 import warnings
 

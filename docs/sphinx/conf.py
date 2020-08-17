@@ -13,6 +13,7 @@ import os
 
 from pkg_resources import parse_version
 
+
 try:
     from coordio import __version__
 except ModuleNotFoundError:

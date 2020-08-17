@@ -21,8 +21,8 @@ poetry_python_lib = os.path.expanduser('~/.poetry/lib')
 sys.path.append(os.path.realpath(poetry_python_lib))
 
 try:
-    from poetry.masonry.builders.sdist import SdistBuilder
     from poetry.factory import Factory
+    from poetry.masonry.builders.sdist import SdistBuilder
 except (ImportError, ModuleNotFoundError) as ee:
     raise ImportError('install poetry by doing pip install poetry to use '
                       f'this script: {ee}')

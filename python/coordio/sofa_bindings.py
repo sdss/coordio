@@ -14,7 +14,7 @@ import ctypes
 import datetime
 import importlib
 import os
-from ctypes import byref, c_char_p, c_double, c_int, POINTER
+from ctypes import POINTER, byref, c_char_p, c_double, c_int
 
 
 # List of argument times for some of the SOFA functions.
