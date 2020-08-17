@@ -6,6 +6,6 @@ ignore =
     W504
 
 per-file-ignores =
-    */__init__.py:E,W
+    */__init__.py:W,F,E402
 
 max-line-length = 99

@@ -67,8 +67,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'coordio'
-copyright = '{0}, {1}'.format('2020', 'José Sánchez-Gallego')
-author = 'José Sánchez-Gallego'
+copyright = '{0}, {1}'.format('2020', 'José Sánchez-Gallego and Conor Sayres')
+author = 'José Sánchez-Gallego and Conor Sayres'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

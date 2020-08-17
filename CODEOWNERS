@@ -7,6 +7,7 @@
 # review when someone opens a pull request.
 *       @sdss
 *       gallegoj@uw.edu
+*       csayres@uw.edu
 
 # Order is important; the last matching pattern takes the most
 # precedence. When someone opens a pull request that only
