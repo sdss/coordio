@@ -16,6 +16,7 @@ from .iers import IERS
 
 
 def utc_to_tai(jd):
+    """Convert UTC to TAI. Wrapper around iauUtctai."""
 
     utc1 = int(jd)
     utc2 = jd - utc1
@@ -32,6 +33,30 @@ def utc_to_tai(jd):
 
 
 class Time:
+    """A time storage and conversion class.
+
+    All times, regardless of the input format and scale are converted and
+    stored as TAI Julian dates.
+
+    Parameters
+    ----------
+    value
+        The input time value. If `None`, the current `datetime.datetime.now`
+        system time will be used.
+    format : str
+        The format of the input time.
+    scale : str
+        The time scale of the input value. Valid values are ``UTC`` and
+        ``TAI``.
+
+    Attributes
+    ----------
+    jd : float
+        The Julian date in the TAI scale.
+    iers : .IERS
+        The .IERS object with the TAI to UT1 delta values.
+
+    """
 
     def __init__(self, value=None, format='jd', scale='UTC'):
 
@@ -61,14 +86,20 @@ class Time:
 
     @property
     def jd1(self):
+        """Returns the integer part of the Julian data."""
+
         return int(self.jd)
 
     @property
     def jd2(self):
+        """Returns the fractional part of the Julian data."""
+
         return self.jd - self.jd1
 
     @property
     def mjd(self):
+        """Returns the modified Julian date ``(JD-2400000.5)``."""
+
         return self.jd - 2400000.5
 
     def to_now(self, scale='UTC'):
@@ -102,6 +133,7 @@ class Time:
         return self.jd
 
     def to_utc(self):
+        """Returns the date converted to JD in the UTC scale."""
 
         utc1 = ctypes.c_double()
         utc2 = ctypes.c_double()
@@ -116,6 +148,7 @@ class Time:
         return utc1.value + utc2.value
 
     def to_ut1(self):
+        """Returns the date converted to JD in the UT1 scale."""
 
         # DTA is UT1-UTC, which can be expressed as delta_UT1-delta_AT.
 

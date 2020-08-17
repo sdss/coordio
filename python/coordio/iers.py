@@ -20,6 +20,26 @@ BASE_URL = 'ftp://ftp.iers.org/products/eop/rapid/'
 
 
 class IERS:
+    """Wrapper around the IERS bulletins.
+
+    Parameters
+    ----------
+    path : str
+        The path where the IERS table, in CSV format, lives or will be saved
+        to. If `None`, defaults to ``config['iers']['path']``.
+    channel : str
+        The IERS channel to use. Right now only ``finals`` is implemented.
+    download : bool
+        If the IERS table is not found on disk or it's out of date, download
+        an updated copy.
+
+    Attributes
+    ----------
+    data : numpy.ndarray
+        A record array with the parsed IERS data, trimmed to remove rows for
+        which ``UT1-UTC`` is not defined.
+
+    """
 
     __instance = None
 
@@ -65,6 +85,7 @@ class IERS:
         return cls.__instance
 
     def update_data(self, path=None, channel=None):
+        """Update the IERS table, downloading the latest available version."""
 
         path = path or self.path
         channel = channel or self.channel
@@ -83,6 +104,7 @@ class IERS:
         self.load_data(path=path)
 
     def _get_current_jd(self):
+        """Returns the current JD in the scale of the computer clock."""
 
         if sofa is None:
             raise CoordIOError('SOFA library not available.')
@@ -93,6 +115,29 @@ class IERS:
         return jd
 
     def is_valid(self, jd=None, offset=5, download=True):
+        """Determines whether a JD is included in the loaded IERS table.
+
+        Parameters
+        ----------
+        jd : float
+            The Julian date to check. There is a certain ambiguity in the
+            format of the MJD in the IERS tables but for most purposes the
+            difference between UTC and TAI should be meaningless for these
+            purposes.
+        offset : int
+            Number of days to look ahead. If ``jd+offset`` is not included in
+            the IERS table the method will return `False`.
+        download : bool
+            Whether to automatically download an updated version of the IERS
+            table if the requested date is not included in the current one.
+
+        Returns
+        -------
+        is_valid : `bool`
+            Whether the date is valid within the current (or newly downloaded)
+            IERS table.
+
+        """
 
         if self.data is None:
             raise CoordIOError('IERS data has not been loaded')
@@ -113,6 +158,7 @@ class IERS:
             return False
 
     def load_data(self, path=None):
+        """Loads an IERS table in CSV format from ``path``."""
 
         path = path or self.path
 
@@ -126,6 +172,7 @@ class IERS:
         self.data = self.data[~numpy.isnan(self.data['UT1UTC'])]
 
     def get_delta_ut1_utc(self, jd=None, download=True):
+        """Returns the interpolated ``UT1-UTC`` value for a given JD."""
 
         if jd is None:
             jd = self._get_current_jd()
