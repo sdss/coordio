@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
 import os
-import urllib
+import urllib.request
 import warnings
 
 import numpy
@@ -44,7 +44,7 @@ class IERS:
     __instance = None
 
     def __new__(cls, path=None, channel='finals', download=True):
-
+        print(cls.__instance)
         if cls.__instance is not None:
 
             if cls.__instance.is_valid():
@@ -65,7 +65,7 @@ class IERS:
                                     'finals2000A.data.csv')
         else:
             raise NotImplementedError('Only finals channels is implemented.')
-
+        print(os.path.exists(obj.path))
         if os.path.exists(obj.path):
             cls.load_data(obj)
             if not cls.is_valid(obj):
