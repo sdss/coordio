@@ -3,3 +3,11 @@
 iers:
     path: ~/.config/sdss/coordio/
     channel: finals
+
+site:
+    APO:
+        longitude: 254.179722
+        latitude: 32.766666667
+        altitude: 2788
+        wavelength: 7500
+        system_time_scale: TAI

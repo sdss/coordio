@@ -10,6 +10,8 @@ import ctypes
 import datetime
 import time
 
+import numpy
+
 from . import sofa
 from .exceptions import CoordIOError
 from .iers import IERS
@@ -173,3 +175,45 @@ class Time:
             raise ValueError(f'iauTaiut1 return with error code {res}.')
 
         return ut1.value + ut2.value
+
+    def to_tt(self):
+        """Returns the date converted to JD in the TT scale."""
+
+        return self.jd + 32.184 / 86400.
+
+    def to_tdb(self, long=0.0, lat=0.0, altitude=0.0):
+        """Returns the date converted to JD in the TDB scale.
+
+        Parameters
+        ----------
+        long : float
+            The East-positive longitude of the site, in degrees.
+        latitude : float
+            The site latitude in degrees.
+        altitude : float
+            The altitude (elevation) of the site above see level, in meters.
+            Defaults to zero meters.
+
+        """
+
+        # Earth radius in km
+        RE = 6378.1
+
+        rlong = numpy.radians(long)
+        rlat = numpy.radians(lat)
+
+        # Distance from Earth spin axis (km)
+        u = (RE + altitude / 1000.) * numpy.cos(rlat)
+
+        # Distance north of equatorial plane (km)
+        v = (RE + altitude / 1000.) * numpy.sin(rlat)
+
+        ut1 = self.to_ut1()
+        ut1_1 = ut1 - int(ut1)
+        iauDtdb(double date1, double date2,
+               double ut, double elong, double u, double v)
+
+        tt = self.to_tt()
+        tt_1 = int(tt)
+
+        delta_tdb_tt = sofa.iauDtdb()
