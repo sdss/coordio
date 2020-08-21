@@ -115,8 +115,8 @@ class SOFA(ctypes.CDLL):
         Parameters
         ----------
         date : ~datetime.datetime
-            The date to convert. If `None`, `~datetime.datetime.now` will be
-            used.
+            The date to convert. If `None`, `~datetime.datetime.utcnow` will
+            be used and ``scale`` will be ignored.
         scale : str
             The scale of the date.
 
@@ -128,7 +128,8 @@ class SOFA(ctypes.CDLL):
         """
 
         if date is None:
-            date = datetime.datetime.now()
+            date = datetime.datetime.utcnow()
+            scale = 'UTC'
 
         d1 = c_double()
         d2 = c_double()
