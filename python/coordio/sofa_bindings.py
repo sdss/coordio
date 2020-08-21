@@ -14,7 +14,7 @@ import ctypes
 import datetime
 import importlib
 import os
-from ctypes import POINTER, byref, c_char_p, c_double, c_int
+from ctypes import POINTER, c_char_p, c_double, c_int
 
 
 # List of argument times for some of the SOFA functions.
@@ -38,7 +38,33 @@ ARGTYPES = [
     ('iauTaiutc', (c_double, c_double, POINTER(c_double), POINTER(c_double))),
 
     # int iy, int im, int id, double fd, double *deltat
-    ('iauDat', (c_int, c_int, c_int, c_double, POINTER(c_double)))
+    ('iauDat', (c_int, c_int, c_int, c_double, POINTER(c_double))),
+
+    # double rc, double dc, double pr, double pd, double px, double rv,
+    # double utc1, double utc2, double dut1,
+    # double elong, double phi, double hm, double xp, double yp,
+    # double phpa, double tc, double rh, double wl,
+    # double *aob, double *zob, double *hob,
+    # double *dob, double *rob, double *eo
+    ('iauAtco13', (c_double, c_double, c_double, c_double, c_double, c_double,
+                   c_double, c_double, c_double,
+                   c_double, c_double, c_double, c_double, c_double,
+                   c_double, c_double, c_double, c_double,
+                   POINTER(c_double), POINTER(c_double), POINTER(c_double),
+                   POINTER(c_double), POINTER(c_double), POINTER(c_double))),
+
+    # double date1, double date2, double ut, double elong, double u, double v
+    ('iauDtdb', (c_double, c_double, c_double, c_double, c_double, c_double)),
+
+    # double ra1, double dec1, double pmr1, double pmd1,
+    # double px1, double rv1,
+    # double ep1a, double ep1b, double ep2a, double ep2b,
+    # double *ra2, double *dec2, double *pmr2, double *pmd2,
+    # double *px2, double *rv2
+    ('iauPmsafe', (c_double, c_double, c_double, c_double, c_double, c_double,
+                   c_double, c_double, c_double, c_double,
+                   POINTER(c_double), POINTER(c_double), POINTER(c_double),
+                   POINTER(c_double), POINTER(c_double), POINTER(c_double)))
 
 ]
 
@@ -79,6 +105,10 @@ class SOFA(ctypes.CDLL):
             func = self.__getattr__(func_name)
             func.argtypes = argtypes
 
+        # Some special cases of function that do not return
+        # an integer error check.
+        self.iauDtdb.restype = c_double
+
     def get_internal_date(self, date=None, scale='UTC'):
         """Returns the internal representation of a date.
 
@@ -106,7 +136,7 @@ class SOFA(ctypes.CDLL):
         res = self.iauDtf2d(scale.upper().encode(), date.year, date.month,
                             date.day, date.hour, date.minute,
                             date.second + date.microsecond / 1e6,
-                            byref(d1), byref(d2))
+                            d1, d2)
 
         if res != 0:
             raise ValueError(f'iauDtf2d return with error code {res}.')
