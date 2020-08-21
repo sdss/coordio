@@ -35,7 +35,7 @@ class IERS:
 
     Attributes
     ----------
-    data : numpy.ndarray
+    data : ~numpy.ndarray
         A record array with the parsed IERS data, trimmed to remove rows for
         which ``UT1-UTC`` is not defined.
 

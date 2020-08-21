@@ -122,7 +122,7 @@ class SOFA(ctypes.CDLL):
 
         Returns
         -------
-        d1, d2 : double
+        d1, d2 : `float`
             The two-part Julian date.
 
         """

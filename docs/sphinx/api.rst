@@ -7,7 +7,7 @@ coordio Reference
 SOFA
 ----
 
-.. automodule:: coordio.sofa_bingings
+.. automodule:: coordio.sofa_bindings
    :members:
    :undoc-members:
    :show-inheritance:
@@ -44,7 +44,7 @@ Coordinates
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: coordio.iau
+.. automodule:: coordio.sky
    :members:
    :undoc-members:
    :show-inheritance:

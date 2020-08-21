@@ -60,8 +60,8 @@ class Site:
     system_time_scale : str
         The time scale of the system time. Defaults to UTC.
 
-    Attribute
-    ---------
+    Attributes
+    ----------
     time : .Time
         A `.Time` instance describing the time for the observation. Use
         `.set_time` to set the time.

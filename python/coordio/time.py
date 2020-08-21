@@ -115,7 +115,7 @@ class Time:
 
         Returns
         -------
-        now : float
+        now : `float`
             The new TAI JD. Also updates the internal value.
 
         """
