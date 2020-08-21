@@ -5,12 +5,10 @@ name: Test
 
 on:
   push:
-    branches: [ master ]
     paths-ignore:
       - '*.md'
       - '*.rst'
   pull_request:
-    branches: [ master ]
     paths-ignore:
       - '*.md'
       - '*.rst'
