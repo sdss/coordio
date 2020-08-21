@@ -20,6 +20,10 @@ class CoordIOError(Exception):
         super(CoordIOError, self).__init__(message)
 
 
+class CoordinateError(CoordIOError):
+    """Coordinate error."""
+
+
 class CoordIOWarning(Warning):
     """Base warning for coordIO."""
 
