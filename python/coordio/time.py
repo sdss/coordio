@@ -26,7 +26,7 @@ def utc_to_tai(jd):
     tai1 = ctypes.c_double()
     tai2 = ctypes.c_double()
 
-    res = sofa.iauUtctai(utc1, utc2, ctypes.byref(tai1), ctypes.byref(tai2))
+    res = sofa.iauUtctai(utc1, utc2, tai1, tai2)
 
     if res != 0:
         raise ValueError(f'iauUtctai return with error code {res}.')
@@ -134,15 +134,21 @@ class Time:
         self.__init__(scale=scale)
         return self.jd
 
+    def get_dut1(self):
+        """Returns the delta UT1-UTC."""
+
+        if not self.iers:
+            raise CoordIOError('IERS table not loaded.')
+
+        return self.iers.get_delta_ut1_utc(jd=self.jd)
+
     def to_utc(self):
         """Returns the date converted to JD in the UTC scale."""
 
         utc1 = ctypes.c_double()
         utc2 = ctypes.c_double()
 
-        res = sofa.iauTaiutc(self.jd1, self.jd2,
-                             ctypes.byref(utc1),
-                             ctypes.byref(utc2))
+        res = sofa.iauTaiutc(self.jd1, self.jd2, utc1, utc2)
 
         if res != 0:
             raise ValueError(f'iauTaiutc return with error code {res}.')
@@ -167,9 +173,7 @@ class Time:
         ut1 = ctypes.c_double()
         ut2 = ctypes.c_double()
 
-        res = sofa.iauTaiut1(self.jd1, self.jd2, dta,
-                             ctypes.byref(ut1),
-                             ctypes.byref(ut2))
+        res = sofa.iauTaiut1(self.jd1, self.jd2, dta, ut1, ut2)
 
         if res != 0:
             raise ValueError(f'iauTaiut1 return with error code {res}.')
@@ -181,12 +185,12 @@ class Time:
 
         return self.jd + 32.184 / 86400.
 
-    def to_tdb(self, long=0.0, lat=0.0, altitude=0.0):
+    def to_tdb(self, longitude=0.0, latitude=0.0, altitude=0.0):
         """Returns the date converted to JD in the TDB scale.
 
         Parameters
         ----------
-        long : float
+        longitude : float
             The East-positive longitude of the site, in degrees.
         latitude : float
             The site latitude in degrees.
@@ -196,11 +200,15 @@ class Time:
 
         """
 
+        # We need to call iauDtdb that models the delta between TT and TDB.
+        # It depends on the location of the observer on the Earth, and the
+        # fractional part of the UT1 time.
+
         # Earth radius in km
         RE = 6378.1
 
-        rlong = numpy.radians(long)
-        rlat = numpy.radians(lat)
+        rlong = numpy.radians(longitude)
+        rlat = numpy.radians(latitude)
 
         # Distance from Earth spin axis (km)
         u = (RE + altitude / 1000.) * numpy.cos(rlat)
@@ -210,10 +218,11 @@ class Time:
 
         ut1 = self.to_ut1()
         ut1_1 = ut1 - int(ut1)
-        iauDtdb(double date1, double date2,
-               double ut, double elong, double u, double v)
 
         tt = self.to_tt()
         tt_1 = int(tt)
+        tt_2 = tt - tt_1
 
-        delta_tdb_tt = sofa.iauDtdb()
+        delta_tdb_tt = sofa.iauDtdb(tt_1, tt_2, ut1_1, rlong, u, v)
+
+        return tt + delta_tdb_tt
