@@ -23,8 +23,16 @@ classifiers = [
 packages = [
     { include = "coordio", from = "python" }
 ]
-include = ["python/coordio/etc/*", "cextern/**/*", "LICENSE.md"]
-build = "build.py"
+include = [
+    {path = "python/coordio/etc/*"},
+    {path = "cextern/**/*"},
+    {path = "LICENSE.md"},
+    {path = "python/coordio/*.so", format = "wheel"}
+]
+
+[tool.poetry.build]
+script = "build.py"
+generate-setup-file = false
 
 [tool.poetry.scripts]
 coordio = "coordio.__main__:main"
