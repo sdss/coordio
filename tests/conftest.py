@@ -11,7 +11,6 @@ import shutil
 import urllib.request
 
 import pytest
-from astropy.coordinates import EarthLocation
 
 from coordio import config
 
