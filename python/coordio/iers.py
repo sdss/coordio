@@ -7,7 +7,7 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
 import os
-import urllib
+import urllib.request
 import warnings
 
 import numpy
@@ -106,9 +106,6 @@ class IERS:
     def _get_current_jd(self):
         """Returns the current JD in the scale of the computer clock."""
 
-        if sofa is None:
-            raise CoordIOError('SOFA library not available.')
-
         jd1, jd2 = sofa.get_internal_date()
         jd = jd1 + jd2
 
@@ -145,11 +142,12 @@ class IERS:
         if jd is None:
             jd = self._get_current_jd()
 
-        mjd = jd - 2400000.5 + offset
+        mjd = int(jd - 2400000.5)
 
+        min_mjd = self.data['MJD'].min()
         max_mjd = self.data['MJD'].max()
 
-        if int(mjd) < max_mjd and int(mjd) + 1 < max_mjd:
+        if mjd - offset > min_mjd and mjd + offset < max_mjd:
             return True
         else:
             if download:
@@ -172,7 +170,7 @@ class IERS:
         self.data = self.data[~numpy.isnan(self.data['UT1UTC'])]
 
     def get_delta_ut1_utc(self, jd=None, download=True):
-        """Returns the interpolated ``UT1-UTC`` value for a given JD."""
+        """Returns the interpolated ``UT1-UTC`` value, in seconds."""
 
         if jd is None:
             jd = self._get_current_jd()

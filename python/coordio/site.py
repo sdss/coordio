@@ -56,7 +56,7 @@ class Site:
     rh : float
         The relative humidity, in the range :math:`0-1`. Defaults to 0.5.
     wavelength : float
-        The observing angstrom, in micrometres. Defaults to 7500 angstrom.
+        The observing wavelength, in angstrom. Defaults to 7500 angstrom.
     system_time_scale : str
         The time scale of the system time. Defaults to UTC.
 
@@ -126,7 +126,7 @@ class Site:
         """
 
         if isinstance(value, Time):
-            self.time = Time
+            self.time = value
         else:
             self.time = Time(value, format='jd', scale=scale)
 

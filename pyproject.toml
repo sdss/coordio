@@ -23,8 +23,16 @@ classifiers = [
 packages = [
     { include = "coordio", from = "python" }
 ]
-include = ["python/coordio/etc/*", "cextern/**/*", "LICENSE.md"]
-build = "build.py"
+include = [
+    {path = "python/coordio/etc/*"},
+    {path = "cextern/**/*"},
+    {path = "LICENSE.md"},
+    {path = "python/coordio/*.so", format = "wheel"}
+]
+
+[tool.poetry.build]
+script = "build.py"
+generate-setup-file = false
 
 [tool.poetry.scripts]
 coordio = "coordio.__main__:main"
@@ -66,6 +74,9 @@ include_trailing_comma = false
 lines_after_imports = 2
 use_parentheses = true
 
+[tool.pytest.ini_options]
+addopts = "--cov coordio --cov-report html"
+
 [tool.coverage.run]
 branch = true
 include = ["python/coordio/*"]
@@ -76,6 +87,8 @@ omit = [
 
 [tool.coverage.report]
 exclude_lines = [
+    "def __repr__",
+    "raise NotImplementedError"
 ]
 
 [build-system]

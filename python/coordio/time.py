@@ -55,8 +55,6 @@ class Time:
     ----------
     jd : float
         The Julian date in the TAI scale.
-    iers : .IERS
-        The .IERS object with the TAI to UT1 delta values.
 
     """
 
@@ -77,7 +75,7 @@ class Time:
         else:
             raise CoordIOError('Invalid scale.')
 
-        self.iers = IERS()
+        self._iers = None
 
         # Store the current time as a UNIX time. We'll use this later to know
         # how much time has passed and do a quick update to now.
@@ -85,6 +83,15 @@ class Time:
 
     def __repr__(self):
         return f'<Time (JD={self.jd})>'
+
+    @property
+    def iers(self):
+        """Gets the IERS table."""
+
+        if self._iers is None:
+            self._iers = IERS()
+
+        return self._iers
 
     @property
     def jd1(self):
@@ -160,15 +167,16 @@ class Time:
 
         # DTA is UT1-UTC, which can be expressed as delta_UT1-delta_AT.
 
-        # delta_UT1=UT1-UTC and is given by the IERS tables.
+        # delta_UT1=UT1-UTC and is given by the IERS tables, in seconds.
         # This will update the table if it's out of date.
-        delta_ut1 = self.iers.get_delta_ut1_utc(self.mjd)
+        delta_ut1 = self.iers.get_delta_ut1_utc(self.jd)
 
         # delta_AT=TAI-UTC and can be obtained with the iauDat function but
         # it's easier to calculate it using iauTaiutc and subtracting TAI.
-        delta_at = self.to_utc() - self.jd
+        delta_at = self.jd - self.to_utc()
 
-        dta = delta_ut1 - delta_at
+        # delta_UT1-TAI, in seconds, for iauTaiut1
+        dta = delta_ut1 - delta_at * 86400.
 
         ut1 = ctypes.c_double()
         ut2 = ctypes.c_double()
@@ -225,4 +233,4 @@ class Time:
 
         delta_tdb_tt = sofa.iauDtdb(tt_1, tt_2, ut1_1, rlong, u, v)
 
-        return tt + delta_tdb_tt
+        return tt + delta_tdb_tt / 86400.
