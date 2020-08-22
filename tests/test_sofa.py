@@ -6,16 +6,33 @@
 # @Filename: test_coordio.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
+import ctypes
+
 import astropy.time
 import pytest
 
 from coordio import sofa
+from coordio.sofa_bindings import SOFA
 
 
 def test_load():
 
     assert sofa._name is not None
     assert 'libsofa' in sofa._name
+
+
+def test_load_fails(mocker):
+
+    mocker.patch.object(ctypes.CDLL, '__init__', side_effect=OSError)
+
+    with pytest.raises(OSError):
+        SOFA()
+
+
+def test_load_fails_with_name():
+
+    with pytest.raises(OSError):
+        SOFA('libblah.so')
 
 
 def test_get_internal_date():

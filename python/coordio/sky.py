@@ -34,7 +34,8 @@ class ICRS(Coordinate):
         differences between scales will not matter). Defaults to J2000.
     pmra : numpy.ndarray
         A 1D array with the proper motion in the RA axis for the N targets,
-        in milliarcsec/yr. Must include the ``cosine(latitude)`` term.
+        in milliarcsec/yr. Must be a true angle, i.e, it must include the
+        ``cos(dec)`` term.
     pmdec : numpy.ndarray
         A 1D array with the proper motion in the RA axis for the N targets,
         in milliarcsec/yr.
@@ -47,12 +48,14 @@ class ICRS(Coordinate):
 
     __extra_arrays__ = ['epoch', 'pmra', 'pmdec', 'parallax', 'rvel']
 
-    def __array_finalize__(self, obj):
+    def __new__(cls, value, **kwargs):
 
-        super().__array_finalize__(obj)
+        obj = super().__new__(cls, value, **kwargs)
 
-        if getattr(obj, 'epoch', None) is None:
-            self.epoch += 2451545.0
+        if kwargs.get('epoch', None) is None:
+            obj.epoch += 2451545.0
+
+        return obj
 
     def to_epoch(self, jd, site=None):
         """Convert the coordinates to a new epoch.
@@ -75,7 +78,7 @@ class ICRS(Coordinate):
 
         rra = numpy.radians(self[:, 0])
         rdec = numpy.radians(self[:, 1])
-        rpmra = numpy.radians(self.pmra / 1000. / 3600.)
+        rpmra = numpy.radians(self.pmra / 1000. / 3600.) / numpy.cos(rdec)
         rpmdec = numpy.radians(self.pmdec / 1000. / 3600.)
 
         # Using TDB is probably an overkill.
@@ -117,9 +120,12 @@ class ICRS(Coordinate):
 
             new_icrs[ii, :] = numpy.rad2deg([ra2.value, dec2.value])
             new_icrs.pmra[ii] = numpy.rad2deg(pmra2.value) * 3600. * 1000.
+            new_icrs.pmra[ii] *= numpy.cos(dec2.value)
             new_icrs.pmdec[ii] = numpy.rad2deg(pmdec2.value) * 3600. * 1000.
             new_icrs.parallax[ii] = parallax2.value * 1000.
             new_icrs.rvel[ii] = rvel2.value
+
+        return new_icrs
 
     def to_observed(self, site):
         """Converts from ICRS to topocentric observed coordinates for a site.
@@ -167,13 +173,12 @@ class ICRS(Coordinate):
         # TODO: maybe write this as Cython or C?
 
         # We need the epoch to be J2000.0 because that's what iauAtco13 likes.
-        icrs = self.copy()
-        icrs.to_epoch(2451545.0, site=site)
+        icrs_2000 = self.to_epoch(2451545.0, site=site)
 
-        rra = numpy.radians(icrs[:, 0])
-        rdec = numpy.radians(icrs[:, 1])
-        rpmra = numpy.radians(icrs.pmra / 1000. / 3600.)
-        rpmdec = numpy.radians(icrs.pmdec / 1000. / 3600.)
+        rra = numpy.radians(icrs_2000[:, 0])
+        rdec = numpy.radians(icrs_2000[:, 1])
+        rpmra = numpy.radians(icrs_2000.pmra / 1000. / 3600.) / numpy.cos(rdec)
+        rpmdec = numpy.radians(icrs_2000.pmdec / 1000. / 3600.)
 
         rlong = numpy.radians(site.longitude)
         rlat = numpy.radians(site.latitude)
@@ -188,29 +193,30 @@ class ICRS(Coordinate):
         utc2 = utc - utc1
         dut1 = time.get_dut1()
 
-        alt_obs = ctypes.c_double()
+        az_obs = ctypes.c_double()
         zen_obs = ctypes.c_double()
         ha_obs = ctypes.c_double()
         dec_obs = ctypes.c_double()
         ra_obs = ctypes.c_double()
         eo_obs = ctypes.c_double()
 
-        observed = Observed(numpy.zeros(icrs.shape, dtype=numpy.float64),
-                            radec=numpy.zeros(icrs.shape, dtype=numpy.float64),
+        observed = Observed(numpy.zeros(icrs_2000.shape, dtype=numpy.float64),
+                            radec=numpy.zeros(icrs_2000.shape,
+                                              dtype=numpy.float64),
                             site=site)
 
         for ii in range(len(rra)):
 
             sofa.iauAtco13(rra[ii], rdec[ii], rpmra[ii], rpmdec[ii],
-                           icrs.parallax[ii] / 1000., icrs.rvel[ii],
+                           icrs_2000.parallax[ii] / 1000., icrs_2000.rvel[ii],
                            utc1, utc2, dut1,
                            rlong, rlat, site.altitude, 0.0, 0.0,
                            site.pressure, site.temperature, site.rh,
-                           site.wavelength,
-                           alt_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs)
+                           site.wavelength / 10000.,
+                           az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs)
 
-            observed[ii, :] = [numpy.rad2deg(alt_obs.value),
-                               90 - numpy.rad2deg(zen_obs.value)]
+            observed[ii, :] = [90 - numpy.rad2deg(zen_obs.value),
+                               numpy.rad2deg(az_obs.value)]
             observed.radec[ii, :] = numpy.rad2deg([ra_obs.value,
                                                    dec_obs.value])
             observed.ha[ii] = numpy.rad2deg(ha_obs.value)

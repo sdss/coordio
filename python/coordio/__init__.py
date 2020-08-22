@@ -25,7 +25,9 @@ from .sofa_bindings import SOFA
 try:
     sofa = SOFA()
 except OSError:
-    warnings.warn('Cannot load libsofa.', CoordIOUserWarning)
+    warnings.warn('Cannot load libsofa. '
+                  'Most functionality will not be available.',
+                  CoordIOUserWarning)
     sofa = None
 
 

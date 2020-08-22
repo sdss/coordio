@@ -87,6 +87,8 @@ omit = [
 
 [tool.coverage.report]
 exclude_lines = [
+    "def __repr__",
+    "raise NotImplementedError"
 ]
 
 [build-system]

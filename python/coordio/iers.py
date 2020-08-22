@@ -106,9 +106,6 @@ class IERS:
     def _get_current_jd(self):
         """Returns the current JD in the scale of the computer clock."""
 
-        if sofa is None:
-            raise CoordIOError('SOFA library not available.')
-
         jd1, jd2 = sofa.get_internal_date()
         jd = jd1 + jd2
 
