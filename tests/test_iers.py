@@ -6,16 +6,12 @@
 # @Filename: test_iers.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
-import pathlib
-import shutil
-import urllib.request
-
 import pytest
 
 from coordio import IERS, CoordIOUserWarning
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clear_iers_instance():
 
     yield
@@ -25,28 +21,7 @@ def clear_iers_instance():
     IERS._IERS__instance = None
 
 
-@pytest.fixture
-def iers_data_path():
-    """Ensure we only download the IERS table once."""
-
-    tmp_path = pathlib.Path(__file__).parent / 'data'
-
-    yield tmp_path
-
-
-@pytest.fixture
-def mock_download(mocker, iers_data_path, tmpdir):
-
-    iers_data_file = iers_data_path / 'finals2000A.data.csv'
-
-    def copy_file(*_):
-        shutil.copyfile(iers_data_file, tmpdir / 'finals2000A.data.csv')
-
-    # Mock urllib.request.urlretrieve so that tests work offline and faster.
-    mocker.patch.object(urllib.request, 'urlretrieve', side_effect=copy_file)
-
-
-def test_iers(mock_download, tmpdir):
+def test_iers(tmpdir, clear_iers_instance):
 
     iers_file = tmpdir / 'finals2000A.data.csv'
 
@@ -63,21 +38,20 @@ def test_iers(mock_download, tmpdir):
 def test_is_valid(iers_data_path):
 
     iers = IERS(iers_data_path)
-    assert iers.is_valid(58906)
+    assert iers.is_valid(2458863.0)
 
 
-def test_is_valid_out_of_range(mock_download, iers_data_path):
+def test_is_valid_out_of_range():
 
-    iers = IERS(iers_data_path)
+    iers = IERS()
 
     with pytest.warns(CoordIOUserWarning):
         assert iers.is_valid(10000000) is False
 
 
-def test_get_delta_ut1_utc(iers_data_path):
+def test_get_delta_ut1_utc():
 
-    iers = IERS(iers_data_path)
+    iers = IERS()
 
-    assert iers.get_delta_ut1_utc(58906.5) == pytest.approx(
-        0.5 * (iers.get_delta_ut1_utc(58906) + iers.get_delta_ut1_utc(58907))
-    )
+    # Jan 15th, 2020
+    assert iers.get_delta_ut1_utc(2458863.5) == pytest.approx(-0.1799637)

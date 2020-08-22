@@ -44,7 +44,7 @@ class IERS:
     __instance = None
 
     def __new__(cls, path=None, channel='finals', download=True):
-        print(cls.__instance)
+
         if cls.__instance is not None:
 
             if cls.__instance.is_valid():
@@ -65,7 +65,7 @@ class IERS:
                                     'finals2000A.data.csv')
         else:
             raise NotImplementedError('Only finals channels is implemented.')
-        print(os.path.exists(obj.path))
+
         if os.path.exists(obj.path):
             cls.load_data(obj)
             if not cls.is_valid(obj):
@@ -145,11 +145,12 @@ class IERS:
         if jd is None:
             jd = self._get_current_jd()
 
-        mjd = jd - 2400000.5 + offset
+        mjd = int(jd - 2400000.5)
 
+        min_mjd = self.data['MJD'].min()
         max_mjd = self.data['MJD'].max()
 
-        if int(mjd) < max_mjd and int(mjd) + 1 < max_mjd:
+        if mjd - offset > min_mjd and mjd + offset < max_mjd:
             return True
         else:
             if download:
@@ -172,7 +173,7 @@ class IERS:
         self.data = self.data[~numpy.isnan(self.data['UT1UTC'])]
 
     def get_delta_ut1_utc(self, jd=None, download=True):
-        """Returns the interpolated ``UT1-UTC`` value for a given JD."""
+        """Returns the interpolated ``UT1-UTC`` value, in seconds."""
 
         if jd is None:
             jd = self._get_current_jd()
