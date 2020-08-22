@@ -93,9 +93,25 @@ class Coordinate(numpy.ndarray):
 
         obj = numpy.asarray(value).view(cls)
 
-        for param in cls.__extra_params__ + cls.__extra_arrays__:
-            if param in kwargs:
-                setattr(obj, param, kwargs.get(param, None))
+        if len(obj.shape) != 2 or obj.shape[1] < 2:
+            raise CoordinateError('The input array must be NxM, M>=2.')
+
+        for param in obj.__extra_params__:
+            setattr(obj, param, kwargs.get(param, None))
+
+        for param in obj.__extra_arrays__:
+            array = kwargs.get(param, None)
+            if array is None:
+                array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
+            elif isinstance(array, (numpy.ndarray, list, tuple)):
+                array = numpy.array(array)
+            else:
+                array = numpy.tile(array, obj.shape[0])
+            setattr(obj, param, array)
+
+            if array.shape[0] != obj.shape[0]:
+                raise CoordinateError(f'{param} size does not match '
+                                      'the coordinate values.')
 
         return obj
 
@@ -104,45 +120,22 @@ class Coordinate(numpy.ndarray):
         if obj is None or not isinstance(obj, numpy.ndarray):
             return obj
 
-        if self.shape[1] != 2:
-            raise CoordinateError('The input array must be Nx2.')
-
-        for param in self.__extra_params__:
+        # This is so that copies and slices of array copy the params.
+        for param in self.__extra_arrays__ + self.__extra_params__:
             setattr(self, param, getattr(obj, param, None))
-
-        for param in self.__extra_arrays__:
-            array = getattr(obj, param, None)
-            if array is None:
-                array = numpy.zeros(self.shape[0], dtype=numpy.float64)
-            elif isinstance(array, (numpy.ndarray, list, tuple)):
-                pass
-            else:
-                array = numpy.tile(array, self.shape[0])
-            setattr(self, param, array)
-
-            if array.ndim < 1:
-                raise CoordinateError(f'{param} must be a 1D array.')
-            if array.shape[0] != self.shape[0]:
-                raise CoordinateError(f'{param} size does not match '
-                                      'the coordinate values.')
-
-    def __array_wrap__(self, out_arr, context=None):
-
-        return super().__array_wrap__(self, out_arr, context)
 
     def __getitem__(self, sl):
 
-        value = self.view(numpy.ndarray).__getitem__(sl)
+        sliced = super().__getitem__(sl)
 
-        if not isinstance(value, numpy.ndarray) or value.ndim != 2:
-            return value
-
-        kwargs = {}
+        if (not isinstance(sliced, numpy.ndarray) or
+                sliced.ndim != 2 or sliced.shape[1] != self.shape[1]):
+            return sliced.view(numpy.ndarray)
 
         for param in self.__extra_arrays__:
-            kwargs[param] = getattr(self, param)[sl]
+            setattr(sliced, param, getattr(sliced, param)[sl[0]])
 
         for param in self.__extra_params__:
-            kwargs[param] = getattr(self, param)
+            setattr(sliced, param, getattr(sliced, param))
 
-        return self.__class__(value, **kwargs)
+        return sliced
