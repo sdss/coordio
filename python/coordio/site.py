@@ -126,7 +126,7 @@ class Site:
         """
 
         if isinstance(value, Time):
-            self.time = Time
+            self.time = value
         else:
             self.time = Time(value, format='jd', scale=scale)
 
