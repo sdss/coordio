@@ -14,8 +14,9 @@ import numpy
 
 from . import sofa
 from .coordinate import Coordinate
-from .exceptions import CoordinateError
+from .exceptions import CoordinateError, CoordIOError
 from .time import Time
+from . import defaults
 
 
 __all__ = ['ICRS', 'Observed']
@@ -56,10 +57,10 @@ class ICRS(Coordinate):
         obj = super().__new__(cls, value, **kwargs)
 
         if kwargs.get('epoch', None) is None:
-            obj.epoch += 2451545.0
+            obj.epoch += defaults.epoch
 
         if kwargs.get('wavelength', None) is None:
-            obj.wavelength += 7500
+            obj.wavelength += defaults.wavelength
 
         return obj
 
@@ -206,9 +207,13 @@ class ICRS(Coordinate):
         ra_obs = ctypes.c_double()
         eo_obs = ctypes.c_double()
 
+        # pa and ha are initialized to zeros automatically
+        # radec needs explicit initialization because it's
+        # not a 1D array
         observed = Observed(numpy.zeros(icrs_2000.shape, dtype=numpy.float64),
                             radec=numpy.zeros(icrs_2000.shape,
                                               dtype=numpy.float64),
+                            wavelength=numpy.copy(self.wavelength),
                             site=site)
 
         for ii in range(len(rra)):
@@ -227,6 +232,11 @@ class ICRS(Coordinate):
                                                    dec_obs.value])
             observed.ha[ii] = numpy.rad2deg(ha_obs.value)
 
+            # compute the pa
+            observed.pa[ii] = numpy.rad2deg(
+                sofa.iauHd2pa(ha_obs.value, rdec[ii], rlat)
+            )
+
         return observed
 
 
@@ -236,6 +246,48 @@ class Observed(Coordinate):
     The array contains the Alt/Az coordinates of the targets. Their RA/Dec
     coordinates can be accessed via the ``radec`` attribute.
 
+    Parameters
+    ----------
+    value : numpy.ndarray
+        A Nx2 Numpy array with the Alt and Az coordinates of the targets,
+        in degrees.
+    radec : numpy.ndarray
+        A 2D array with abberation corrected ra dec in degrees
+    ha : numpy.ndarray
+        A 1D array with hour angle 0=South increasing westward
+        in degrees.
+    pa : numpy.ndarray
+        A 1D array with parallactic angle measured from zenith
+        to the NCP.  Looking south, pa increases with time.
+    wavelength : numpy.ndarray
+        A 1D array with he observing wavelength, in angstrom.
+        Defaults to 7500 angstrom.
+    site : .Site
+        The site from where observations will occur, along with the time
+        of the observation.
+
     """
 
-    __extra_arrays__ = ['radec', 'ha', 'site']
+    __extra_arrays__ = ['radec', 'ha', 'pa', 'wavelength']
+    __extra_params__ = ['site']
+
+    def __new__(cls, value, **kwargs):
+
+        obj = super().__new__(cls, value, **kwargs)
+
+        if kwargs.get('site', None) is None:
+            raise CoordIOError('Site must be defined for Observed Coordinates')
+
+        if kwargs.get('wavelength', None) is None:
+            obj.wavelength += defaults.wavelength
+
+        if kwargs.get('ha', None) is None:
+            # should we compute it?, just needs site
+            pass
+
+        if kwargs.get('radec', None) is None:
+            # should we compute it?, needs site+time
+            pass
+
+        return obj
+

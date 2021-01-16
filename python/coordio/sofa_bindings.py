@@ -64,7 +64,12 @@ ARGTYPES = [
     ('iauPmsafe', (c_double, c_double, c_double, c_double, c_double, c_double,
                    c_double, c_double, c_double, c_double,
                    POINTER(c_double), POINTER(c_double), POINTER(c_double),
-                   POINTER(c_double), POINTER(c_double), POINTER(c_double)))
+                   POINTER(c_double), POINTER(c_double), POINTER(c_double))),
+
+    # compute position angle http://www.iausofa.org/2019_0722_C/sofa/hd2pa.c
+    # args: hour angle, declination, site latitude (radians)
+    ('iauHd2pa', (c_double, c_double, c_double))
+
 
 ]
 
@@ -108,6 +113,7 @@ class SOFA(ctypes.CDLL):
         # Some special cases of function that do not return
         # an integer error check.
         self.iauDtdb.restype = c_double
+        self.iauHd2pa.restype = c_double
 
     def get_internal_date(self, date=None, scale='UTC'):
         """Returns the internal representation of a date.

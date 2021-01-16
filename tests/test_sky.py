@@ -11,7 +11,9 @@ import numpy
 from astropy import units as u
 from astropy.coordinates import AltAz, Distance, EarthLocation, SkyCoord
 
-from coordio import ICRS, Observed, Site
+from coordio import ICRS, Observed, Site, CoordIOError
+
+import pytest
 
 wavelength = 7000
 
@@ -93,3 +95,12 @@ def test_to_observed():
         observed[:, 1], astropy_observed.az.deg,
         atol=3e-5 / numpy.cos(numpy.radians(astropy_observed.alt.deg)).max(),
         rtol=1e-7)
+
+
+def test_fail_without_site():
+
+    altAz = [[60,50], [120,85]]
+    with pytest.raises(CoordIOError):
+        Observed(altAz) # this should fail
+    Observed(altAz, site=site) # this should work
+
