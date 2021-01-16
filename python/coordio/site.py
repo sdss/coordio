@@ -55,8 +55,6 @@ class Site:
         :math:`10^\circ{\rm C}`.
     rh : float
         The relative humidity, in the range :math:`0-1`. Defaults to 0.5.
-    wavelength : float
-        The observing wavelength, in angstrom. Defaults to 7500 angstrom.
     system_time_scale : str
         The time scale of the system time. Defaults to UTC.
 
@@ -70,7 +68,7 @@ class Site:
 
     def __init__(self, name, latitude=None, longitude=None,
                  altitude=None, pressure=None, temperature=None,
-                 rh=None, wavelength=None, system_time_scale=None):
+                 rh=None, system_time_scale=None):
 
         kwargs = dict(latitude=latitude,
                       longitude=longitude,
@@ -78,7 +76,6 @@ class Site:
                       pressure=pressure,
                       temperature=temperature,
                       rh=rh,
-                      wavelength=wavelength,
                       system_time_scale=system_time_scale)
 
         if name in config['site']:
@@ -99,7 +96,6 @@ class Site:
         self.altitude = self.altitude or 0.
         self.temperature = self.temperature or 10.
         self.rh = self.rh or 0.5
-        self.wavelength = self.wavelength or 7500.
         self.system_time_scale = self.system_time_scale or 'UTC'
 
         if self.pressure is None:

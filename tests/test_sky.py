@@ -13,11 +13,12 @@ from astropy.coordinates import AltAz, Distance, EarthLocation, SkyCoord
 
 from coordio import ICRS, Observed, Site
 
+wavelength = 7000
 
 icrs = ICRS([[100, 10], [101., 11]],
             pmra=[100, 0.1], pmdec=[-15, -0.5],
             parallax=[10., 10.], rvel=[100, 1000],
-            epoch=[2451545, 2451545])
+            epoch=[2451545, 2451545], wavelength=wavelength)
 
 astropy_icrs = SkyCoord(ra=[100, 101] * u.deg, dec=[10, 11] * u.deg,
                         frame='icrs',
@@ -81,7 +82,7 @@ def test_to_observed():
               pressure=site.pressure * u.mbar,
               temperature=site.temperature * u.deg_C,
               relative_humidity=site.rh,
-              obswl=site.wavelength * u.Angstrom))
+              obswl=wavelength * u.Angstrom))
 
     assert isinstance(observed, Observed)
 

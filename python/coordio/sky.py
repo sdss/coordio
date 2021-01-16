@@ -43,10 +43,13 @@ class ICRS(Coordinate):
         A 1D array with the parallax for the N targets, in milliarcsec.
     rvel : numpy.ndarray
         A 1D array with the radial velocity in km/s, positive when receding.
+    wavelength : numpy.ndarray
+        A 1D array with he observing wavelength, in angstrom.
+        Defaults to 7500 angstrom.
 
     """
 
-    __extra_arrays__ = ['epoch', 'pmra', 'pmdec', 'parallax', 'rvel']
+    __extra_arrays__ = ['epoch', 'pmra', 'pmdec', 'parallax', 'rvel', 'wavelength']
 
     def __new__(cls, value, **kwargs):
 
@@ -54,6 +57,9 @@ class ICRS(Coordinate):
 
         if kwargs.get('epoch', None) is None:
             obj.epoch += 2451545.0
+
+        if kwargs.get('wavelength', None) is None:
+            obj.wavelength += 7500
 
         return obj
 
@@ -212,7 +218,7 @@ class ICRS(Coordinate):
                            utc1, utc2, dut1,
                            rlong, rlat, site.altitude, 0.0, 0.0,
                            site.pressure, site.temperature, site.rh,
-                           site.wavelength / 10000.,
+                           icrs_2000.wavelength[ii] / 10000.,
                            az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs)
 
             observed[ii, :] = [90 - numpy.rad2deg(zen_obs.value),
