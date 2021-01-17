@@ -88,6 +88,7 @@ class Coordinate(numpy.ndarray):
 
     __extra_arrays__ = []
     __extra_params__ = []
+    __computed_arrays__ = []  # values that are computed (not passed)
 
     def __new__(cls, value, **kwargs):
 
@@ -102,6 +103,9 @@ class Coordinate(numpy.ndarray):
         for param in obj.__extra_arrays__:
             array = kwargs.get(param, None)
             if array is None:
+                # arrays default to zeros, could cause trouble
+                # but its nice for things like pm, radVal, etc
+                # which should probably default to zeros
                 array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
             elif isinstance(array, (numpy.ndarray, list, tuple)):
                 array = numpy.array(array)
@@ -113,6 +117,12 @@ class Coordinate(numpy.ndarray):
                 raise CoordinateError(f'{param} size does not match '
                                       'the coordinate values.')
 
+        # create zero arrays for computed arrays
+        # for param in obj.__computed_arrays__:
+        #     array = kwargs.get(param, None)
+        #     array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
+        #     setattr(obj, param, array)
+
         return obj
 
     def __array_finalize__(self, obj):
@@ -121,7 +131,11 @@ class Coordinate(numpy.ndarray):
             return obj
 
         # This is so that copies and slices of array copy the params.
-        for param in self.__extra_arrays__ + self.__extra_params__:
+        params = []
+        params += self.__extra_arrays__
+        params += self.__extra_params__
+        params += self.__computed_arrays__
+        for param in params:
             setattr(self, param, getattr(obj, param, None))
 
     def __getitem__(self, sl):
@@ -132,10 +146,15 @@ class Coordinate(numpy.ndarray):
                 sliced.ndim != 2 or sliced.shape[1] != self.shape[1]):
             return sliced.view(numpy.ndarray)
 
-        for param in self.__extra_arrays__:
+        for param in self.__extra_arrays__ + self.__computed_arrays__:
             setattr(sliced, param, getattr(sliced, param)[sl[0]])
 
         for param in self.__extra_params__:
             setattr(sliced, param, getattr(sliced, param))
 
         return sliced
+
+    @property
+    def coordSysName(self):
+        return self.__class__.__name__
+
