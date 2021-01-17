@@ -74,7 +74,11 @@ def test_to_observed():
 
     site.set_time(2458863, scale='TAI')
 
-    observed = icrs.to_observed(site)
+    # test for failure if site isn't provided
+    with pytest.raises(CoordIOError):
+        observed = Observed(icrs)
+
+    observed = Observed(icrs, site=site)
 
     new_obstime = astropy.time.Time(2458863, format='jd', scale='tai')
     new_astropy_icrs = astropy_icrs.apply_space_motion(new_obstime=new_obstime)
@@ -96,11 +100,4 @@ def test_to_observed():
         atol=3e-5 / numpy.cos(numpy.radians(astropy_observed.alt.deg)).max(),
         rtol=1e-7)
 
-
-def test_fail_without_site():
-
-    altAz = [[60,50], [120,85]]
-    with pytest.raises(CoordIOError):
-        Observed(altAz) # this should fail
-    Observed(altAz, site=site) # this should work
 
