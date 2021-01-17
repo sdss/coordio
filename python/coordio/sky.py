@@ -263,9 +263,9 @@ class Observed(Coordinate):
 
     """
 
-    __extra_arrays__ = ['wavelength', 'radec', 'ha', 'pa']
+    __extra_arrays__ = ['wavelength']
     __extra_params__ = ['site']
-    __computed_arrays__ = ['_radec', '_ha', '_pa']
+    __computed_arrays__ = ['ra', 'dec', 'ha', 'pa']
 
     def __new__(cls, value, **kwargs):
 
@@ -279,39 +279,39 @@ class Observed(Coordinate):
             if site.time is None:
                 raise CoordIOError("Time of observation must be specified")
 
-        # check if a coordinate was passed that we can just
-        # 'cast' into Observed
-        if isinstance(value, Coordinate):
-
-            # carry over the wavelength from the existing coordinate
-            if kwargs.get('wavelength', None) is not None:
-                raise CoordIOWarning('Overwriting supplied wavelengths')
-            kwargs['wavelength'] = value.wavelength
-
-            if value.coordSysName == 'ICRS':
-                value = cls.fromICRS(value, site)
-
-            elif value.coordSysName == 'Field':
-                value = cls.fromField(value)
-
-            else:
-                raise CoordIOError(
-                    'Cannot convert from %s to Observed'%value.coordSysName
-                )
-
-        else:
-            # raw numpy array supplied compute values
-            cls.fromRaw(value)
+        # should we prefer wavelength passed, or wavelength
+        # existing on value (if it does exist).  Here preferring passed
+        if kwargs.get('wavelength', None) is None:
+            if hasattr(value, "wavelength"):
+                kwargs["wavelength"] = value.wavelength
 
         obj = super().__new__(cls, value, **kwargs)
 
         if kwargs.get('wavelength', None) is None:
             obj.wavelength += defaults.wavelength
 
+        # check if a coordinate was passed that we can just
+        # 'cast' into Observed
+        if isinstance(value, Coordinate):
+
+            if value.coordSysName == 'ICRS':
+                obj.fromICRS(value)
+
+            elif value.coordSysName == 'Field':
+                obj.fromField(value)
+
+            else:
+                raise CoordIOError(
+                    'Cannot create Observed from %s'%value.coordSysName
+                )
+
+        else:
+            # raw numpy array supplied compute values
+            obj.fromRaw(value)
+
         return obj
 
-    @classmethod
-    def fromICRS(cls, icrsCoords, site):
+    def fromICRS(self, icrsCoords):
         """Converts from ICRS to topocentric observed coordinates for a site.
 
         """
@@ -346,17 +346,17 @@ class Observed(Coordinate):
         # TODO: maybe write this as Cython or C?
 
         # We need the epoch to be J2000.0 because that's what iauAtco13 likes.
-        icrs_2000 = icrsCoords.to_epoch(2451545.0, site=site)
+        icrs_2000 = icrsCoords.to_epoch(2451545.0, site=self.site)
 
         rra = numpy.radians(icrs_2000[:, 0])
         rdec = numpy.radians(icrs_2000[:, 1])
         rpmra = numpy.radians(icrs_2000.pmra / 1000. / 3600.) / numpy.cos(rdec)
         rpmdec = numpy.radians(icrs_2000.pmdec / 1000. / 3600.)
 
-        rlong = numpy.radians(site.longitude)
-        rlat = numpy.radians(site.latitude)
+        rlong = numpy.radians(self.site.longitude)
+        rlat = numpy.radians(self.site.latitude)
 
-        time = site.time
+        time = self.site.time
 
         utc = time.to_utc()
         utc1 = int(utc)
@@ -371,10 +371,10 @@ class Observed(Coordinate):
         eo_obs = ctypes.c_double()
 
         # initialize output arrays
-        obs_arr = numpy.zeros(icrs_2000.shape, dtype=numpy.float64)
-        cls._radec = numpy.zeros(icrs_2000.shape, dtype=numpy.float64)
-        cls._pa = numpy.zeros(icrs_2000.shape[0], dtype=numpy.float64)
-        cls._ha = numpy.zeros(icrs_2000.shape[0], dtype=numpy.float64)
+        # obs_arr = numpy.zeros(icrs_2000.shape, dtype=numpy.float64)
+        # cls.radec = numpy.zeros(icrs_2000.shape, dtype=numpy.float64)
+        # cls.pa = numpy.zeros(icrs_2000.shape[0], dtype=numpy.float64)
+        # cls.ha = numpy.zeros(icrs_2000.shape[0], dtype=numpy.float64)
 
         # pa and ha are initialized to zeros automatically
         # radec needs explicit initialization because it's
@@ -390,31 +390,28 @@ class Observed(Coordinate):
             sofa.iauAtco13(rra[ii], rdec[ii], rpmra[ii], rpmdec[ii],
                            icrs_2000.parallax[ii] / 1000., icrs_2000.rvel[ii],
                            utc1, utc2, dut1,
-                           rlong, rlat, site.altitude, 0.0, 0.0,
-                           site.pressure, site.temperature, site.rh,
-                           icrs_2000.wavelength[ii] / 10000.,
+                           rlong, rlat, self.site.altitude, 0.0, 0.0,
+                           self.site.pressure, self.site.temperature,
+                           self.site.rh, icrs_2000.wavelength[ii] / 10000.,
                            az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs)
 
-            obs_arr[ii, :] = [90 - numpy.rad2deg(zen_obs.value),
+            self[ii, :] = [90 - numpy.rad2deg(zen_obs.value),
                                numpy.rad2deg(az_obs.value)]
-            cls._radec[ii, :] = numpy.rad2deg([ra_obs.value,
-                                                   dec_obs.value])
-            cls._ha[ii] = numpy.rad2deg(ha_obs.value)
+            self.ra[ii] = numpy.rad2deg(ra_obs.value)
+            self.dec[ii] = numpy.rad2deg(dec_obs.value)
+            self.ha[ii] = numpy.rad2deg(ha_obs.value)
 
             # compute the pa
-            cls._pa[ii] = numpy.rad2deg(
+            self.pa[ii] = numpy.rad2deg(
                 sofa.iauHd2pa(ha_obs.value, rdec[ii], rlat)
             )
 
-        return obs_arr
 
-    @classmethod
-    def fromField(cls, fieldCoords):
+    def fromField(self, fieldCoords):
         raise NotImplementedError()
 
 
-    @classmethod
-    def fromRaw(cls, rawArray):
+    def fromRaw(self, rawArray):
         raise NotImplementedError()
 
 

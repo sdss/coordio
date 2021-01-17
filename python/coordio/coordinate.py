@@ -118,10 +118,10 @@ class Coordinate(numpy.ndarray):
                                       'the coordinate values.')
 
         # create zero arrays for computed arrays
-        # for param in obj.__computed_arrays__:
-        #     array = kwargs.get(param, None)
-        #     array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
-        #     setattr(obj, param, array)
+        for param in obj.__computed_arrays__:
+            array = kwargs.get(param, None)
+            array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
+            setattr(obj, param, array)
 
         return obj
 
