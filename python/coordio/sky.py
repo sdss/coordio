@@ -136,118 +136,13 @@ class ICRS(Coordinate):
 
         return new_icrs
 
-    # def to_observed(self, site):
-    #     """Converts from ICRS to topocentric observed coordinates for a site.
-
-    #     Parameters
-    #     ----------
-    #     site : .Site
-    #         The site from where observations will occur, along with the time
-    #         of the observation.
-
-    #     Returns
-    #     -------
-    #     observed : `.Observed`
-    #         The observed coordinates.
-
-    #     """
-
-    #     # Prepare to call iauAtco13
-    #     #  Given:
-    #     #     rc,dc  double   ICRS right ascension at J2000.0 (radians)
-    #     #     pr     double   RA proper motion (radians/year)
-    #     #     pd     double   Dec proper motion (radians/year)
-    #     #     px     double   parallax (arcsec)
-    #     #     rv     double   radial velocity (km/s, +ve if receding)
-    #     #     utc1   double   UTC as a 2-part...
-    #     #     utc2   double   ...quasi Julian Date
-    #     #     dut1   double   UT1-UTC (seconds)
-    #     #     elong  double   longitude (radians, east +ve)
-    #     #     phi    double   latitude (geodetic, radians)
-    #     #     hm     double   height above ellipsoid (m, geodetic)
-    #     #     xp,yp  double   polar motion coordinates (radians)
-    #     #     phpa   double   pressure at the observer (hPa = mB)
-    #     #     tc     double   ambient temperature at the observer (deg C)
-    #     #     rh     double   relative humidity at the observer (range 0-1)
-    #     #     wl     double   wavelength (micrometers)
-    #     #
-    #     #  Returned:
-    #     #     aob    double*  observed azimuth (radians: N=0,E=90)
-    #     #     zob    double*  observed zenith distance (radians)
-    #     #     hob    double*  observed hour angle (radians)
-    #     #     dob    double*  observed declination (radians)
-    #     #     rob    double*  observed right ascension (CIO-based, radians)
-    #     #     eo     double*  equation of the origins (ERA-GST)
-
-    #     # TODO: maybe write this as Cython or C?
-
-    #     # We need the epoch to be J2000.0 because that's what iauAtco13 likes.
-    #     icrs_2000 = self.to_epoch(2451545.0, site=site)
-
-    #     rra = numpy.radians(icrs_2000[:, 0])
-    #     rdec = numpy.radians(icrs_2000[:, 1])
-    #     rpmra = numpy.radians(icrs_2000.pmra / 1000. / 3600.) / numpy.cos(rdec)
-    #     rpmdec = numpy.radians(icrs_2000.pmdec / 1000. / 3600.)
-
-    #     rlong = numpy.radians(site.longitude)
-    #     rlat = numpy.radians(site.latitude)
-
-    #     if site.time is None:
-    #         time = Time(scale=site.system_time_scale)
-    #     else:
-    #         time = site.time
-
-    #     utc = time.to_utc()
-    #     utc1 = int(utc)
-    #     utc2 = utc - utc1
-    #     dut1 = time.get_dut1()
-
-    #     az_obs = ctypes.c_double()
-    #     zen_obs = ctypes.c_double()
-    #     ha_obs = ctypes.c_double()
-    #     dec_obs = ctypes.c_double()
-    #     ra_obs = ctypes.c_double()
-    #     eo_obs = ctypes.c_double()
-
-    #     # pa and ha are initialized to zeros automatically
-    #     # radec needs explicit initialization because it's
-    #     # not a 1D array
-    #     observed = Observed(numpy.zeros(icrs_2000.shape, dtype=numpy.float64),
-    #                         radec=numpy.zeros(icrs_2000.shape,
-    #                                           dtype=numpy.float64),
-    #                         wavelength=numpy.copy(self.wavelength),
-    #                         site=site)
-
-    #     for ii in range(len(rra)):
-
-    #         sofa.iauAtco13(rra[ii], rdec[ii], rpmra[ii], rpmdec[ii],
-    #                        icrs_2000.parallax[ii] / 1000., icrs_2000.rvel[ii],
-    #                        utc1, utc2, dut1,
-    #                        rlong, rlat, site.altitude, 0.0, 0.0,
-    #                        site.pressure, site.temperature, site.rh,
-    #                        icrs_2000.wavelength[ii] / 10000.,
-    #                        az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs)
-
-    #         observed[ii, :] = [90 - numpy.rad2deg(zen_obs.value),
-    #                            numpy.rad2deg(az_obs.value)]
-    #         observed.radec[ii, :] = numpy.rad2deg([ra_obs.value,
-    #                                                dec_obs.value])
-    #         observed.ha[ii] = numpy.rad2deg(ha_obs.value)
-
-    #         # compute the pa
-    #         observed.pa[ii] = numpy.rad2deg(
-    #             sofa.iauHd2pa(ha_obs.value, rdec[ii], rlat)
-    #         )
-
-    #     return observed
-
 
 class Observed(Coordinate):
     """The observed coordinates of a series of targets.
 
     The array contains the Alt/Az coordinates of the targets. Their RA/Dec
-    coordinates can be accessed via the ``radec`` attribute.  If `.ICRS`
-    or `.Field` is passed, Alt/Az coordinates are computed.
+    coordinates can be accessed via the ``ra`` and ``dec`` attributes.
+    If `.ICRS` or `.Field` is passed, Alt/Az coordinates are computed.
 
     Parameters
     ----------
@@ -256,10 +151,12 @@ class Observed(Coordinate):
         in degrees.  Or a coordIO.ICRS array.  Or a coordio.Field array
     wavelength : numpy.ndarray
         A 1D array with he observing wavelength, in angstrom.
-        Defaults to 7500 angstrom.
+        If not explicitly passed, it tries to inheret from value.wavelength,
+        if that doesn't exist, it is set to default specified in:
+        `.defaults.wavelength`
     site : .Site
         The site from where observations will occur, along with the time
-        of the observation.
+        of the observation.  Mandatory argument.
 
     """
 
@@ -275,7 +172,7 @@ class Observed(Coordinate):
         else:
             site = kwargs.get('site')
             if not isinstance(site, Site):
-                raise CoordIOError('Must pass CoordIO.Site to Observed')
+                raise CoordIOError('Must pass Site to Observed')
             if site.time is None:
                 raise CoordIOError("Time of observation must be specified")
 
@@ -307,7 +204,7 @@ class Observed(Coordinate):
 
         else:
             # raw numpy array supplied compute values
-            obj.fromRaw(value)
+            obj.fromRaw()
 
         return obj
 
@@ -395,6 +292,7 @@ class Observed(Coordinate):
                            self.site.rh, icrs_2000.wavelength[ii] / 10000.,
                            az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs)
 
+            # self is Alt,Az array
             self[ii, :] = [90 - numpy.rad2deg(zen_obs.value),
                                numpy.rad2deg(az_obs.value)]
             self.ra[ii] = numpy.rad2deg(ra_obs.value)
@@ -403,15 +301,40 @@ class Observed(Coordinate):
 
             # compute the pa
             self.pa[ii] = numpy.rad2deg(
-                sofa.iauHd2pa(ha_obs.value, rdec[ii], rlat)
+                sofa.iauHd2pa(ha_obs.value, dec_obs.value, rlat)
             )
-
 
     def fromField(self, fieldCoords):
         raise NotImplementedError()
 
+    def fromRaw(self):
+        # compute ra, dec, ha, pa here...
+        ra_obs = ctypes.c_double()
+        dec_obs = ctypes.c_double()
+        ha_obs = ctypes.c_double()
+        rlat = numpy.radians(self.site.latitude)
+        rlong = numpy.radians(self.site.longitude)
+        # ut1 = self.site.time.to_ut1()
+        ut1 = self.site.time.to_ut1()
+        print("ut1", ut1)
 
-    def fromRaw(self, rawArray):
-        raise NotImplementedError()
+        for ii, (alt,az) in enumerate(self):
+            raz = numpy.radians(az)
+            ralt = numpy.radians(alt)
+            sofa.iauAe2hd(raz, ralt, rlat, ha_obs, dec_obs)
+            self.ha[ii]  = numpy.degrees(ha_obs.value)
+            self.dec[ii] = numpy.degrees(dec_obs.value)
+            self.pa[ii]  = numpy.degrees(
+                              sofa.iauHd2pa(ha_obs.value, dec_obs.value, rlat)
+                           )
+            # earth rotation angle (from SOFA docs)
+            # https://www.iausofa.org/2017_0420_C/sofa/sofa_ast_c.pdf
+            era = sofa.iauEra00(ut1, 0)
+            _ra = numpy.degrees(era + rlong - ha_obs.value)
+            while _ra < 0:
+                _ra += 360
+            while _ra > 360:
+                _ra -= 360
+            self.ra[ii] = _ra
 
 

@@ -100,4 +100,30 @@ def test_to_observed():
         atol=3e-5 / numpy.cos(numpy.radians(astropy_observed.alt.deg)).max(),
         rtol=1e-7)
 
+    # test that raw initialization of observed yeilds the same answers
+    obsArr = numpy.array(observed)
+    observed2 = Observed(obsArr, site=site)
+
+    numpy.testing.assert_allclose(observed[:,0], observed2[:,0],
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed[:,1], observed2[:,1],
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed.ra, observed2.ra,
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed.dec, observed2.dec,
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed.ha, observed2.ha,
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed.pa, observed2.pa,
+                                  atol=3e-7, rtol=0)
+
+
+
+
+
 
