@@ -148,20 +148,36 @@ class Observed(Coordinate):
     ----------
     value : numpy.ndarray
         A Nx2 Numpy array with the Alt and Az coordinates of the targets,
-        in degrees.  Or a coordIO.ICRS array.  Or a coordio.Field array
+        in degrees.  Or `.ICRS` instance.  Or a `.Field` instance.
     wavelength : numpy.ndarray
         A 1D array with he observing wavelength, in angstrom.
         If not explicitly passed, it tries to inheret from value.wavelength,
         if that doesn't exist, it is set to default specified in:
-        `.defaults.wavelength`
+        `defaults.wavelength`
     site : .Site
         The site from where observations will occur, along with the time
         of the observation.  Mandatory argument.
 
+    Attributes
+    -----------
+    ra : numpy.ndarray
+        Nx1 Numpy array, observed RA in degrees
+    dec : numpy.ndarray
+        Nx1 Numpy array, observed Dec in degrees
+    ha : numpy.ndarray
+        Nx1 Numpy array, hour angle in degrees
+    pa : numpy.ndarray
+        Nx1 Numpy array, position angle in degrees.  By SOFA: the angle between
+        the direction to the north celestial pole and direction to the zenith.
+        range is [-180, 180].  returned 0 at zenith (but really its undefined).
+        Looking south from the northern hemisphere, the sign is:
+        -ha --> -pa, +ha --> +pa
+
+
     """
 
     __extra_arrays__ = ['wavelength']
-    __extra_params__ = ['site']
+    __extra_params__ = ['site']  # mandatory
     __computed_arrays__ = ['ra', 'dec', 'ha', 'pa']
 
     def __new__(cls, value, **kwargs):
@@ -211,6 +227,10 @@ class Observed(Coordinate):
     def fromICRS(self, icrsCoords):
         """Converts from ICRS to topocentric observed coordinates for a site.
 
+        Parameters:
+        ------------
+        icrsCoords : `.ICRS`
+            ICRS coordinates from which to convert to observed coordinates
         """
 
         # Prepare to call iauAtco13
@@ -267,21 +287,6 @@ class Observed(Coordinate):
         ra_obs = ctypes.c_double()
         eo_obs = ctypes.c_double()
 
-        # initialize output arrays
-        # obs_arr = numpy.zeros(icrs_2000.shape, dtype=numpy.float64)
-        # cls.radec = numpy.zeros(icrs_2000.shape, dtype=numpy.float64)
-        # cls.pa = numpy.zeros(icrs_2000.shape[0], dtype=numpy.float64)
-        # cls.ha = numpy.zeros(icrs_2000.shape[0], dtype=numpy.float64)
-
-        # pa and ha are initialized to zeros automatically
-        # radec needs explicit initialization because it's
-        # not a 1D array
-        # observed = Observed(numpy.zeros(icrs_2000.shape, dtype=numpy.float64),
-        #                     radec=numpy.zeros(icrs_2000.shape,
-        #                                       dtype=numpy.float64),
-        #                     wavelength=numpy.copy(self.wavelength),
-        #                     site=site)
-
         for ii in range(len(rra)):
 
             sofa.iauAtco13(rra[ii], rdec[ii], rpmra[ii], rpmdec[ii],
@@ -308,6 +313,8 @@ class Observed(Coordinate):
         raise NotImplementedError()
 
     def fromRaw(self):
+        """Compute ra, dec, ha, pa from input Alt/Az coords."""
+
         # compute ra, dec, ha, pa here...
         ra_obs = ctypes.c_double()
         dec_obs = ctypes.c_double()
@@ -316,7 +323,6 @@ class Observed(Coordinate):
         rlong = numpy.radians(self.site.longitude)
         # ut1 = self.site.time.to_ut1()
         ut1 = self.site.time.to_ut1()
-        print("ut1", ut1)
 
         for ii, (alt,az) in enumerate(self):
             raz = numpy.radians(az)
