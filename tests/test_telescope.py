@@ -1,6 +1,8 @@
 from coordio import Observed, Site, Field
 import numpy
 
+numpy.random.seed(0)
+
 SMALL_NUM = 1e-10
 
 # from sdssconv.fieldCoords import parallacticAngle
@@ -166,6 +168,27 @@ def test_observedToField_LCO():
     assert float(field.x) > 0
     assert float(field.y) < 0
 
+
+def test_field_obs_cycle():
+    # try a bunch of pointings make sure the round trip works
+    azCens = numpy.random.uniform(0,360, size=30)
+    altCens = numpy.random.uniform(0,90, size=30)
+    for site in [lcoSite, apoSite]:
+        for azCen, altCen in zip(azCens, altCens):
+            azCoords = azCen + numpy.random.uniform(-1,1, size=30)
+            altCoords = altCen + numpy.random.uniform(-1,1, size=30)
+            altAzs = numpy.array([altCoords, azCoords]).T
+            obs = Observed(altAzs, site=site)
+            fc = Observed([[altCen, azCen]], site=site)
+            field = Field(obs, field_center=fc)
+            obs1 = Observed(field, site=site)
+
+            numpy.testing.assert_array_almost_equal(obs, obs1, decimal=10)
+            numpy.testing.assert_array_almost_equal(obs.ra, obs1.ra, decimal=10)
+            numpy.testing.assert_array_almost_equal(obs.dec, obs1.dec, decimal=10)
+            numpy.testing.assert_array_almost_equal(obs.ha, obs1.ha, decimal=10)
+            numpy.testing.assert_array_almost_equal(obs.pa, obs1.pa, decimal=10)
+
 if __name__ == "__main__":
-    test_observedToField_APO()
+    test_field_obs_cycle()
 

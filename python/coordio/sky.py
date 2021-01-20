@@ -19,6 +19,7 @@ from .time import Time
 from .site import Site
 # from .telescope import Field
 from . import defaults
+from .utils import cart2Sph
 
 
 __all__ = ['ICRS', 'Observed']
@@ -326,7 +327,6 @@ class Observed(Coordinate):
                 az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs
             )
 
-
             altAz = [
                 90 - numpy.rad2deg(zen_obs.value),
                 numpy.rad2deg(az_obs.value)
@@ -355,7 +355,54 @@ class Observed(Coordinate):
             Field coordinates from which to convert to observed coordinates
 
         """
-        raise NotImplementedError()
+        # get field center info
+        altCenter, azCenter = fieldCoords.field_center.flatten()
+        q = float(fieldCoords.field_center.pa)  # parallactic angle
+
+        cosQ = numpy.cos(numpy.radians(-1*q))
+        sinQ = numpy.sin(numpy.radians(-1*q))
+        rotQ = numpy.array([
+            [ cosQ, sinQ, 0],
+            [-sinQ, cosQ, 0],
+            [    0,    0, 1]
+        ])
+
+        coords = numpy.array(
+            [fieldCoords.x, fieldCoords.y, fieldCoords.z]
+        ).T
+
+        coords = rotQ.dot(coords.T).T
+
+        sinPhi = numpy.sin(-1*numpy.radians(90-altCenter))
+        cosPhi = numpy.cos(-1*numpy.radians(90-altCenter))
+        rotPhi = numpy.array([
+            [1,       0,      0],
+            [0,  cosPhi, sinPhi],
+            [0, -sinPhi, cosPhi]
+        ])
+        coords = rotPhi.dot(coords.T).T
+
+        sinTheta = numpy.sin(-1*numpy.radians(90-azCenter))
+        cosTheta = numpy.cos(-1*numpy.radians(90-azCenter))
+        rotTheta = numpy.array([
+            [ cosTheta, sinTheta, 0],
+            [-sinTheta, cosTheta, 0],
+            [        0,        0, 1]
+        ])
+
+        coords = rotTheta.dot(coords.T).T
+
+        x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
+        theta, phi = cart2Sph(x, y, z)
+
+        # convert sph theta, phi to az, alt
+        az = -1 * theta
+        alt = 90 - phi
+        self[:,0] = alt
+        self[:,1] = az
+
+        # compte other bits from raw
+        self._fromRaw()
 
     def _fromRaw(self):
         """Automatically executed after initialization with
