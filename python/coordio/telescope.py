@@ -59,6 +59,10 @@ class Field(Coordinate):
         if field_center is None:
             raise CoordIOError('field_center must be passed to Field')
         else:
+            if not hasattr(field_center, "coordSysName"):
+                raise CoordIOError(
+                    'field_center must be an Observed coordinate'
+                )
             if field_center.coordSysName != 'Observed':
                 raise CoordIOError(
                     'field_center must be an Observed coordinate'

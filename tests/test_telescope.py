@@ -1,5 +1,7 @@
-from coordio import Observed, Site, Field
+from coordio import Observed, Site, Field, CoordIOError
 import numpy
+
+import pytest
 
 numpy.random.seed(0)
 
@@ -169,6 +171,19 @@ def test_observedToField_LCO():
     assert float(field.y) < 0
 
 
+def test_raises():
+    azCen = 190  # (slightly west of south)
+    altCen = lcoSite.latitude - 10
+    badCen = Observed([[altCen, azCen], [altCen, azCen]], site=lcoSite)
+    obsCoord = Observed([[altCen+1, azCen]], site=lcoSite)
+    with pytest.raises(CoordIOError):
+        Field(obsCoord)
+    with pytest.raises(CoordIOError):
+        Field(obsCoord, field_center=[1,2])
+    with pytest.raises(CoordIOError):
+        Field(obsCoord, field_center=badCen)
+
+
 def test_field_obs_cycle():
     # try a bunch of pointings make sure the round trip works
     azCens = numpy.random.uniform(0,360, size=30)
@@ -188,6 +203,7 @@ def test_field_obs_cycle():
             numpy.testing.assert_array_almost_equal(obs.dec, obs1.dec, decimal=10)
             numpy.testing.assert_array_almost_equal(obs.ha, obs1.ha, decimal=10)
             numpy.testing.assert_array_almost_equal(obs.pa, obs1.pa, decimal=10)
+
 
 if __name__ == "__main__":
     test_field_obs_cycle()
