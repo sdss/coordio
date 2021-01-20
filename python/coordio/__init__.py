@@ -35,4 +35,5 @@ from .exceptions import *
 from .iers import IERS
 from .site import Site
 from .sky import *
+from .telescope import *
 from .time import Time

@@ -92,7 +92,7 @@ class Coordinate(numpy.ndarray):
 
     def __new__(cls, value, **kwargs):
 
-        obj = numpy.asarray(value).view(cls)
+        obj = numpy.asarray(value, dtype=numpy.float64).view(cls)
 
         if len(obj.shape) != 2 or obj.shape[1] < 2:
             raise CoordinateError('The input array must be NxM, M>=2.')
@@ -108,7 +108,7 @@ class Coordinate(numpy.ndarray):
                 # which should probably default to zeros
                 array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
             elif isinstance(array, (numpy.ndarray, list, tuple)):
-                array = numpy.array(array)
+                array = numpy.array(array, dtype=numpy.float64)
             else:
                 array = numpy.tile(array, obj.shape[0])
             setattr(obj, param, array)
@@ -127,6 +127,7 @@ class Coordinate(numpy.ndarray):
 
     def __array_finalize__(self, obj):
 
+        # print("array finalize called", obj, "ist the obj")
         if obj is None or not isinstance(obj, numpy.ndarray):
             return obj
 
@@ -139,19 +140,29 @@ class Coordinate(numpy.ndarray):
             setattr(self, param, getattr(obj, param, None))
 
     def __getitem__(self, sl):
+        """ When a coordinate is sliced, slice the extra arrays too,
+        and carry over params, if that's the right thing to do
 
-        # print("sl", sl, type(sl))
+        Returns
+        --------
+        sliced : numpy.ndarray or `.Coordinate`
+            Depending on how it was sliced...
+        """
 
         sliced = super().__getitem__(sl)
-        # print("sliced", sliced, type(sliced))
+
+        # print("sltype", sl, type(sl), sliced, type(sliced))
         if (not isinstance(sliced, numpy.ndarray) or
                 sliced.ndim != 2 or sliced.shape[1] != self.shape[1]):
+            # print("were here")
             return sliced.view(numpy.ndarray)
 
         for param in self.__extra_arrays__ + self.__computed_arrays__:
             if isinstance(sl, tuple):
+                # index looks something like arr[2:4,:]
                 setattr(sliced, param, getattr(sliced, param)[sl[0]])
             else:
+                # index looks something like arr[arr<4]
                 setattr(sliced, param, getattr(sliced, param)[sl])
 
         for param in self.__extra_params__:

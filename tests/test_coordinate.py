@@ -132,8 +132,6 @@ def test_more_slicing():
 
     tc = _TestCoordinate(coords, array1=array1, array2=array2, param1=param1)
 
-    # import pdb; pdb.set_trace()
-    # import pdb; pdb.set_trace()
 
     with pytest.raises(IndexError):
         tc[:, dim]  # ask for a dim that doesn't exist
@@ -164,7 +162,12 @@ def test_more_slicing():
     numpy.testing.assert_equal(tc1.array2, array2[filtArr])
     assert tc1.param1 == tc.param1
 
-
+    filtArr = [0,3,5]
+    tc1 = tc[filtArr]
+    numpy.testing.assert_equal(tc1, coords[filtArr])
+    numpy.testing.assert_equal(tc1.array1, array1[filtArr])
+    numpy.testing.assert_equal(tc1.array2, array2[filtArr])
+    assert tc1.param1 == tc.param1
 
 if __name__ == "__main__":
     test_more_slicing()

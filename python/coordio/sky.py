@@ -14,7 +14,7 @@ import numpy
 
 from . import sofa
 from .coordinate import Coordinate
-from .exceptions import CoordinateError, CoordIOError, CoordIOWarning
+from .exceptions import CoordinateError, CoordIOError
 from .time import Time
 from .site import Site
 # from .telescope import Field
@@ -326,11 +326,13 @@ class Observed(Coordinate):
                 az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs
             )
 
-            # self is Alt,Az array
-            self[ii, :] = [
+
+            altAz = [
                 90 - numpy.rad2deg(zen_obs.value),
                 numpy.rad2deg(az_obs.value)
             ]
+            self[ii, :] = altAz
+
             self.ra[ii] = numpy.rad2deg(ra_obs.value)
             self.dec[ii] = numpy.rad2deg(dec_obs.value)
             self.ha[ii] = numpy.rad2deg(ha_obs.value)
