@@ -62,9 +62,31 @@ class ICRS(Coordinate):
             obj.epoch += defaults.epoch
 
         if kwargs.get('wavelength', None) is None:
-            obj.wavelength += defaults.wavelength
+            if hasattr(value, "wavelength"):
+                obj.wavelength = value.wavelength
+            else:
+                obj.wavelength += defaults.wavelength
+
+        # check if a coordinate was passed that we can just
+        # 'cast' into Observed
+        if isinstance(value, Coordinate):
+
+            if value.coordSysName == 'Observed':
+                obj._fromICRS(value)
+
+            else:
+                raise CoordIOError(
+                    'Cannot convert to ICRS from %s'%value.coordSysName
+                )
 
         return obj
+
+    def _fromObserved(self, obsCoords):
+        """Converts from `.Observed` coordinates.  Epoch is the
+        time specifified by the site.
+
+        """
+        raise NotImplementedError()
 
     def to_epoch(self, jd, site=None):
         """Convert the coordinates to a new epoch.
@@ -169,10 +191,8 @@ class Observed(Coordinate):
     pa : numpy.ndarray
         Nx1 Numpy array, position angle in degrees.  By SOFA: the angle between
         the direction to the north celestial pole and direction to the zenith.
-        range is [-180, 180].  returned 0 at zenith (but really its undefined).
-        Looking south from the northern hemisphere, the sign is:
+        range is [-180, 180].  The sign is according to:
         -ha --> -pa, +ha --> +pa
-
 
     """
 
@@ -181,6 +201,7 @@ class Observed(Coordinate):
     __computed_arrays__ = ['ra', 'dec', 'ha', 'pa']
 
     def __new__(cls, value, **kwargs):
+        # should we do range checks (eg alt < 90)? probably.
 
         if kwargs.get('site', None) is None:
             raise CoordIOError('Site must be passed to Observed')
@@ -190,7 +211,9 @@ class Observed(Coordinate):
             if not isinstance(site, Site):
                 raise CoordIOError('Must pass Site to Observed')
             if site.time is None:
-                raise CoordIOError("Time of observation must be specified")
+                raise CoordIOError(
+                    "Time of observation must be specified on Site"
+                )
 
         # should we prefer wavelength passed, or wavelength
         # existing on value (if it does exist).  Here preferring passed
@@ -208,29 +231,33 @@ class Observed(Coordinate):
         if isinstance(value, Coordinate):
 
             if value.coordSysName == 'ICRS':
-                obj.fromICRS(value)
+                obj._fromICRS(value)
 
             elif value.coordSysName == 'Field':
-                obj.fromField(value)
+                obj._fromField(value)
 
             else:
                 raise CoordIOError(
-                    'Cannot create Observed from %s'%value.coordSysName
+                    'Cannot convert to Observed from %s'%value.coordSysName
                 )
 
         else:
             # raw numpy array supplied compute values
-            obj.fromRaw()
+            obj._fromRaw()
 
         return obj
 
-    def fromICRS(self, icrsCoords):
+    def _fromICRS(self, icrsCoords):
         """Converts from ICRS to topocentric observed coordinates for a site.
+        Automatically executed after initialization with `.ICRS`.
+
+        Computes and sets ra, dec, ha, pa arrays.
 
         Parameters:
         ------------
         icrsCoords : `.ICRS`
             ICRS coordinates from which to convert to observed coordinates
+
         """
 
         # Prepare to call iauAtco13
@@ -289,17 +316,21 @@ class Observed(Coordinate):
 
         for ii in range(len(rra)):
 
-            sofa.iauAtco13(rra[ii], rdec[ii], rpmra[ii], rpmdec[ii],
-                           icrs_2000.parallax[ii] / 1000., icrs_2000.rvel[ii],
-                           utc1, utc2, dut1,
-                           rlong, rlat, self.site.altitude, 0.0, 0.0,
-                           self.site.pressure, self.site.temperature,
-                           self.site.rh, icrs_2000.wavelength[ii] / 10000.,
-                           az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs)
+            sofa.iauAtco13(
+                rra[ii], rdec[ii], rpmra[ii], rpmdec[ii],
+                icrs_2000.parallax[ii] / 1000., icrs_2000.rvel[ii],
+                utc1, utc2, dut1,
+                rlong, rlat, self.site.altitude, 0.0, 0.0,
+                self.site.pressure, self.site.temperature,
+                self.site.rh, icrs_2000.wavelength[ii] / 10000.,
+                az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs
+            )
 
             # self is Alt,Az array
-            self[ii, :] = [90 - numpy.rad2deg(zen_obs.value),
-                               numpy.rad2deg(az_obs.value)]
+            self[ii, :] = [
+                90 - numpy.rad2deg(zen_obs.value),
+                numpy.rad2deg(az_obs.value)
+            ]
             self.ra[ii] = numpy.rad2deg(ra_obs.value)
             self.dec[ii] = numpy.rad2deg(dec_obs.value)
             self.ha[ii] = numpy.rad2deg(ha_obs.value)
@@ -309,14 +340,30 @@ class Observed(Coordinate):
                 sofa.iauHd2pa(ha_obs.value, dec_obs.value, rlat)
             )
 
-    def fromField(self, fieldCoords):
+    def _fromField(self, fieldCoords):
+        """Converts from field coordinates to topocentric observed
+        coordinates for a site. Automatically executed after initialization
+        with `.Field`.
+
+        Computes and sets ra, dec, ha, pa arrays.
+
+        Parameters:
+        ------------
+        fieldCoords : `.Field`
+            Field coordinates from which to convert to observed coordinates
+
+        """
         raise NotImplementedError()
 
-    def fromRaw(self):
-        """Compute ra, dec, ha, pa from input Alt/Az coords."""
+    def _fromRaw(self):
+        """Automatically executed after initialization with
+        an Nx2 `numpy.ndarray` of Alt/Az coords.
+
+        Computes and sets ra, dec, ha, pa arrays.
+
+        """
 
         # compute ra, dec, ha, pa here...
-        ra_obs = ctypes.c_double()
         dec_obs = ctypes.c_double()
         ha_obs = ctypes.c_double()
         rlat = numpy.radians(self.site.latitude)
@@ -324,18 +371,18 @@ class Observed(Coordinate):
         # ut1 = self.site.time.to_ut1()
         ut1 = self.site.time.to_ut1()
 
-        for ii, (alt,az) in enumerate(self):
+        for ii, (alt, az) in enumerate(self):
             raz = numpy.radians(az)
             ralt = numpy.radians(alt)
             sofa.iauAe2hd(raz, ralt, rlat, ha_obs, dec_obs)
-            self.ha[ii]  = numpy.degrees(ha_obs.value)
+            self.ha[ii] = numpy.degrees(ha_obs.value)
             self.dec[ii] = numpy.degrees(dec_obs.value)
-            self.pa[ii]  = numpy.degrees(
-                              sofa.iauHd2pa(ha_obs.value, dec_obs.value, rlat)
-                           )
+            self.pa[ii] = numpy.degrees(
+                sofa.iauHd2pa(ha_obs.value, dec_obs.value, rlat)
+            )
             # earth rotation angle (from SOFA docs)
             # https://www.iausofa.org/2017_0420_C/sofa/sofa_ast_c.pdf
-            era = sofa.iauEra00(ut1, 0)
+            era = sofa.iauEra00(ut1, 0)  # time is sum of the 2 args
             _ra = numpy.degrees(era + rlong - ha_obs.value)
             while _ra < 0:
                 _ra += 360

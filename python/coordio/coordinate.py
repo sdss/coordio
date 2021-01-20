@@ -140,17 +140,23 @@ class Coordinate(numpy.ndarray):
 
     def __getitem__(self, sl):
 
-        sliced = super().__getitem__(sl)
+        # print("sl", sl, type(sl))
 
+        sliced = super().__getitem__(sl)
+        # print("sliced", sliced, type(sliced))
         if (not isinstance(sliced, numpy.ndarray) or
                 sliced.ndim != 2 or sliced.shape[1] != self.shape[1]):
             return sliced.view(numpy.ndarray)
 
         for param in self.__extra_arrays__ + self.__computed_arrays__:
-            setattr(sliced, param, getattr(sliced, param)[sl[0]])
+            if isinstance(sl, tuple):
+                setattr(sliced, param, getattr(sliced, param)[sl[0]])
+            else:
+                setattr(sliced, param, getattr(sliced, param)[sl])
 
         for param in self.__extra_params__:
             setattr(sliced, param, getattr(sliced, param))
+
 
         return sliced
 

@@ -119,3 +119,58 @@ def test_copy():
     assert isinstance(test_copy, _TestCoordinate)
     assert (test_coordinate == test_copy).all()
     assert (test_coordinate.array1 == test_copy.array1).all()
+
+
+def test_more_slicing():
+    arr = [1, 2, 3, 4, 5, 6]
+    array1 = numpy.array(arr)
+    array2 = numpy.array(arr)
+    dim = 3
+    param1 = "param1"
+
+    coords = numpy.array([arr] * dim).T
+
+    tc = _TestCoordinate(coords, array1=array1, array2=array2, param1=param1)
+
+    # import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
+
+    with pytest.raises(IndexError):
+        tc[:, dim]  # ask for a dim that doesn't exist
+
+    with pytest.raises(IndexError):
+        tc[6, :]  # ask for something off the end of the list
+
+
+    tc1 = tc[2:3,:]
+    numpy.testing.assert_equal(tc1, coords[2:3,:])
+    numpy.testing.assert_equal(tc1.array1, array1[2:3])
+    numpy.testing.assert_equal(tc1.array2, array2[2:3])
+    assert tc1.param1 == tc.param1
+
+    tc1 = tc[:,1:3]
+    numpy.testing.assert_equal(tc1, coords[:,1:3])
+
+    with pytest.raises(AttributeError):
+        tc1.array1
+
+    with pytest.raises(AttributeError):
+        tc1.param1
+
+    filtArr = tc.array1 < 4
+    tc1 = tc[filtArr]
+    numpy.testing.assert_equal(tc1, coords[filtArr])
+    numpy.testing.assert_equal(tc1.array1, array1[filtArr])
+    numpy.testing.assert_equal(tc1.array2, array2[filtArr])
+    assert tc1.param1 == tc.param1
+
+
+
+if __name__ == "__main__":
+    test_more_slicing()
+
+
+
+
+
+
