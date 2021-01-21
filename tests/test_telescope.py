@@ -212,9 +212,8 @@ def test_field_obs_cycle():
 
             numpy.testing.assert_equal(field, field1)
             for attr in ['x', 'y', 'z', 'x_angle', 'y_angle']:
-                print('attr', attr)
-                numpy.testing.assert_equal(
-                    getattr(field, attr), getattr(field1, attr)
+                numpy.testing.assert_almost_equal(
+                    getattr(field, attr), getattr(field1, attr), decimal=10
                 )
 
 

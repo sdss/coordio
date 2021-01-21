@@ -1,5 +1,6 @@
 import numpy
 
+
 def fieldAngle2Cart(xField, yField):
     """Convert (ZEMAX-style) field angles in degrees to a cartesian point on
     the unit sphere
@@ -84,8 +85,8 @@ def cart2FieldAngle(x, y, z):
     # below the optical axis, the resulting vector
     # from this transform should thus point downward, not up
 
-    xField = -1*numpy.degrees(numpy.arctan2(x, z))
-    yField = -1*numpy.degrees(numpy.arctan2(y, z))
+    xField = -1 * numpy.degrees(numpy.arctan2(x, z))
+    yField = -1 * numpy.degrees(numpy.arctan2(y, z))
     # if numpy.isnan(xField) or numpy.isnan(yField):
     #     raise RuntimeError("NaN output [%.2f, %.2f] for input [%.2f, %.2f, %.2f]"%(xField, yField, cartXYZ[0], cartXYZ[1], cartXYZ[2]))
     return [xField, yField]
@@ -117,13 +118,8 @@ def cart2Sph(x, y, z):
     # x, y, z = cartXYZ
     theta = numpy.degrees(numpy.arctan2(y, x))
     # wrap theta to be between 0 and 360 degrees
-    try:
-        if theta < 0:
-            theta += 360
-    except:
-        # theta is array
-        inds = numpy.argwhere(theta < 0)
-        theta[inds] = theta[inds] + 360
+    theta = theta % 360
+
     phi = numpy.degrees(numpy.arccos(z))
     # if numpy.isnan(theta) or numpy.isnan(phi):
     #     raise RuntimeError("NaN output [%.2f, %.2f] from input [%.2f, %.2f, %.2f]"%(theta, phi, cartXYZ[0], cartXYZ[1], cartXYZ[2]))
@@ -152,16 +148,6 @@ def sph2Cart(theta, phi, r=1):
         [x,y,z] coordinates on sphere
 
     """
-    # theta, phi = thetaPhi
-    # while theta < 0:
-    #     theta += 360
-    # while theta >= 360:
-    #     theta -= 360
-    # if theta < 0 or theta >= 360:
-    #     raise RuntimeError("theta must be in range [0, 360]")
-
-    # if phi < -90 or phi > 90:
-    #     raise RuntimeError("phi must be in range [-90, 90]")
 
     theta, phi = numpy.radians(theta), numpy.radians(phi)
     x = r*numpy.cos(theta) * numpy.sin(phi)

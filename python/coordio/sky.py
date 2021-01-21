@@ -398,6 +398,9 @@ class Observed(Coordinate):
         # convert sph theta, phi to az, alt
         az = -1 * theta
         alt = 90 - phi
+
+        az = az % 360 # wrap to 0,360
+
         self[:,0] = alt
         self[:,1] = az
 
@@ -433,10 +436,8 @@ class Observed(Coordinate):
             # https://www.iausofa.org/2017_0420_C/sofa/sofa_ast_c.pdf
             era = sofa.iauEra00(ut1, 0)  # time is sum of the 2 args
             _ra = numpy.degrees(era + rlong - ha_obs.value)
-            while _ra < 0:
-                _ra += 360
-            while _ra > 360:
-                _ra -= 360
+            _ra = _ra % 360  # wrap ra
+
             self.ra[ii] = _ra
 
 
