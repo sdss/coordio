@@ -92,6 +92,9 @@ class Coordinate(numpy.ndarray):
 
     def __new__(cls, value, **kwargs):
 
+        if value is not None:
+            value = value.copy() # this prevents weirdness
+
         obj = numpy.asarray(value, dtype=numpy.float64).view(cls)
 
         if len(obj.shape) != 2 or obj.shape[1] < 2:

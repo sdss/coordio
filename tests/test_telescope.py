@@ -190,8 +190,9 @@ def test_field_obs_cycle():
     altCens = numpy.random.uniform(0,90, size=30)
     for site in [lcoSite, apoSite]:
         for azCen, altCen in zip(azCens, altCens):
-            azCoords = azCen + numpy.random.uniform(-1,1, size=30)
-            altCoords = altCen + numpy.random.uniform(-1,1, size=30)
+            print(azCen, altCen)
+            azCoords = azCen + numpy.random.uniform(-1,1, size=10)
+            altCoords = altCen + numpy.random.uniform(-1,1, size=10)
             altAzs = numpy.array([altCoords, azCoords]).T
             obs = Observed(altAzs, site=site)
             fc = Observed([[altCen, azCen]], site=site)
@@ -204,7 +205,20 @@ def test_field_obs_cycle():
             numpy.testing.assert_array_almost_equal(obs.ha, obs1.ha, decimal=10)
             numpy.testing.assert_array_almost_equal(obs.pa, obs1.pa, decimal=10)
 
+            fieldArr = numpy.array(field.copy())
+            # print("fieldArr", fieldArr)
+            field1 = Field(fieldArr, field_center=fc)
+            # import pdb; pdb.set_trace()
+
+            numpy.testing.assert_equal(field, field1)
+            for attr in ['x', 'y', 'z', 'x_angle', 'y_angle']:
+                print('attr', attr)
+                numpy.testing.assert_equal(
+                    getattr(field, attr), getattr(field1, attr)
+                )
+
 
 if __name__ == "__main__":
     test_field_obs_cycle()
+    # test_observedToField_LCO()
 

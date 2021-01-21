@@ -94,3 +94,4 @@ def test_sphCartCycle():
             assert numpy.abs(_x-x) < SMALL_NUM
             assert numpy.abs(_y-y) < SMALL_NUM
             assert numpy.abs(_z-z) < SMALL_NUM
+

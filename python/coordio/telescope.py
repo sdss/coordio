@@ -94,7 +94,7 @@ class Field(Coordinate):
         -----------
         obsCoords : `.Observed`
         """
-
+        obsCoords = numpy.array(obsCoords)
         # convert alt/az into a spherical sys
         phis = 90 - obsCoords[:, 0]  # alt
         thetas = -1 * obsCoords[:, 1]  # az
@@ -152,9 +152,7 @@ class Field(Coordinate):
         # finally convert back from cartesian to spherical (Field)
         thetaPhi = cart2Sph(self.x, self.y, self.z)
         thetaPhi = numpy.array(thetaPhi).T
-
         self[:, :] = thetaPhi
-
 
     def _fromFocalPlane(fpCoords):
         """Convert from FocalPlane coords to Field coords.
@@ -171,8 +169,10 @@ class Field(Coordinate):
         self.x, self.y, self.z = sph2Cart(self[:, 0], self[:, 1])
         self.x_angle, self.y_angle = cart2FieldAngle(self.x, self.y, self.z)
 
+
 class FocalPlane(Coordinate):
     pass
+
 
 if __name__ == "__main__":
     pass
