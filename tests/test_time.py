@@ -17,7 +17,7 @@ def test_time_now(mock_iers):
     time = Time()
 
     assert time.jd == pytest.approx(astropy.time.Time.now().tai.jd,
-                                    abs=1e-9)
+                                    abs=5e-8)
 
     assert time.jd1 + time.jd2 == time.jd
     assert isinstance(time.iers, IERS)
