@@ -276,7 +276,7 @@ def test_reasonable_field_focal_cycle():
         assert maxErr < arcsecError
 
 def test_unreasonable_field_focal_cycle():
-    # for lco, apo lco errors remain small despite large field
+    # for lco, apo. lco errors remain small despite large field
     arcsecErrs = [1, 11]
 
     nCoords = 10000

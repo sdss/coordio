@@ -25,8 +25,8 @@ INST_TO_WAVE = {
     "Apogee": 16600.0
 }
 
-APO_MAX_FIELD_R = 1.5 # max field radius (deg)
-LCO_MAX_FIELD_R = 1 # max field radius (deg)
+APO_MAX_FIELD_R = 1.5  # max field radius (deg)
+LCO_MAX_FIELD_R = 1.1  # max field radius (deg)
 
 # read in the focal plane model file
 fpModelFile = os.path.join(os.path.dirname(__file__), "etc", "focalPlaneModel.csv")
