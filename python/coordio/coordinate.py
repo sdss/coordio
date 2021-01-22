@@ -89,6 +89,7 @@ class Coordinate(numpy.ndarray):
     __extra_arrays__ = []
     __extra_params__ = []
     __computed_arrays__ = []  # values that are computed (not passed)
+    __warn_arrays__ = [] # boolean arrays to indicate warnings
 
     def __new__(cls, value, **kwargs):
 
@@ -120,10 +121,16 @@ class Coordinate(numpy.ndarray):
                 raise CoordinateError(f'{param} size does not match '
                                       'the coordinate values.')
 
-        # create zero arrays for computed arrays
+        # initialize computed arrays to zeros
         for param in obj.__computed_arrays__:
-            array = kwargs.get(param, None)
+            # array = kwargs.get(param, None)
             array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
+            setattr(obj, param, array)
+
+        # initialize warning arrays to false
+        for param in obj.__warn_arrays__:
+            # array = kwargs.get(param, None)
+            array = numpy.array([False]*obj.shape[0])
             setattr(obj, param, array)
 
         return obj

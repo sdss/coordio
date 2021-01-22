@@ -1,7 +1,11 @@
-from coordio import Observed, Site, Field, CoordIOError
+from coordio import Observed, Site, Field, FocalPlane
+from coordio import CoordIOError, CoordIOWarning
+from coordio.telescope import APO_MAX_FIELD_R, LCO_MAX_FIELD_R
 import numpy
 
 import pytest
+
+from sdssconv.fieldCoords import fieldToFocal, focalToField
 
 numpy.random.seed(0)
 
@@ -190,7 +194,6 @@ def test_field_obs_cycle():
     altCens = numpy.random.uniform(0,90, size=30)
     for site in [lcoSite, apoSite]:
         for azCen, altCen in zip(azCens, altCens):
-            print(azCen, altCen)
             azCoords = azCen + numpy.random.uniform(-1,1, size=10)
             altCoords = altCen + numpy.random.uniform(-1,1, size=10)
             altAzs = numpy.array([altCoords, azCoords]).T
@@ -206,9 +209,7 @@ def test_field_obs_cycle():
             numpy.testing.assert_array_almost_equal(obs.pa, obs1.pa, decimal=10)
 
             fieldArr = numpy.array(field.copy())
-            # print("fieldArr", fieldArr)
             field1 = Field(fieldArr, field_center=fc)
-            # import pdb; pdb.set_trace()
 
             numpy.testing.assert_equal(field, field1)
             for attr in ['x', 'y', 'z', 'x_angle', 'y_angle']:
@@ -217,7 +218,108 @@ def test_field_obs_cycle():
                 )
 
 
+def test_field_to_focal():
+    npts = 10
+    phis = numpy.zeros(npts) + 2 # two deg off axis
+    thetas = numpy.zeros(npts) + 45
+    coordArr = numpy.array([thetas, phis]).T
+    wls = numpy.random.choice([5400., 6231., 16600.], size=npts)
+    site = apoSite
+    fc = Observed([[80, 92]], site=site)
+    field = Field(coordArr, field_center=fc)
+    fp = FocalPlane(field, wavelength=wls, site=site)
+
+    fpArr = numpy.array(fp)
+    fp2 = FocalPlane(fpArr, wavelength=wls, site=site)
+
+    numpy.testing.assert_array_equal(fp, fp2)
+    numpy.testing.assert_array_equal(fp.b, fp2.b)
+    numpy.testing.assert_array_equal(fp.R, fp2.R)
+
+
+def test_reasonable_field_focal_cycle():
+    arcsecError = 0.01 # tenth of an arcsec on cycle
+
+    nCoords = 100000
+    for site, maxField in zip(
+        [lcoSite, apoSite], [LCO_MAX_FIELD_R, APO_MAX_FIELD_R]
+    ):
+        fc = Observed([[80, 120]], site=site)
+        thetaField = numpy.random.uniform(0, 360, size=nCoords)
+        phiField = numpy.random.uniform(0, 0.9*maxField, size=nCoords)
+        wls = numpy.random.choice([5400., 6231., 16600.], size=nCoords)
+        # wls = 16600
+        coordArr = numpy.array([thetaField, phiField]).T
+        field = Field(coordArr, field_center=fc)
+        assert not True in field.field_warn
+        fp = FocalPlane(field, wavelength=wls, site=site)
+        assert not True in fp.field_warn
+        field2 = Field(fp, field_center=fc)
+        assert not True in field2.field_warn
+
+        xyz = numpy.array([field.x, field.y, field.z]).T
+        xyz2 = numpy.array([field2.x, field2.y, field2.z]).T
+
+        angErrors = []
+        for _xyz, _xyz2 in zip(xyz, xyz2):
+            # print("norms", numpy.linalg.norm(_xyz), numpy.linalg.norm(_xyz2))
+            dt = _xyz.dot(_xyz2)
+            if dt > 1:
+                assert dt-1 < 1e-8 # make sure it's basically zero
+                dt = 1  # nan in arccos if greater than 1
+            # print("xyz", _xyz, _xyz2)
+            # print("\n\n")
+            err = numpy.degrees(numpy.arccos(dt))*3600
+            angErrors.append(err)
+        angErrors = numpy.array(angErrors)
+        maxErr = numpy.max(angErrors)
+        assert maxErr < arcsecError
+
+def test_unreasonable_field_focal_cycle():
+    # for lco, apo lco errors remain small despite large field
+    arcsecErrs = [1, 11]
+
+    nCoords = 10000
+    for site, maxField, errLim in zip(
+        [lcoSite, apoSite], [LCO_MAX_FIELD_R, APO_MAX_FIELD_R], arcsecErrs
+    ):
+        fc = Observed([[80, 120]], site=site)
+        thetaField = numpy.random.uniform(0, 360, size=nCoords)
+        phiField = numpy.random.uniform(1.5*maxField, 1.6*maxField, size=nCoords)
+        wls = numpy.random.choice([5400., 6231., 16600.], size=nCoords)
+        # wls = 16600.
+        coordArr = numpy.array([thetaField, phiField]).T
+        field = Field(coordArr, field_center=fc)
+        assert not True in field.field_warn
+        fp = FocalPlane(field, wavelength=wls, site=site)
+        assert not False in fp.field_warn
+        field2 = Field(fp, field_center=fc)
+        assert not False in field2.field_warn
+
+        xyz = numpy.array([field.x, field.y, field.z]).T
+        xyz2 = numpy.array([field2.x, field2.y, field2.z]).T
+
+        angErrors = []
+        for _xyz, _xyz2 in zip(xyz, xyz2):
+            # print("norms", numpy.linalg.norm(_xyz), numpy.linalg.norm(_xyz2))
+            dt = _xyz.dot(_xyz2)
+            if dt > 1:
+                assert dt-1 < 1e-8 # make sure it's basically zero
+                dt = 1  # nan in arccos if greater than 1
+            # print("\n\n")
+            err = numpy.degrees(numpy.arccos(dt))*3600
+            angErrors.append(err)
+        angErrors = numpy.array(angErrors)
+        maxErr = numpy.max(angErrors)
+        print("maxErr", maxErr)
+        # break
+        assert maxErr < errLim
+
+        # print(angErrors, angErrors.shape)
+
+
+
 if __name__ == "__main__":
-    test_field_obs_cycle()
+    test_unreasonable_field_focal_cycle()
     # test_observedToField_LCO()
 
