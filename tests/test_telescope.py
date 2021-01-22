@@ -5,7 +5,7 @@ import numpy
 
 import pytest
 
-from sdssconv.fieldCoords import fieldToFocal, focalToField
+# from sdssconv.fieldCoords import fieldToFocal, focalToField
 
 numpy.random.seed(0)
 
