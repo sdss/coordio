@@ -73,7 +73,7 @@ class ICRS(Coordinate):
         if isinstance(value, Coordinate):
 
             if value.coordSysName == 'Observed':
-                obj._fromICRS(value)
+                obj._fromObserved(value)
 
             else:
                 raise CoordIOError(
@@ -399,10 +399,10 @@ class Observed(Coordinate):
         az = -1 * theta
         alt = 90 - phi
 
-        az = az % 360 # wrap to 0,360
+        az = az % 360  # wrap to 0,360
 
-        self[:,0] = alt
-        self[:,1] = az
+        self[:, 0] = alt
+        self[:, 1] = az
 
         # compte other bits from raw
         self._fromRaw()
