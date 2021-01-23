@@ -3,10 +3,11 @@ import pandas as pd
 import os
 import warnings
 
-from .coordinate import Coordinate
+from .coordinate import Coordinate, verifySite, verifyWavelength
 from .exceptions import CoordIOError, CoordIOUserWarning
 from .utils import sph2Cart, cart2Sph, cart2FieldAngle
-from .site import Site
+# from .site import Site
+from . import defaults
 # from .focalPlaneModel import focalPlaneModelDict
 
 # from .sky import Observed, ICRS
@@ -14,20 +15,6 @@ from .site import Site
 
 __all__ = ["Field", "FocalPlane"]
 
-WAVE_TO_INST = {
-    5400.0: "Boss",
-    6231.0: "GFA",
-    16600.0: "Apogee"
-}
-
-INST_TO_WAVE = {
-    "Boss": 5400.0,
-    "GFA": 6231.0,
-    "Apogee": 16600.0
-}
-
-APO_MAX_FIELD_R = 1.5  # max field radius (deg)
-LCO_MAX_FIELD_R = 1.1  # max field radius (deg)
 
 # read in the focal plane model file
 fpModelFile = os.path.join(os.path.dirname(__file__), "etc", "focalPlaneModel.csv")
@@ -115,9 +102,9 @@ def fieldToFocal(thetaField, phiField, site, waveCat):
     """
 
     if site == "APO":
-        fieldWarn = numpy.array(phiField) > APO_MAX_FIELD_R
+        fieldWarn = numpy.array(phiField) > defaults.APO_MAX_FIELD_R
     if site == "LCO":
-        fieldWarn = numpy.array(phiField) > LCO_MAX_FIELD_R
+        fieldWarn = numpy.array(phiField) > defaults.LCO_MAX_FIELD_R
 
     if hasattr(fieldWarn, "__len__"):
         if True in fieldWarn:
@@ -197,9 +184,9 @@ def focalToField(xFocal, yFocal, zFocal, site, waveCat):
         + c3 * phiFocal**7 + c4 * phiFocal**9
 
     if site == "APO":
-        fieldWarn = numpy.array(phiField) > APO_MAX_FIELD_R
+        fieldWarn = numpy.array(phiField) > defaults.APO_MAX_FIELD_R
     if site == "LCO":
-        fieldWarn = numpy.array(phiField) > LCO_MAX_FIELD_R
+        fieldWarn = numpy.array(phiField) > defaults.LCO_MAX_FIELD_R
 
     if hasattr(fieldWarn, "__len__"):
         if True in fieldWarn:
@@ -378,7 +365,7 @@ class Field(Coordinate):
             # find which coords are intended for which
             # wavelength
             arg = numpy.argwhere(
-                fpCoords.wavelength == INST_TO_WAVE[waveCat]
+                fpCoords.wavelength == defaults.INST_TO_WAVE[waveCat]
             ).squeeze()
             argNamePairs.append([arg, waveCat])
 
@@ -436,11 +423,11 @@ class FocalPlane(Coordinate):
     Parameters
     ------------
     value : numpy.ndarray
-        A Nx3 array where [x,y,z] are columns columns. Or `.Field`.  Or `.Wok`.
+        A Nx3 array where [x,y,z] are columns. Or `.Field`.  Or `.Wok`.
     wavelength : numpy.ndarray
         A 1D array with he observing wavelength, in angstrom.
         Currently only values of 5400, 6231, and 16600 are valid, corresponding
-        to BOSS, Apogee, and sdss-r band (GFA).
+        to BOSS, Apogee, and sdss-r band (GFA).  Defaults to GFA wavelength.
     site : `.Site`
         Used to pick the focal plane model to use which is telescope dependent
 
@@ -457,38 +444,34 @@ class FocalPlane(Coordinate):
     """
 
     __extra_params__ = ["site"]   # mandatory argument
-    __extra_arrays__ = ["wavelength"]  # mandatory argument
+    __extra_arrays__ = ["wavelength"]
     __computed_arrays__ = ["b", "R"]
     __warn_arrays__ = ["field_warn"]
 
-    _valid_wavelengths = set([5400., 6231., 16600.])
-
     def __new__(cls, value, **kwargs):
 
-        site = kwargs.get("site", None)
-        if site is None:
-            raise CoordIOError("site must be passed to FocalPlane")
-        else:
-            if not isinstance(site, Site):
-                raise CoordIOError(
-                    "site must be a coordio.Site"
-                )
-        wls = kwargs.get("wavelength", None)
-        if wls is None:
-            raise CoordIOError("must specify corresponding wavelengths")
-        else:
-            if hasattr(wls, "__len__"):
-                wls = numpy.array(wls, dtype=numpy.float64)
-                wlSet = set(wls)
-            else:
-                wls = float(wls)
-                wlSet = set([wls])
-            if not wlSet.issubset(cls._valid_wavelengths):
-                raise CoordIOError(
-                    "Invalid wavelength passed to FocalPlane \
-                    valid wavelengths are %s"%(str(cls._valid_wavelengths))
-                )
-        kwargs["wavelength"] = wls
+        verifySite(kwargs)
+
+        kwargs["wavelength"] = verifyWavelength(
+            kwargs, len(value), strict=True
+        )
+
+        # wls = kwargs.get("wavelength", None)
+        # if wls is None:
+        #     raise CoordIOError("must specify corresponding wavelengths")
+        # else:
+        #     if hasattr(wls, "__len__"):
+        #         wls = numpy.array(wls, dtype=numpy.float64)
+        #         wlSet = set(wls)
+        #     else:
+        #         wls = float(wls)
+        #         wlSet = set([wls])
+        #     if not wlSet.issubset(cls._valid_wavelengths):
+        #         raise CoordIOError(
+        #             "Invalid wavelength passed to FocalPlane \
+        #             valid wavelengths are %s"%(str(cls._valid_wavelengths))
+        #         )
+        # kwargs["wavelength"] = wls
 
         if isinstance(value, Coordinate):
             if value.coordSysName == "Field":
@@ -525,7 +508,7 @@ class FocalPlane(Coordinate):
             # find which coords are intended for which
             # wavelength
             arg = numpy.argwhere(
-                self.wavelength == INST_TO_WAVE[waveCat]
+                self.wavelength == defaults.INST_TO_WAVE[waveCat]
             ).squeeze()
             argNamePairs.append([arg, waveCat])
 
@@ -567,7 +550,7 @@ class FocalPlane(Coordinate):
         argNamePairs = []
         for waveCat in ["Boss", "Apogee", "GFA"]:
             arg = numpy.argwhere(
-                self.wavelength == INST_TO_WAVE[waveCat]).squeeze()
+                self.wavelength == defaults.INST_TO_WAVE[waveCat]).squeeze()
             argNamePairs.append([arg, waveCat])
 
         for (arg, waveCat) in argNamePairs:

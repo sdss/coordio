@@ -1,6 +1,7 @@
 from coordio import Observed, Site, Field, FocalPlane
 from coordio import CoordIOError, CoordIOUserWarning
-from coordio.telescope import APO_MAX_FIELD_R, LCO_MAX_FIELD_R
+from coordio.defaults import APO_MAX_FIELD_R, LCO_MAX_FIELD_R
+from coordio.defaults import VALID_WAVELENGTHS
 import numpy
 
 import pytest
@@ -247,7 +248,7 @@ def test_reasonable_field_focal_cycle():
         fc = Observed([[80, 120]], site=site)
         thetaField = numpy.random.uniform(0, 360, size=nCoords)
         phiField = numpy.random.uniform(0, maxField, size=nCoords)
-        wls = numpy.random.choice([5400., 6231., 16600.], size=nCoords)
+        wls = numpy.random.choice(list(VALID_WAVELENGTHS), size=nCoords)
         # wls = 16600
         coordArr = numpy.array([thetaField, phiField]).T
         field = Field(coordArr, field_center=fc)
@@ -287,7 +288,7 @@ def test_unreasonable_field_focal_cycle():
         fc = Observed([[80, 120]], site=site)
         thetaField = numpy.random.uniform(0, 360, size=nCoords)
         phiField = numpy.random.uniform(1.5*maxField, 1.6*maxField, size=nCoords)
-        wls = numpy.random.choice([5400., 6231., 16600.], size=nCoords)
+        wls =  numpy.random.choice(list(VALID_WAVELENGTHS), size=nCoords)
         # wls = 16600.
         coordArr = numpy.array([thetaField, phiField]).T
         field = Field(coordArr, field_center=fc)
@@ -321,8 +322,31 @@ def test_unreasonable_field_focal_cycle():
         # print(angErrors, angErrors.shape)
 
 
+def test_invalid_wavelength():
+    site = apoSite
+    nCoords = 100
+    fc = Observed([[80, 120]], site=site)
+    thetaField = numpy.random.uniform(0, 360, size=nCoords)
+    phiField = numpy.random.uniform(0, 1, size=nCoords)
+    wls = 250 # invalid
+    coordArr = numpy.array([thetaField, phiField]).T
+    field = Field(coordArr, field_center=fc)
+    with pytest.raises(CoordIOError):
+        fp = FocalPlane(field, wavelength=wls, site=site)
+    wls = numpy.random.choice([30, 40, 50], size=nCoords)
+    with pytest.raises(CoordIOError):
+        fp = FocalPlane(field, wavelength=wls, site=site)
+
+def test_invalid_site():
+    site = "junk"
+    with pytest.raises(CoordIOError):
+        fc = Observed([[80, 120]], site=site)
+    site = Site("APO") # time not specified
+    with pytest.raises(CoordIOError):
+        fc = Observed([[80, 120]], site=site)
 
 if __name__ == "__main__":
     test_unreasonable_field_focal_cycle()
+
     # test_observedToField_LCO()
 

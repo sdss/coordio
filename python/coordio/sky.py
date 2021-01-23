@@ -13,7 +13,7 @@ import ctypes
 import numpy
 
 from . import sofa
-from .coordinate import Coordinate
+from .coordinate import Coordinate, verifySite, verifyWavelength
 from .exceptions import CoordinateError, CoordIOError
 from .time import Time
 from .site import Site
@@ -49,7 +49,7 @@ class ICRS(Coordinate):
         A 1D array with the radial velocity in km/s, positive when receding.
     wavelength : numpy.ndarray
         A 1D array with he observing wavelength, in angstrom.
-        Defaults to 7500 angstrom.
+        Defaults to the value in `defaults.WAVELENGTH` (GFA, sdss-r)
 
     """
 
@@ -57,16 +57,18 @@ class ICRS(Coordinate):
 
     def __new__(cls, value, **kwargs):
 
+        kwargs["wavelength"] = verifyWavelength(kwargs, len(value), strict=False)
+
         obj = super().__new__(cls, value, **kwargs)
 
         if kwargs.get('epoch', None) is None:
-            obj.epoch += defaults.epoch
+            obj.epoch += defaults.EPOCH
 
-        if kwargs.get('wavelength', None) is None:
-            if hasattr(value, "wavelength"):
-                obj.wavelength = value.wavelength
-            else:
-                obj.wavelength += defaults.wavelength
+        # if kwargs.get('wavelength', None) is None:
+        #     if hasattr(value, "wavelength"):
+        #         obj.wavelength = value.wavelength
+        #     else:
+        #         obj.wavelength += defaults.wavelength
 
         # check if a coordinate was passed that we can just
         # 'cast' into Observed
@@ -204,28 +206,35 @@ class Observed(Coordinate):
     def __new__(cls, value, **kwargs):
         # should we do range checks (eg alt < 90)? probably.
 
-        if kwargs.get('site', None) is None:
-            raise CoordIOError('Site must be passed to Observed')
+        verifySite(kwargs)
 
-        else:
-            site = kwargs.get('site')
-            if not isinstance(site, Site):
-                raise CoordIOError('Must pass Site to Observed')
-            if site.time is None:
-                raise CoordIOError(
-                    "Time of observation must be specified on Site"
-                )
+        # if kwargs.get('site', None) is None:
+        #     raise CoordIOError('Site must be passed to Observed')
+
+        # else:
+        #     site = kwargs.get('site')
+        #     if not isinstance(site, Site):
+        #         raise CoordIOError('Must pass Site to Observed')
+        #     if site.time is None:
+        #         raise CoordIOError(
+        #             "Time of observation must be specified on Site"
+        #         )
 
         # should we prefer wavelength passed, or wavelength
         # existing on value (if it does exist).  Here preferring passed
-        if kwargs.get('wavelength', None) is None:
-            if hasattr(value, "wavelength"):
-                kwargs["wavelength"] = value.wavelength
+        # if kwargs.get('wavelength', None) is None:
+        #     if hasattr(value, "wavelength"):
+        #         kwargs["wavelength"] = value.wavelength
+        kwargs["wavelength"] = verifyWavelength(
+            kwargs, len(value), strict=False
+        )
 
         obj = super().__new__(cls, value, **kwargs)
 
-        if kwargs.get('wavelength', None) is None:
-            obj.wavelength += defaults.wavelength
+        # if kwargs.get('wavelength', None) is None:
+        #     obj.wavelength += defaults.wavelength
+
+
 
         # check if a coordinate was passed that we can just
         # 'cast' into Observed

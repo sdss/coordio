@@ -207,7 +207,6 @@ def test_warn_arr():
     numpy.testing.assert_equal(_tc.warn, _warn)
     assert _tc.param1 == "hi"
 
-
     _tc = tc[slicer, :]
     _coords = coords[slicer, :]
     _array1 = array1[slicer]
@@ -222,7 +221,6 @@ def test_warn_arr():
     numpy.testing.assert_equal(_tc.warn, _warn)
     assert _tc.param1 == "hi"
 
-
     slicer = [2,4,6]
     _tc = tc[slicer]
     _coords = coords[slicer]
@@ -231,72 +229,6 @@ def test_warn_arr():
     _array12 = array12[slicer]
     _warn = warn[slicer]
     assert _tc.param1 == "hi"
-
-    # import pdb; pdb.set_trace()
-    # print("base2", _tc.base, type(_tc.base))
-
-    # print("base2", _tc.base, type(_tc.base))
-
-
-
-
-    # import pdb; pdb.set_trace()
-
-    # for i in range(3):
-    #     print("iter", i)
-    #     _tc = tc[:-1,:]
-    #     pdb.set_trace()
-    #     print("\n\n")
-
-        # break
-
-    # print("tc[1:4]")
-    # _tc = tc[1:4]
-    # print("_tc", _tc, type(_tc))
-    # print("_tc.array1", _tc.array1)
-    # print("_tc.array2", _tc.array2)
-    # print("_tc.array12", _tc.array12)
-    # print("_tc.warn", _tc.warn)
-    # print("_tc.param1", _tc.param1)
-
-
-    # print("\n\n")
-
-    # print("tc[1:4,:]")
-    # _tc = tc[1:4, :]
-    # print("_tc", _tc, type(_tc))
-    # print("_tc.array1", _tc.array1)
-    # print("_tc.array2", _tc.array2)
-    # print("_tc.array12", _tc.array12)
-    # print("_tc.warn", _tc.warn)
-    # print("_tc.param1", _tc.param1)
-
-    # print("tc[1,:]")
-    # tc[1,:]
-
-    # print('tc[[2,3,4]]')
-    # tc[[2,3,4]]
-
-    # print('tc[numpy.array(2,3,4)]')
-
-    # numpy.testing.assert_equal(tc.array12, array1 + array2)
-    # numpy.testing.assert_equal(tc.warn, (array1 + array2) > 10)
-
-    # _array1 = array1[3:]
-    # _array2 = array2[3:]
-    # _tc = tc[2:5,:]
-
-    # import pdb; pdb.set_trace()
-
-
-    # print("base1", _tc.base, type(_tc.base))
-
-
-    # numpy.testing.assert_equal(_tc.array1, _array1)
-    # numpy.testing.assert_equal(_tc.array2, _array2)
-
-    # print("--------------")
-
 
 
 if __name__ == "__main__":

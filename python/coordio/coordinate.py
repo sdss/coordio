@@ -7,8 +7,85 @@
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
 import numpy
+import warnings
 
-from .exceptions import CoordinateError
+from .exceptions import CoordinateError, CoordIOError, CoordIOUserWarning
+from .site import Site
+from .defaults import WAVELENGTH, VALID_WAVELENGTHS
+
+
+def verifySite(kwargs, strict=True):
+    """Search through kwargs for site parameter, and verify
+    that it looks ok.  Otherwise raise a CoordIOError
+
+    Parameters
+    ------------
+    kwargs : dict
+        kwargs passed to Coordinate __new__
+    strict : bool
+        if True, a time must be specified on the site
+
+    """
+    if kwargs.get('site', None) is None:
+        raise CoordIOError('Site must be passed to Observed')
+
+    else:
+        site = kwargs.get('site')
+        if not isinstance(site, Site):
+            raise CoordIOError('Must pass Site to Observed')
+        if strict and site.time is None:
+            raise CoordIOError(
+                "Time of observation must be specified on Site"
+            )
+
+
+def verifyWavelength(kwargs, lenArray, strict=True):
+    """Search through kwargs for wavelength parameter.  If not existent,
+    return the GFA wavelength (of the right size).  If wavelengths
+    do not correspond to Apogee, Boss, or GFA wavelengths, raise a
+    CoordIOError
+
+    Parameters
+    -----------
+    kwargs : dict
+        kwargs passed to Coordinate __new__
+    lenArray : int
+        length of the array to create if wavelength not present in kwargs
+    strict : bool
+        if strict is True, wavelengths may only be those corresponding to
+        Apogee, Boss, or GFA
+
+    Returns
+    ---------
+    wls : numpy.ndarray
+        1D array of length lenArray of wavelengths, defauts to
+        `defaults.WAVELENGTH`
+
+    """
+
+    wls = kwargs.get("wavelength", None)
+    if wls is None:
+        # create an array of correct length default to gfa wavelength
+        wls = numpy.zeros(lenArray) + WAVELENGTH
+        warnings.warn(
+            "Warning! Wavelengths not supplied, defaulting to defaults.WAVELENTH",
+            CoordIOUserWarning
+        )
+    else:
+        if hasattr(wls, "__len__"):
+            # array passed
+            wls = numpy.array(wls, dtype=numpy.float64)
+            wlSet = set(wls)
+        else:
+            # single value passed
+            wls = numpy.zeros(lenArray) + float(wls)
+            wlSet = set(wls)
+        if strict and not wlSet.issubset(VALID_WAVELENGTHS):
+            raise CoordIOError(
+                "Invalid wavelength passed to FocalPlane \
+                valid wavelengths are %s"%(str(VALID_WAVELENGTHS))
+            )
+    return wls
 
 
 class Coordinate(numpy.ndarray):
@@ -194,4 +271,5 @@ class Coordinate(numpy.ndarray):
     @property
     def coordSysName(self):
         return self.__class__.__name__
+
 
