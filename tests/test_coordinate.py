@@ -17,6 +17,19 @@ class _TestCoordinate(Coordinate):
 
     __extra_arrays__ = ['array1', 'array2']
     __extra_params__ = ['param1']
+    __warn_arrays__ = ['warn']
+    __computed_arrays__ = ['array12']
+
+    def __new__(cls, value, **kwargs):
+        obj = super().__new__(cls, value, **kwargs)
+
+        array12 = obj.array1 + obj.array2
+        obj.array12 = array12
+
+        # warn if sum is greater than 10
+        obj.warn = obj.array12 > 10
+
+        return obj
 
 
 def test_coordinate():
@@ -132,13 +145,11 @@ def test_more_slicing():
 
     tc = _TestCoordinate(coords, array1=array1, array2=array2, param1=param1)
 
-
     with pytest.raises(IndexError):
         tc[:, dim]  # ask for a dim that doesn't exist
 
     with pytest.raises(IndexError):
         tc[6, :]  # ask for something off the end of the list
-
 
     tc1 = tc[2:3,:]
     numpy.testing.assert_equal(tc1, coords[2:3,:])
@@ -169,8 +180,124 @@ def test_more_slicing():
     numpy.testing.assert_equal(tc1.array2, array2[filtArr])
     assert tc1.param1 == tc.param1
 
+
+def test_warn_arr():
+    arr = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    array1 = numpy.array(arr)
+    array2 = numpy.array(arr)
+    coords = numpy.array([array1, array1]).T
+
+    array12 = array1 + array2
+    warn = array12 > 10
+
+    tc = _TestCoordinate(coords, array1=array1, array2=array2)
+
+    slicer = tc.array1 >= 3
+    _tc = tc[slicer]
+    _coords = coords[slicer]
+    _array1 = array1[slicer]
+    _array2 = array2[slicer]
+    _array12 = array12[slicer]
+    _warn = warn[slicer]
+
+    numpy.testing.assert_equal(_tc, _coords)
+    numpy.testing.assert_equal(_tc.array1, _array1)
+    numpy.testing.assert_equal(_tc.array2, _array2)
+    numpy.testing.assert_equal(_tc.array12, _array12)
+    numpy.testing.assert_equal(_tc.warn, _warn)
+
+
+    _tc = tc[slicer, :]
+    _coords = coords[slicer, :]
+    _array1 = array1[slicer]
+    _array2 = array2[slicer]
+    _array12 = array12[slicer]
+    _warn = warn[slicer]
+
+    numpy.testing.assert_equal(_tc, _coords)
+    numpy.testing.assert_equal(_tc.array1, _array1)
+    numpy.testing.assert_equal(_tc.array2, _array2)
+    numpy.testing.assert_equal(_tc.array12, _array12)
+    numpy.testing.assert_equal(_tc.warn, _warn)
+
+
+    slicer = [2,4,6]
+    _tc = tc[slicer]
+    _coords = coords[slicer]
+    _array1 = array1[slicer]
+    _array2 = array2[slicer]
+    _array12 = array12[slicer]
+    _warn = warn[slicer]
+
+    # import pdb; pdb.set_trace()
+    # print("base2", _tc.base, type(_tc.base))
+
+    # print("base2", _tc.base, type(_tc.base))
+
+
+
+
+    # import pdb; pdb.set_trace()
+
+    # for i in range(3):
+    #     print("iter", i)
+    #     _tc = tc[:-1,:]
+    #     pdb.set_trace()
+    #     print("\n\n")
+
+        # break
+
+    # print("tc[1:4]")
+    # _tc = tc[1:4]
+    # print("_tc", _tc, type(_tc))
+    # print("_tc.array1", _tc.array1)
+    # print("_tc.array2", _tc.array2)
+    # print("_tc.array12", _tc.array12)
+    # print("_tc.warn", _tc.warn)
+    # print("_tc.param1", _tc.param1)
+
+
+    # print("\n\n")
+
+    # print("tc[1:4,:]")
+    # _tc = tc[1:4, :]
+    # print("_tc", _tc, type(_tc))
+    # print("_tc.array1", _tc.array1)
+    # print("_tc.array2", _tc.array2)
+    # print("_tc.array12", _tc.array12)
+    # print("_tc.warn", _tc.warn)
+    # print("_tc.param1", _tc.param1)
+
+    # print("tc[1,:]")
+    # tc[1,:]
+
+    # print('tc[[2,3,4]]')
+    # tc[[2,3,4]]
+
+    # print('tc[numpy.array(2,3,4)]')
+
+    # numpy.testing.assert_equal(tc.array12, array1 + array2)
+    # numpy.testing.assert_equal(tc.warn, (array1 + array2) > 10)
+
+    # _array1 = array1[3:]
+    # _array2 = array2[3:]
+    # _tc = tc[2:5,:]
+
+    # import pdb; pdb.set_trace()
+
+
+    # print("base1", _tc.base, type(_tc.base))
+
+
+    # numpy.testing.assert_equal(_tc.array1, _array1)
+    # numpy.testing.assert_equal(_tc.array2, _array2)
+
+    # print("--------------")
+
+
+
 if __name__ == "__main__":
-    test_more_slicing()
+    test_warn_arr()
 
 
 

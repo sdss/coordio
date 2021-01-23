@@ -89,10 +89,9 @@ class Coordinate(numpy.ndarray):
     __extra_arrays__ = []
     __extra_params__ = []
     __computed_arrays__ = []  # values that are computed (not passed)
-    __warn_arrays__ = [] # boolean arrays to indicate warnings
+    __warn_arrays__ = []  # boolean arrays to indicate warnings
 
     def __new__(cls, value, **kwargs):
-
         if value is not None:
             value = value.copy() # this prevents weirdness
 
@@ -104,6 +103,8 @@ class Coordinate(numpy.ndarray):
         for param in obj.__extra_params__:
             setattr(obj, param, kwargs.get(param, None))
 
+        # initialize extra arrays arrays
+        # set to zeros if not passed
         for param in obj.__extra_arrays__:
             array = kwargs.get(param, None)
             if array is None:
@@ -132,11 +133,10 @@ class Coordinate(numpy.ndarray):
             # array = kwargs.get(param, None)
             array = numpy.array([False]*obj.shape[0])
             setattr(obj, param, array)
-
         return obj
 
     def __array_finalize__(self, obj):
-
+        # self is the new array, obj is the old array
         # print("array finalize called", obj, "ist the obj")
         if obj is None or not isinstance(obj, numpy.ndarray):
             return obj
@@ -146,8 +146,11 @@ class Coordinate(numpy.ndarray):
         params += self.__extra_arrays__
         params += self.__extra_params__
         params += self.__computed_arrays__
+        params += self.__warn_arrays__
+
         for param in params:
             setattr(self, param, getattr(obj, param, None))
+
 
     def __getitem__(self, sl):
         """ When a coordinate is sliced, slice the extra arrays too,
@@ -159,7 +162,11 @@ class Coordinate(numpy.ndarray):
             Depending on how it was sliced...
         """
 
+        # handling everything here is tricky
+        # https://scipy-cookbook.readthedocs.io/items/ViewsVsCopies.html
+        # is helpful
         sliced = super().__getitem__(sl)
+        # print("slice", sl, type(sl))
 
         # print("sltype", sl, type(sl), sliced, type(sliced))
         if (not isinstance(sliced, numpy.ndarray) or
@@ -167,17 +174,24 @@ class Coordinate(numpy.ndarray):
             # print("were here")
             return sliced.view(numpy.ndarray)
 
-        for param in self.__extra_arrays__ + self.__computed_arrays__:
+        arrays2slice = []
+        arrays2slice += self.__extra_arrays__
+        arrays2slice += self.__computed_arrays__
+        arrays2slice += self.__warn_arrays__
+
+        for param in arrays2slice:
+            # print(param, getattr(sliced, param))
             if isinstance(sl, tuple):
                 # index looks something like arr[2:4,:]
                 setattr(sliced, param, getattr(sliced, param)[sl[0]])
             else:
                 # index looks something like arr[arr<4]
+                # x = getattr(sliced, param)
+                # print("x", x)
                 setattr(sliced, param, getattr(sliced, param)[sl])
 
         for param in self.__extra_params__:
             setattr(sliced, param, getattr(sliced, param))
-
 
         return sliced
 

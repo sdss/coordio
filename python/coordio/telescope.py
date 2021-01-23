@@ -1,9 +1,10 @@
 import numpy
 import pandas as pd
 import os
+import warnings
 
 from .coordinate import Coordinate
-from .exceptions import CoordIOError, CoordIOWarning
+from .exceptions import CoordIOError, CoordIOUserWarning
 from .utils import sph2Cart, cart2Sph, cart2FieldAngle
 from .site import Site
 # from .focalPlaneModel import focalPlaneModelDict
@@ -120,12 +121,14 @@ def fieldToFocal(thetaField, phiField, site, waveCat):
 
     if hasattr(fieldWarn, "__len__"):
         if True in fieldWarn:
-            print(  # turn this into warning eventually, problem for tests?
-                "Warning! Far off-axis coordinate, conversion may be bogus"
+            warnings.warn(
+                "Warning! Far off-axis coordinate, conversion may be bogus",
+                CoordIOUserWarning
             )
     elif fieldWarn is True:
-        print(  # turn this into warning eventually, problem for tests?
-            "Warning! Far off-axis coordinate, conversion may be bogus"
+        warnings.warn(
+            "Warning! Far off-axis coordinate, conversion may be bogus",
+            CoordIOUserWarning
         )
 
     direction = "focal"
@@ -200,12 +203,14 @@ def focalToField(xFocal, yFocal, zFocal, site, waveCat):
 
     if hasattr(fieldWarn, "__len__"):
         if True in fieldWarn:
-            print(  # turn this into warning eventually, problem for tests?
-                "Warning! Far off-axis coordinate, conversion may be bogus"
+            warnings.warn(
+                "Warning! Far off-axis coordinate, conversion may be bogus",
+                CoordIOUserWarning
             )
     elif fieldWarn is True:
-        print(  # turn this into warning eventually, problem for tests?
-            "Warning! Far off-axis coordinate, conversion may be bogus"
+        warnings.warn(
+            "Warning! Far off-axis coordinate, conversion may be bogus",
+            CoordIOUserWarning
         )
 
     return thetaField, phiField, fieldWarn

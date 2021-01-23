@@ -1,5 +1,5 @@
 from coordio import Observed, Site, Field, FocalPlane
-from coordio import CoordIOError, CoordIOWarning
+from coordio import CoordIOError, CoordIOUserWarning
 from coordio.telescope import APO_MAX_FIELD_R, LCO_MAX_FIELD_R
 import numpy
 
@@ -246,7 +246,7 @@ def test_reasonable_field_focal_cycle():
     ):
         fc = Observed([[80, 120]], site=site)
         thetaField = numpy.random.uniform(0, 360, size=nCoords)
-        phiField = numpy.random.uniform(0, 0.9*maxField, size=nCoords)
+        phiField = numpy.random.uniform(0, maxField, size=nCoords)
         wls = numpy.random.choice([5400., 6231., 16600.], size=nCoords)
         # wls = 16600
         coordArr = numpy.array([thetaField, phiField]).T
@@ -275,6 +275,7 @@ def test_reasonable_field_focal_cycle():
         maxErr = numpy.max(angErrors)
         assert maxErr < arcsecError
 
+
 def test_unreasonable_field_focal_cycle():
     # for lco, apo. lco errors remain small despite large field
     arcsecErrs = [1, 11]
@@ -291,9 +292,11 @@ def test_unreasonable_field_focal_cycle():
         coordArr = numpy.array([thetaField, phiField]).T
         field = Field(coordArr, field_center=fc)
         assert not True in field.field_warn
-        fp = FocalPlane(field, wavelength=wls, site=site)
+        with pytest.warns(CoordIOUserWarning):
+            fp = FocalPlane(field, wavelength=wls, site=site)
         assert not False in fp.field_warn
-        field2 = Field(fp, field_center=fc)
+        with pytest.warns(CoordIOUserWarning):
+            field2 = Field(fp, field_center=fc)
         assert not False in field2.field_warn
 
         xyz = numpy.array([field.x, field.y, field.z]).T
