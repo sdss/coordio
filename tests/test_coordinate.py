@@ -190,7 +190,7 @@ def test_warn_arr():
     array12 = array1 + array2
     warn = array12 > 10
 
-    tc = _TestCoordinate(coords, array1=array1, array2=array2)
+    tc = _TestCoordinate(coords, array1=array1, array2=array2, param1="hi")
 
     slicer = tc.array1 >= 3
     _tc = tc[slicer]
@@ -205,6 +205,7 @@ def test_warn_arr():
     numpy.testing.assert_equal(_tc.array2, _array2)
     numpy.testing.assert_equal(_tc.array12, _array12)
     numpy.testing.assert_equal(_tc.warn, _warn)
+    assert _tc.param1 == "hi"
 
 
     _tc = tc[slicer, :]
@@ -219,6 +220,7 @@ def test_warn_arr():
     numpy.testing.assert_equal(_tc.array2, _array2)
     numpy.testing.assert_equal(_tc.array12, _array12)
     numpy.testing.assert_equal(_tc.warn, _warn)
+    assert _tc.param1 == "hi"
 
 
     slicer = [2,4,6]
@@ -228,6 +230,7 @@ def test_warn_arr():
     _array2 = array2[slicer]
     _array12 = array12[slicer]
     _warn = warn[slicer]
+    assert _tc.param1 == "hi"
 
     # import pdb; pdb.set_trace()
     # print("base2", _tc.base, type(_tc.base))

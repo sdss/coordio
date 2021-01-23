@@ -151,7 +151,6 @@ class Coordinate(numpy.ndarray):
         for param in params:
             setattr(self, param, getattr(obj, param, None))
 
-
     def __getitem__(self, sl):
         """ When a coordinate is sliced, slice the extra arrays too,
         and carry over params, if that's the right thing to do
@@ -189,9 +188,6 @@ class Coordinate(numpy.ndarray):
                 # x = getattr(sliced, param)
                 # print("x", x)
                 setattr(sliced, param, getattr(sliced, param)[sl])
-
-        for param in self.__extra_params__:
-            setattr(sliced, param, getattr(sliced, param))
 
         return sliced
 
