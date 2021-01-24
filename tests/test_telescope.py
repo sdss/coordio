@@ -337,6 +337,7 @@ def test_invalid_wavelength():
     with pytest.raises(CoordIOError):
         fp = FocalPlane(field, wavelength=wls, site=site)
 
+
 def test_invalid_site():
     site = "junk"
     with pytest.raises(CoordIOError):
@@ -344,6 +345,7 @@ def test_invalid_site():
     site = Site("APO") # time not specified
     with pytest.raises(CoordIOError):
         fc = Observed([[80, 120]], site=site)
+
 
 if __name__ == "__main__":
     test_unreasonable_field_focal_cycle()

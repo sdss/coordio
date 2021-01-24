@@ -20,6 +20,7 @@ from .site import Site
 # from .telescope import Field
 from . import defaults
 from .utils import cart2Sph
+from . import conv
 
 
 __all__ = ['ICRS', 'Observed']
@@ -270,6 +271,8 @@ class Observed(Coordinate):
 
         """
 
+        # eventually move this to coordio.conv?
+
         # Prepare to call iauAtco13
         #  Given:
         #     rc,dc  double   ICRS right ascension at J2000.0 (radians)
@@ -366,54 +369,16 @@ class Observed(Coordinate):
         """
         # get field center info
         altCenter, azCenter = fieldCoords.field_center.flatten()
-        q = float(fieldCoords.field_center.pa)  # parallactic angle
+        pa = float(fieldCoords.field_center.pa)  # parallactic angle
 
-        cosQ = numpy.cos(numpy.radians(-1*q))
-        sinQ = numpy.sin(numpy.radians(-1*q))
-        rotQ = numpy.array([
-            [ cosQ, sinQ, 0],
-            [-sinQ, cosQ, 0],
-            [    0,    0, 1]
-        ])
+        alt, az = conv.fieldToObserved(
+            fieldCoords.x, fieldCoords.y, fieldCoords.z,
+            altCenter, azCenter, pa
+        )
 
-        coords = numpy.array(
-            [fieldCoords.x, fieldCoords.y, fieldCoords.z]
-        ).T
+        self[:,0] = alt
+        self[:,1] = az
 
-        coords = rotQ.dot(coords.T).T
-
-        sinPhi = numpy.sin(-1*numpy.radians(90-altCenter))
-        cosPhi = numpy.cos(-1*numpy.radians(90-altCenter))
-        rotPhi = numpy.array([
-            [1,       0,      0],
-            [0,  cosPhi, sinPhi],
-            [0, -sinPhi, cosPhi]
-        ])
-        coords = rotPhi.dot(coords.T).T
-
-        sinTheta = numpy.sin(-1*numpy.radians(90-azCenter))
-        cosTheta = numpy.cos(-1*numpy.radians(90-azCenter))
-        rotTheta = numpy.array([
-            [ cosTheta, sinTheta, 0],
-            [-sinTheta, cosTheta, 0],
-            [        0,        0, 1]
-        ])
-
-        coords = rotTheta.dot(coords.T).T
-
-        x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
-        theta, phi = cart2Sph(x, y, z)
-
-        # convert sph theta, phi to az, alt
-        az = -1 * theta
-        alt = 90 - phi
-
-        az = az % 360  # wrap to 0,360
-
-        self[:, 0] = alt
-        self[:, 1] = az
-
-        # compte other bits from raw
         self._fromRaw()
 
     def _fromRaw(self):
@@ -423,6 +388,7 @@ class Observed(Coordinate):
         Computes and sets ra, dec, ha, pa arrays.
 
         """
+        # eventually move this to coordio.conv?
 
         # compute ra, dec, ha, pa here...
         dec_obs = ctypes.c_double()

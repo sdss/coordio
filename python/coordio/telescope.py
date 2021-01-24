@@ -1,13 +1,14 @@
 import numpy
-import pandas as pd
-import os
-import warnings
+# import pandas as pd
+# import os
+# import warnings
 
 from .coordinate import Coordinate, verifySite, verifyWavelength
 from .exceptions import CoordIOError, CoordIOUserWarning
 from .utils import sph2Cart, cart2Sph, cart2FieldAngle
 # from .site import Site
 from . import defaults
+from . import conv
 # from .focalPlaneModel import focalPlaneModelDict
 
 # from .sky import Observed, ICRS
@@ -16,191 +17,191 @@ from . import defaults
 __all__ = ["Field", "FocalPlane"]
 
 
-# read in the focal plane model file
-fpModelFile = os.path.join(os.path.dirname(__file__), "etc", "focalPlaneModel.csv")
-FP_MODEL = pd.read_csv(fpModelFile, comment="#")
+# # read in the focal plane model file
+# fpModelFile = os.path.join(os.path.dirname(__file__), "etc", "focalPlaneModel.csv")
+# FP_MODEL = pd.read_csv(fpModelFile, comment="#")
 
 
-def getModelParams(site, direction, waveCat):
-    """Find the right focal plane model to use given site, direction
-    and waveCat.
+# def getModelParams(site, direction, waveCat):
+#     """Find the right focal plane model to use given site, direction
+#     and waveCat.
 
-    Parameters
-    ------------
-    site: str
-        "APO" or "LCO"
-    direction: str
-        "focal" or "field" for the direction of the conversion
-    waveCat: str
-        "Apogee", "Boss", or "GFA" for the wavelength
+#     Parameters
+#     ------------
+#     site: str
+#         "APO" or "LCO"
+#     direction: str
+#         "focal" or "field" for the direction of the conversion
+#     waveCat: str
+#         "Apogee", "Boss", or "GFA" for the wavelength
 
-    Returns
-    ---------
-    R: float
-        radius of spherical curvature (mm)
-    b: float
-        z-location of sphere center in focal plane coordinate system
-    c0: float
-        1st order coeff
-    c1: float
-        3rd order coeff
-    c2: float
-        5th order coeff
-    c3: float
-        7th order coeff
-    c4: float
-        9th order coeff
-    """
-    # filter for correct row in the model dataframe
-    row = FP_MODEL[
-        (FP_MODEL.site == site)
-        & (FP_MODEL.direction == direction)
-        & (FP_MODEL.waveCat == waveCat)
-    ]
+#     Returns
+#     ---------
+#     R: float
+#         radius of spherical curvature (mm)
+#     b: float
+#         z-location of sphere center in focal plane coordinate system
+#     c0: float
+#         1st order coeff
+#     c1: float
+#         3rd order coeff
+#     c2: float
+#         5th order coeff
+#     c3: float
+#         7th order coeff
+#     c4: float
+#         9th order coeff
+#     """
+#     # filter for correct row in the model dataframe
+#     row = FP_MODEL[
+#         (FP_MODEL.site == site)
+#         & (FP_MODEL.direction == direction)
+#         & (FP_MODEL.waveCat == waveCat)
+#     ]
 
-    # print("row", row)
+#     # print("row", row)
 
-    R = float(row.R)
-    b = float(row.b)
-    c0 = float(row.c0)
-    c1 = float(row.c1)
-    c2 = float(row.c2)
-    c3 = float(row.c3)
-    c4 = float(row.c4)
-    return R, b, c0, c1, c2, c3, c4
-
-
-def fieldToFocal(thetaField, phiField, site, waveCat):
-    """Convert spherical field coordinates to the modeled spherical
-    position on the focal plane.  Origin is the M1 vertex.
-
-    Parameters
-    -----------
-    thetaField: float or numpy.ndarray
-        azimuthal angle of field coordinate (deg)
-    phiField: float or numpy.ndarray
-        polar angle of field coordinate (deg)
-    site: str
-        "APO" or "LCO"
-    waveCat: str
-        "Boss", "Apogee", or "GFA"
-
-    Result
-    -------
-    xFocal: float or numpy.ndarray
-        spherical x focal coord mm
-    yFocal: float or numpy.ndarray
-       spherical y focal coord mm
-    zFocal: float or numpy.ndarray
-        spherical z focal coord mm
-    R: float
-        radius of curvature for sphere
-    b: float
-        z location of center of sphere
-    fieldWarn: bool or boolean array
-        True if angle off-axis is large enough to be suspicious
-    """
-
-    if site == "APO":
-        fieldWarn = numpy.array(phiField) > defaults.APO_MAX_FIELD_R
-    if site == "LCO":
-        fieldWarn = numpy.array(phiField) > defaults.LCO_MAX_FIELD_R
-
-    if hasattr(fieldWarn, "__len__"):
-        if True in fieldWarn:
-            warnings.warn(
-                "Warning! Far off-axis coordinate, conversion may be bogus",
-                CoordIOUserWarning
-            )
-    elif fieldWarn is True:
-        warnings.warn(
-            "Warning! Far off-axis coordinate, conversion may be bogus",
-            CoordIOUserWarning
-        )
-
-    direction = "focal"
-    R, b, c0, c1, c2, c3, c4 = getModelParams(site, direction, waveCat)
-
-    phiFocal = c0 * phiField + c1 * phiField**3 + c2 * phiField**5 \
-        + c3 * phiField**7 + c4 * phiField**9
-    # thetaField = thetaFocal by definition
-    # convert back to xyz coords
-    rTheta = numpy.radians(thetaField)
-    rPhi = numpy.radians(180 - phiFocal)
-    xFocal = R * numpy.cos(rTheta) * numpy.sin(rPhi)
-    yFocal = R * numpy.sin(rTheta) * numpy.sin(rPhi)
-    zFocal = R * numpy.cos(rPhi) + b
-
-    return xFocal, yFocal, zFocal, R, b, fieldWarn
+#     R = float(row.R)
+#     b = float(row.b)
+#     c0 = float(row.c0)
+#     c1 = float(row.c1)
+#     c2 = float(row.c2)
+#     c3 = float(row.c3)
+#     c4 = float(row.c4)
+#     return R, b, c0, c1, c2, c3, c4
 
 
-def focalToField(xFocal, yFocal, zFocal, site, waveCat):
-    """Convert xyz focal position to unit-spherical field position.
-    xyzFocal do not need to lie on the modeled sphere, and the spherical
-    radius of curvature is not needed, only the origin of the sphere
-    is needed (b).
+# def fieldToFocal(thetaField, phiField, site, waveCat):
+#     """Convert spherical field coordinates to the modeled spherical
+#     position on the focal plane.  Origin is the M1 vertex.
 
-    Parameters
-    -----------
-    xFocal: float or 1D array
-        x focal coord mm
-    yFocal: float or 1D array
-        y focal coord mm
-    zFocal: float or 1D array
-        z focal coord mm, +z points along boresight toward sky.
-    site: str
-        "APO" or "LCO"
-    waveCat: str
-        "Boss", "Apogee", or "GFA"
+#     Parameters
+#     -----------
+#     thetaField: float or numpy.ndarray
+#         azimuthal angle of field coordinate (deg)
+#     phiField: float or numpy.ndarray
+#         polar angle of field coordinate (deg)
+#     site: str
+#         "APO" or "LCO"
+#     waveCat: str
+#         "Boss", "Apogee", or "GFA"
 
-    Result
-    -------
-    thetaField: float or 1D array
-        azimuthal field coordinate (deg)
-    phiField: float or 1D array
-       polar field coordinate (deg)
-    fieldWarn: bool or boolean array
-        True if angle off-axis is large enough to be suspicious
-    """
-    direction = "field"
-    R, b, c0, c1, c2, c3, c4 = getModelParams(site, direction, waveCat)
-    # note by definition thetaField==thetaFocal
-    thetaField = numpy.degrees(numpy.arctan2(yFocal, xFocal))
+#     Result
+#     -------
+#     xFocal: float or numpy.ndarray
+#         spherical x focal coord mm
+#     yFocal: float or numpy.ndarray
+#        spherical y focal coord mm
+#     zFocal: float or numpy.ndarray
+#         spherical z focal coord mm
+#     R: float
+#         radius of curvature for sphere
+#     b: float
+#         z location of center of sphere
+#     fieldWarn: bool or boolean array
+#         True if angle off-axis is large enough to be suspicious
+#     """
 
-    # generate focal phis (degree off boresight)
-    # angle off-axis from optical axis
-    rFocal = numpy.sqrt(xFocal**2 + yFocal**2)
-    v = numpy.array([rFocal, zFocal]).T
-    v[:, 1] = v[:, 1] - b
+#     if site == "APO":
+#         fieldWarn = numpy.array(phiField) > defaults.APO_MAX_FIELD_R
+#     if site == "LCO":
+#         fieldWarn = numpy.array(phiField) > defaults.LCO_MAX_FIELD_R
 
-    # unit vector pointing toward object on focal plane from circle center
-    # arc from vertex to off axis
-    v = v / numpy.vstack([numpy.linalg.norm(v, axis=1)] * 2).T
-    # FP lands at -Z so, Angle from sphere center towards ground
-    downwardZaxis = numpy.array([0, -1])
-    # phi angle between ray and optical axis measured from sphere center
-    phiFocal = numpy.degrees(numpy.arccos(v.dot(downwardZaxis)))
-    phiField = c0 * phiFocal + c1 * phiFocal**3 + c2 * phiFocal**5 \
-        + c3 * phiFocal**7 + c4 * phiFocal**9
+#     if hasattr(fieldWarn, "__len__"):
+#         if True in fieldWarn:
+#             warnings.warn(
+#                 "Warning! Far off-axis coordinate, conversion may be bogus",
+#                 CoordIOUserWarning
+#             )
+#     elif fieldWarn is True:
+#         warnings.warn(
+#             "Warning! Far off-axis coordinate, conversion may be bogus",
+#             CoordIOUserWarning
+#         )
 
-    if site == "APO":
-        fieldWarn = numpy.array(phiField) > defaults.APO_MAX_FIELD_R
-    if site == "LCO":
-        fieldWarn = numpy.array(phiField) > defaults.LCO_MAX_FIELD_R
+#     direction = "focal"
+#     R, b, c0, c1, c2, c3, c4 = getModelParams(site, direction, waveCat)
 
-    if hasattr(fieldWarn, "__len__"):
-        if True in fieldWarn:
-            warnings.warn(
-                "Warning! Far off-axis coordinate, conversion may be bogus",
-                CoordIOUserWarning
-            )
-    elif fieldWarn is True:
-        warnings.warn(
-            "Warning! Far off-axis coordinate, conversion may be bogus",
-            CoordIOUserWarning
-        )
+#     phiFocal = c0 * phiField + c1 * phiField**3 + c2 * phiField**5 \
+#         + c3 * phiField**7 + c4 * phiField**9
+#     # thetaField = thetaFocal by definition
+#     # convert back to xyz coords
+#     rTheta = numpy.radians(thetaField)
+#     rPhi = numpy.radians(180 - phiFocal)
+#     xFocal = R * numpy.cos(rTheta) * numpy.sin(rPhi)
+#     yFocal = R * numpy.sin(rTheta) * numpy.sin(rPhi)
+#     zFocal = R * numpy.cos(rPhi) + b
 
-    return thetaField, phiField, fieldWarn
+#     return xFocal, yFocal, zFocal, R, b, fieldWarn
+
+
+# def focalToField(xFocal, yFocal, zFocal, site, waveCat):
+#     """Convert xyz focal position to unit-spherical field position.
+#     xyzFocal do not need to lie on the modeled sphere, and the spherical
+#     radius of curvature is not needed, only the origin of the sphere
+#     is needed (b).
+
+#     Parameters
+#     -----------
+#     xFocal: float or 1D array
+#         x focal coord mm
+#     yFocal: float or 1D array
+#         y focal coord mm
+#     zFocal: float or 1D array
+#         z focal coord mm, +z points along boresight toward sky.
+#     site: str
+#         "APO" or "LCO"
+#     waveCat: str
+#         "Boss", "Apogee", or "GFA"
+
+#     Result
+#     -------
+#     thetaField: float or 1D array
+#         azimuthal field coordinate (deg)
+#     phiField: float or 1D array
+#        polar field coordinate (deg)
+#     fieldWarn: bool or boolean array
+#         True if angle off-axis is large enough to be suspicious
+#     """
+#     direction = "field"
+#     R, b, c0, c1, c2, c3, c4 = getModelParams(site, direction, waveCat)
+#     # note by definition thetaField==thetaFocal
+#     thetaField = numpy.degrees(numpy.arctan2(yFocal, xFocal))
+
+#     # generate focal phis (degree off boresight)
+#     # angle off-axis from optical axis
+#     rFocal = numpy.sqrt(xFocal**2 + yFocal**2)
+#     v = numpy.array([rFocal, zFocal]).T
+#     v[:, 1] = v[:, 1] - b
+
+#     # unit vector pointing toward object on focal plane from circle center
+#     # arc from vertex to off axis
+#     v = v / numpy.vstack([numpy.linalg.norm(v, axis=1)] * 2).T
+#     # FP lands at -Z so, Angle from sphere center towards ground
+#     downwardZaxis = numpy.array([0, -1])
+#     # phi angle between ray and optical axis measured from sphere center
+#     phiFocal = numpy.degrees(numpy.arccos(v.dot(downwardZaxis)))
+#     phiField = c0 * phiFocal + c1 * phiFocal**3 + c2 * phiFocal**5 \
+#         + c3 * phiFocal**7 + c4 * phiFocal**9
+
+#     if site == "APO":
+#         fieldWarn = numpy.array(phiField) > defaults.APO_MAX_FIELD_R
+#     if site == "LCO":
+#         fieldWarn = numpy.array(phiField) > defaults.LCO_MAX_FIELD_R
+
+#     if hasattr(fieldWarn, "__len__"):
+#         if True in fieldWarn:
+#             warnings.warn(
+#                 "Warning! Far off-axis coordinate, conversion may be bogus",
+#                 CoordIOUserWarning
+#             )
+#     elif fieldWarn is True:
+#         warnings.warn(
+#             "Warning! Far off-axis coordinate, conversion may be bogus",
+#             CoordIOUserWarning
+#         )
+
+#     return thetaField, phiField, fieldWarn
 
 
 class Field(Coordinate):
@@ -292,65 +293,15 @@ class Field(Coordinate):
         -----------
         obsCoords : `.Observed`
         """
-        obsCoords = numpy.array(obsCoords)
-        # convert alt/az into a spherical sys
-        phis = 90 - obsCoords[:, 0]  # alt
-        thetas = -1 * obsCoords[:, 1]  # az
+        altAz = numpy.array(obsCoords)
+        alt, az = altAz[:, 0], altAz[:, 1]
         altCenter, azCenter = self.field_center.flatten()
-        q = float(self.field_center.pa)  # position angle
+        pa = float(self.field_center.pa)  # position angle
+        theta, phi = conv.observedToField(alt, az, altCenter, azCenter, pa)
+        self[:, 0] = theta
+        self[:, 1] = phi
 
-        # work in cartesian frame
-        coords = sph2Cart(thetas, phis)
-        coords = numpy.array(coords).T
-
-        # rotate the xyz coordinate system about z axis
-        # such that -y axis is aligned with the azimuthal angle
-        # of the field center
-
-        sinTheta = numpy.sin(numpy.radians(90 - azCenter))
-        cosTheta = numpy.cos(numpy.radians(90 - azCenter))
-        rotTheta = numpy.array([
-            [ cosTheta, sinTheta, 0],
-            [-sinTheta, cosTheta, 0],
-            [        0,        0, 1]
-        ])
-
-        coords = rotTheta.dot(coords.T).T
-
-        # rotate the xyz coordinate system about the x axis
-        # such that +z points to the field center.
-
-        sinPhi = numpy.sin(numpy.radians(90 - altCenter))
-        cosPhi = numpy.cos(numpy.radians(90 - altCenter))
-        rotPhi = numpy.array([
-            [1,       0,      0],
-            [0,  cosPhi, sinPhi],
-            [0, -sinPhi, cosPhi]
-        ])
-        coords = rotPhi.dot(coords.T).T
-        # return coords
-
-        # finally rotate about z by the parallactic angle
-        # this puts +RA along +X and +DEC along +Y
-        cosQ = numpy.cos(numpy.radians(q))
-        sinQ = numpy.sin(numpy.radians(q))
-        rotQ = numpy.array([
-            [ cosQ, sinQ, 0],
-            [-sinQ, cosQ, 0],
-            [    0,    0, 1]
-        ])
-
-        coords = rotQ.dot(coords.T).T
-
-        self.x = coords[:, 0]
-        self.y = coords[:, 1]
-        self.z = coords[:, 2]
-        self.x_angle, self.y_angle = cart2FieldAngle(self.x, self.y, self.z)
-
-        # finally convert back from cartesian to spherical (Field)
-        thetaPhi = cart2Sph(self.x, self.y, self.z)
-        thetaPhi = numpy.array(thetaPhi).T
-        self[:, :] = thetaPhi
+        self._fromRaw()
 
     def _fromFocalPlane(self, fpCoords):
         """Convert from FocalPlane coords to Field coords.
@@ -371,14 +322,14 @@ class Field(Coordinate):
 
         for (arg, waveCat) in argNamePairs:
 
-            xFP = fpCoords[arg,0].squeeze()
-            yFP = fpCoords[arg,1].squeeze()
-            zFP = fpCoords[arg,2].squeeze()
+            xFP = fpCoords[arg, 0].squeeze()
+            yFP = fpCoords[arg, 1].squeeze()
+            zFP = fpCoords[arg, 2].squeeze()
 
             if len(xFP) == 0:
                 continue
 
-            thetaFocal, phiFocal, fieldWarn = focalToField(
+            thetaFocal, phiFocal, fieldWarn = conv.focalToField(
                 xFP,
                 yFP,
                 zFP,
@@ -456,23 +407,6 @@ class FocalPlane(Coordinate):
             kwargs, len(value), strict=True
         )
 
-        # wls = kwargs.get("wavelength", None)
-        # if wls is None:
-        #     raise CoordIOError("must specify corresponding wavelengths")
-        # else:
-        #     if hasattr(wls, "__len__"):
-        #         wls = numpy.array(wls, dtype=numpy.float64)
-        #         wlSet = set(wls)
-        #     else:
-        #         wls = float(wls)
-        #         wlSet = set([wls])
-        #     if not wlSet.issubset(cls._valid_wavelengths):
-        #         raise CoordIOError(
-        #             "Invalid wavelength passed to FocalPlane \
-        #             valid wavelengths are %s"%(str(cls._valid_wavelengths))
-        #         )
-        # kwargs["wavelength"] = wls
-
         if isinstance(value, Coordinate):
             if value.coordSysName == "Field":
                 # going from 2D -> 3D coord sys
@@ -522,7 +456,7 @@ class FocalPlane(Coordinate):
             if len(thetaField) == 0:
                 continue
 
-            xFP, yFP, zFP, R, b, fieldWarn = fieldToFocal(
+            xFP, yFP, zFP, R, b, fieldWarn = conv.fieldToFocal(
                 thetaField,
                 phiField,
                 siteName,
@@ -554,7 +488,7 @@ class FocalPlane(Coordinate):
             argNamePairs.append([arg, waveCat])
 
         for (arg, waveCat) in argNamePairs:
-            R, b, c0, c1, c2, c3, c4 = getModelParams(
+            R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(
                 siteName, direction, waveCat
             )
             self.b[arg] = b
