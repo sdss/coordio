@@ -21,13 +21,13 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 packages = [
-    { include = "coordio", from = "python" }
+    { include = "coordio" }
 ]
 include = [
-    {path = "python/coordio/etc/*"},
-    {path = "cextern/**/*"},
+    {path = "coordio/etc/*"},
+    {path = "cextern/**/*", format = "sdist"},
     {path = "LICENSE.md"},
-    {path = "python/coordio/*.so", format = "wheel"}
+    {path = "coordio/*.so", format = "wheel"}
 ]
 
 [tool.poetry.build]
@@ -38,9 +38,9 @@ generate-setup-file = false
 coordio = "coordio.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7.1"
 sdsstools = ">=0.1.0"
-Sphinx = {"version"="^3.2.0", optional=true}
+Sphinx = {version="^3.2.0", optional=true}
 numpy = "^1.19.1"
 pandas = "^1.2.1"
 
@@ -80,7 +80,7 @@ addopts = "--cov coordio --cov-report html"
 
 [tool.coverage.run]
 branch = true
-include = ["python/coordio/*"]
+include = ["coordio/*"]
 omit = [
     "*/__init__.py",
     "*/__main__.py"
@@ -94,5 +94,5 @@ exclude_lines = [
 
 [build-system]
 # Add setuptools so that we can do pip install -e . after running create_setup.py
-requires = ["poetry-core>=1.0.0a9", "setuptools>=46.0.0"]
+requires = ["poetry-core>=1.0.0", "setuptools>=46.0.0"]
 build-backend = "poetry.core.masonry.api"
