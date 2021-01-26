@@ -41,7 +41,7 @@ def verifySite(kwargs, strict=True):
 
 def verifyWavelength(kwargs, lenArray, strict=True):
     """Search through kwargs for wavelength parameter.  If not existent,
-    return the GFA wavelength (of the right size).  If wavelengths
+    return the GFA wavelength (of the right size).  If strict and wavelengths
     do not correspond to Apogee, Boss, or GFA wavelengths, raise a
     CoordIOError
 

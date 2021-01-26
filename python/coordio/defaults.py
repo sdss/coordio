@@ -20,6 +20,12 @@ INST_TO_WAVE = {
     "Apogee": 16600.0
 }
 
+POSITIONER_HEIGHT = 143  # mm, distance from wok surface to fiber
+# extracted from ZEMAX model model
+# z location of wok vertex in FP coords
+APO_WOK_Z_OFFSET_ZEMAX = -776.4791 - POSITIONER_HEIGHT
+LCO_WOK_Z_OFFSET_ZEMAX = -993.0665 - POSITIONER_HEIGHT
+
 APO_MAX_FIELD_R = 1.5  # max field radius (deg)
 LCO_MAX_FIELD_R = 1.1  # max field radius (deg)
 
@@ -75,3 +81,34 @@ def getFPModelParams(site, direction, waveCat):
     c3 = float(row.c3)
     c4 = float(row.c4)
     return R, b, c0, c1, c2, c3, c4
+
+# read in the wok orientation model file
+wokOrientFile = os.path.join(os.path.dirname(__file__), "etc", "wokOrientation.csv")
+wokOrient = pd.read_csv(fpModelFile, comment="#")
+
+
+def getWokOrient(site):
+    """Return the wok orientation given the site.
+
+    Returns
+    --------
+    x : float
+        x position of wok vertex in focal plane coords mm
+    x : float
+        y position of wok vertex in focal plane coords mm
+    x : float
+        z position of wok vertex in focal plane coords mm
+    xTilt : float
+        tilt of wok coord sys about focal plane x axis deg
+    yTilt : float
+        tilt of wok coord sys about focal plane y axis deg
+    """
+    row = wokOrient[wokOrient.site == site]
+    x = float(row.x)
+    y = float(row.y)
+    z = float(row.z)
+    xTilt = float(row.xTilt)
+    yTilt = float(row.yTilt)
+
+    return x, y, z, xTilt, yTilt
+
