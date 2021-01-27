@@ -1,10 +1,14 @@
 import os
 import pandas as pd
-# default/constant values collected here
+import numpy
+
+# default/constant values collected here...for now
+MICRONS_PER_MM = 1000
+GFA_PIXEL_SIZE = 13.5  # micron
+GFA_CHIP_CENTER = 1024  # unbinned pixels
 
 EPOCH = 2451545.0  # J2000
 WAVELENGTH = 6231.0  # angstrom, GFA wavelength
-
 VALID_WAVELENGTHS = set([5400., 6231., 16600.])
 
 # wavelengths in angstroms
@@ -82,9 +86,10 @@ def getFPModelParams(site, direction, waveCat):
     c4 = float(row.c4)
     return R, b, c0, c1, c2, c3, c4
 
+
 # read in the wok orientation model file
 wokOrientFile = os.path.join(os.path.dirname(__file__), "etc", "wokOrientation.csv")
-wokOrient = pd.read_csv(fpModelFile, comment="#")
+wokOrient = pd.read_csv(wokOrientFile, comment="#")
 
 
 def getWokOrient(site):
@@ -111,4 +116,58 @@ def getWokOrient(site):
     yTilt = float(row.yTilt)
 
     return x, y, z, xTilt, yTilt
+
+
+wokCoordFile = os.path.join(os.path.dirname(__file__), "etc", "wokCoords.csv")
+wokCoords = pd.read_csv(wokCoordFile, comment="#")
+VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
+
+
+def getHoleOrient(site, holeID):
+    """Return orientation of hole position in the wok
+
+    Returns
+    --------
+    b : numpy.ndarray
+        [x,y,z] base position of hole in wok coords (mm)
+    iHat : numpy.ndarray
+        [x,y,z] unit vector, direction of x Tangent in wok coords
+    jHat : numpy.ndarray
+        [x,y,z] unit vector, direction of y Tangent in wok coords
+    kHat : numpy.ndarray
+        [x,y,z] unit vector, direction of z Tangent in wok coords
+    """
+    row = wokCoords[(wokCoords.wokType == site) & (wokCoords.holeID == holeID)]
+
+    b = numpy.array([
+        float(row.x),
+        float(row.y),
+        float(row.z)
+    ])
+
+    iHat = numpy.array([
+        float(row.ix),
+        float(row.iy),
+        float(row.iz)
+    ])
+
+    jHat = numpy.array([
+        float(row.jx),
+        float(row.jy),
+        float(row.jz)
+    ])
+
+    kHat = numpy.array([
+        float(row.kx),
+        float(row.ky),
+        float(row.kz)
+    ])
+
+    return b, iHat, jHat, kHat
+
+
+
+
+
+
 

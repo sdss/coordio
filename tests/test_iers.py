@@ -25,6 +25,8 @@ def test_iers(tmpdir, clear_iers_instance):
 
     iers_file = tmpdir / 'finals2000A.data.csv'
 
+    # raise RuntimeError(iers_file)
+
     with pytest.warns(CoordIOUserWarning) as ww:
         iers = IERS(path=tmpdir)
 
@@ -55,3 +57,8 @@ def test_get_delta_ut1_utc():
 
     # Jan 15th, 2020
     assert iers.get_delta_ut1_utc(2458863.5) == pytest.approx(-0.1799637)
+
+
+if __name__ == "__main__":
+    test_iers()
+

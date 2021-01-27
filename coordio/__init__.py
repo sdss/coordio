@@ -37,3 +37,5 @@ from .site import Site
 from .sky import *
 from .telescope import *
 from .time import Time
+from .wok import Wok
+from .tangent import Tangent

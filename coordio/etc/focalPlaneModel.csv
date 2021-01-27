@@ -1,6 +1,6 @@
 # column descriptions
 # -----------------------
-# direction: direction to convert to
+# direction: direction to convert to, "focal" or "field"
 # site: APO or LCO
 # waveCat: Boss, Apogee, or GFA (corresponding to 0.54, 1.66, or 0.6231 microns)
 # R: radius of curvature for best fit sphere (mm)

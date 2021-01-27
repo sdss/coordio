@@ -48,21 +48,19 @@ class Wok(Coordinate):
         if obsAngle is None:
             kwargs["obsAngle"] = 0.0
 
+        obj = super().__new__(cls, value, **kwargs)
+
         if isinstance(value, Coordinate):
             if value.coordSysName == "FocalPlane":
-                obj = super().__new__(cls, value, **kwargs)
                 obj._fromFocalPlane(value)
             elif value.coordSysName == "Tangent":
-                # wok is a 3D coord sys, tangent is 2D Cartesian
-                initArray = numpy.zeros((len(value), 3))
-                obj = super().__new__(cls, initArray, **kwargs)
                 obj._fromTangent(value)
             else:
                 raise CoordIOError(
-                    "Cannot convert to Field from %s"%value.coordSysName
+                    "Cannot convert to Wok from %s"%value.coordSysName
                 )
-        else:
-            obj = super().__new__(cls, value, **kwargs)
+
+        return obj
 
     def _fromFocalPlane(self, fpCoords):
         """Converts from focal plane coords to wok coords
@@ -90,7 +88,21 @@ class Wok(Coordinate):
         tangentCoords : `.Tangent`
 
         """
-        pass
+        tx = tangentCoords[:, 0]
+        ty = tangentCoords[:, 1]
+        tz = tangentCoords[:, 2]
+
+        b, iHat, jHat, kHat = defaults.getHoleOrient(
+            tangentCoords.site.name, tangentCoords.holeID
+        )
+        xWok, yWok, zWok = conv.tangentToWok(
+            tx, ty, tz, b, iHat, jHat, kHat, scaleFac=tangentCoords.scaleFactor
+        )
+
+        self[:, 0] = xWok
+        self[:, 1] = yWok
+        self[:, 2] = zWok
+
 
 
 

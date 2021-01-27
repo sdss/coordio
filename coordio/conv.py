@@ -5,6 +5,8 @@ from . import defaults
 from .utils import cart2Sph, sph2Cart
 from .exceptions import CoordIOUserWarning
 
+# low level, functional conversions
+
 
 def fieldToObserved(x, y, z, altCenter, azCenter, pa):
     """Convert xyz unit-spherical field coordinates to Alt/Az
@@ -422,5 +424,354 @@ def focalToWok(
         xWok, yWok, zWok = coords - transXYZ
 
     return xWok, yWok, zWok
+
+
+def wokToFocal(
+    xWok, yWok, zWok, positionAngle=0,
+    xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0
+):
+    """Convert xyz wok coordinates in mm to xyz focal coordinates in mm.
+
+    The origin of the focal coordinate system is the
+    M1 vertex. focal +y points toward North, +x points toward E.
+    The origin of the wok coordinate system is the wok vertex.  -x points
+    toward the boss slithead.  +z points from telescope to sky.
+
+    Tilt is applied first about x axis then y axis.
+
+
+    Parameters
+    -------------
+    xWok: scalar or 1D array
+        x position of object in wok space mm
+        (+x aligned with +RA on image at PA=0)
+    yWok: scalar or 1D array
+        y position of object in wok space mm
+        (+y aligned with +Dec on image at PA=0)
+    zWok: scalar or 1D array
+        z position of object in wok space mm
+        (+z aligned boresight and increases from the telescope to the sky)
+    positionAngle: scalar
+        position angle deg.  Angle measured from (image) North through East to wok +y.
+        So position angle of 45 deg, wok +y points NE
+    xOffset: scalar or None
+        x position (mm) of wok origin (vertex) in focal coords
+        calibrated
+    yOffset: scalar
+        y position (mm) of wok origin (vertex) in focal coords
+        calibratated
+    zOffset: scalar
+        z position (mm) of wok origin (vertex) in focal coords
+        calibratated
+    tiltX: scalar
+        tilt (deg) of wok about focal x axis at PA=0
+        calibrated
+    tiltY: scalar
+        tilt (deg) of wok about focal y axis at PA=0
+        calibrated
+
+    Returns
+    ---------
+    xFocal: scalar or 1D array
+        x position of object in focal coord sys mm
+        (+x aligned with +RA on image)
+    yFocal: scalar or 1D array
+        y position of object in focal coord sys mm
+        (+y aligned with +Dec on image)
+    zFocal: scalar or 1D array
+        z position of object in focal coord sys mm
+        (+z aligned boresight and increases from the telescope to the sky)
+    """
+    # this routine is a reversal of the steps
+    # in the function focalToWok, with rotational
+    # angles inverted and translations applied in reverse
+    coords = numpy.array([xWok, yWok, zWok])
+
+    rotX = numpy.radians(-1*tiltX)
+    rotY = numpy.radians(-1*tiltY)
+    rotZ = numpy.radians(positionAngle)
+
+    rotMatX = numpy.array([
+        [1, 0, 0],
+        [0, numpy.cos(rotX), numpy.sin(rotX)],
+        [0, -numpy.sin(rotX), numpy.cos(rotX)]
+    ])
+
+    rotMatY = numpy.array([
+        [numpy.cos(rotY), 0, -numpy.sin(rotY)],
+        [0, 1, 0],
+        [numpy.sin(rotY), 0, numpy.cos(rotY)]
+    ])
+
+    rotMatZ = numpy.array([
+        [numpy.cos(rotZ), numpy.sin(rotZ), 0],
+        [-numpy.sin(rotZ), numpy.cos(rotZ), 0],
+        [0, 0, 1]
+    ])
+
+    transXYZ = numpy.array([xOffset, yOffset, zOffset])
+
+    # add offsets for reverse transform
+    if hasattr(xWok, "__len__"):
+        # list of coords fed in
+        transXYZ = numpy.array([transXYZ]*len(xWok)).T
+        coords = coords + transXYZ
+    else:
+        # single set of xyz coords fed in
+        coords = coords + transXYZ
+
+    coords = rotMatZ.dot(coords)
+    coords = rotMatY.dot(coords)
+    xFocal, yFocal, zFocal = rotMatX.dot(coords)
+    return xFocal, yFocal, zFocal
+
+
+def _verify3Vector(checkMe, label):
+    if not hasattr(checkMe, "__len__"):
+        raise RuntimeError("%s must be a 3-vector"%label)
+    elif len(checkMe) != 3:
+        raise RuntimeError("%s must be a 3-vector"%label)
+    else:
+        checkMe = numpy.array(checkMe)
+    return checkMe
+
+
+def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
+                 elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
+                 dx=0, dy=0, dz=0, dRot=0):
+    """
+    Convert from wok coordinates to tangent coordinates.
+
+    xyz Wok coords are mm with orgin at wok vertex. +z points from wok toward M2.
+    -x points toward the boss slithead
+
+    In the tangent coordinate frame the xy plane is tangent to the wok
+    surface at xyz position b.  The origin is set to be elementHeight above
+    the wok surface.
+
+    Parameters
+    -------------
+    xWok: scalar or 1D array
+        x position of object in wok space mm
+        (+x aligned with +RA on image at PA = 0)
+    yWok: scalar or 1D array
+        y position of object in wok space mm
+        (+y aligned with +Dec on image at PA = 0)
+    zWok: scalar or 1D array
+        z position of object in wok space mm
+        (+z aligned boresight and increases from the telescope to the sky)
+    b: 3-vector
+        x,y,z position (mm) of element hole on wok surface measured in wok coords
+    iHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate x axis
+    jHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate y axis
+    kHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate z axis
+    elementHeight: scalar
+        height (mm) of positioner/GFA chip above wok surface
+    scaleFac: scalar
+        scale factor to apply to b to account for thermal expansion of wok.
+        scale is applied to b radially
+    dx: scalar
+        x offset (mm), calibration to capture small displacements of
+        tangent x
+    dy: scalar
+        y offset (mm), calibration to capture small displacements of
+        tangent y
+    dz: scalar
+        z offset (mm), calibration to capture small displacements of
+        tangent x
+    dRot: scalar
+        rotation (deg) about tangent z axis, capture small calibrated rotations
+        of the elements in the wok
+
+    Returns
+    ---------
+    xTangent: scalar or 1D array
+        x position (mm) in tangent coordinates
+    yTangent: scalar or 1D array
+        y position (mm) in tangent coordinates
+    zTangent: scalar or 1D array
+        z position (mm) in tangent coordinates
+    """
+    # check for problems
+    b = _verify3Vector(b, "b")
+    iHat = _verify3Vector(iHat, "iHat")
+    jHat = _verify3Vector(jHat, "jHat")
+    kHat = _verify3Vector(kHat, "kHat")
+
+    coords = numpy.array([xWok,yWok,zWok])
+
+    # apply radial scale factor to b
+    # assume that z is unaffected by
+    # thermal expansion (probably reasonable)
+    if scaleFac != 1:
+        r = numpy.sqrt(b[0]**2+b[1]**2)
+        theta = numpy.arctan2(b[1], b[0])
+        r = r*scaleFac
+        b[0] = r*numpy.cos(theta)
+        b[1] = r*numpy.sin(theta)
+
+    isArr = hasattr(xWok, "__len__")
+    calibOff = numpy.array([dx,dy,dz])
+    if isArr:
+        b = numpy.array([b]*len(xWok)).T
+        calibOff = numpy.array([calibOff]*len(xWok)).T
+
+    # offset to wok base position
+    coords = coords - b
+
+    # rotate normal to wok surface at point b
+    rotNorm = numpy.array([iHat, jHat, kHat], dtype="float64")
+    coords = rotNorm.dot(coords)
+
+    # offset xy plane to focal surface
+    if isArr:
+        coords[2,:] = coords[2,:] - elementHeight
+    else:
+        coords[2] = coords[2] - elementHeight
+
+    # apply rotational calibration
+    if dRot != 0:
+        rotZ = numpy.radians(dRot)
+        rotMatZ = numpy.array([
+            [numpy.cos(rotZ), numpy.sin(rotZ), 0],
+            [-numpy.sin(rotZ), numpy.cos(rotZ), 0],
+            [0, 0, 1]
+        ])
+
+        coords = rotMatZ.dot(coords)
+
+    coords = coords - calibOff
+
+    return coords[0], coords[1], coords[2]
+
+
+def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
+                 elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
+                 dx=0, dy=0, dz=0, dRot=0):
+    """
+    Convert from tangent coordinates at b to wok coordinates.
+
+    xyz Wok coords are mm with orgin at wok vertex. +z points from wok toward M2.
+    -x points toward the boss slithead
+
+    In the tangent coordinate frame the xy plane is tangent to the wok
+    surface at xyz position b.  The origin is set to be elementHeight above
+    the wok surface.
+
+    Parameters
+    -------------
+    xTangent: scalar or 1D array
+        x position (mm) in tangent coordinates
+    yTangent: scalar or 1D array
+        y position (mm) in tangent coordinates
+    zTangent: scalar or 1D array
+        z position (mm) in tangent coordinates
+    b: 3-vector
+        x,y,z position (mm) of element hole on wok surface measured in wok coords
+    iHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate x axis
+    jHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate y axis
+    kHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate z axis
+    elementHeight: scalar
+        height (mm) of positioner/GFA chip above wok surface
+    scaleFac: scalar
+        scale factor to apply to b to account for thermal expansion of wok.
+        scale is applied to b radially
+    dx: scalar
+        x offset (mm), calibration to capture small displacements of
+        tangent x
+    dy: scalar
+        y offset (mm), calibration to capture small displacements of
+        tangent y
+    dz: scalar
+        z offset (mm), calibration to capture small displacements of
+        tangent x
+    dRot: scalar
+        rotation (deg) about tangent z axis, capture small calibrated rotations
+        of the elements in the wok
+
+    Returns
+    ---------
+    xWok: scalar or 1D array
+        x position of object in wok space mm
+        (+x aligned with +RA on image at PA = 0)
+    yWok: scalar or 1D array
+        y position of object in wok space mm
+        (+y aligned with +Dec on image at PA = 0)
+    zWok: scalar or 1D array
+        z position of object in wok space mm
+        (+z aligned boresight and increases from the telescope to the sky)
+    """
+    # check for problems
+    b = _verify3Vector(b, "b")
+    iHat = _verify3Vector(iHat, "iHat")
+    jHat = _verify3Vector(jHat, "jHat")
+    kHat = _verify3Vector(kHat, "kHat")
+
+    calibOff = numpy.array([dx,dy,dz])
+    isArr = hasattr(xTangent, "__len__")
+    if isArr:
+        calibOff = numpy.array([calibOff]*len(xTangent)).T
+
+
+    coords = numpy.array([xTangent,yTangent,zTangent])
+
+    # apply calibration offsets
+    coords = coords + calibOff
+
+    # apply rotational calibration
+    if dRot != 0:
+        rotZ = -1*numpy.radians(dRot)
+        rotMatZ = numpy.array([
+            [numpy.cos(rotZ), numpy.sin(rotZ), 0],
+            [-numpy.sin(rotZ), numpy.cos(rotZ), 0],
+            [0, 0, 1]
+        ])
+
+        coords = rotMatZ.dot(coords)
+
+
+
+    # offset xy plane by element height
+    if isArr:
+        coords[2,:] = coords[2,:] + elementHeight
+    else:
+        coords[2] = coords[2] + elementHeight
+
+    # rotate normal to wok surface at point b
+    # invRotNorm = numpy.linalg.inv(numpy.array([iHat, jHat, kHat], dtype="float64"))
+    # transpose is inverse! ortho-normal rows or unit vectors!
+    invRotNorm = numpy.array([iHat, jHat, kHat], dtype="float64").T
+
+    coords = invRotNorm.dot(coords)
+
+    # offset to wok base position
+    # apply radial scale factor to b
+    # assume that z is unaffected by
+    # thermal expansion (probably reasonable)
+    if scaleFac != 1:
+        r = numpy.sqrt(b[0]**2+b[1]**2)
+        theta = numpy.arctan2(b[1], b[0])
+        r = r*scaleFac
+        b[0] = r*numpy.cos(theta)
+        b[1] = r*numpy.sin(theta)
+
+    if isArr:
+        b = numpy.array([b]*len(xTangent)).T
+    coords = coords + b
+
+
+    return coords[0], coords[1], coords[2]
 
 

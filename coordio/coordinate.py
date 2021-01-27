@@ -27,12 +27,12 @@ def verifySite(kwargs, strict=True):
 
     """
     if kwargs.get('site', None) is None:
-        raise CoordIOError('Site must be passed to Observed')
+        raise CoordIOError('Site must be passed')
 
     else:
         site = kwargs.get('site')
         if not isinstance(site, Site):
-            raise CoordIOError('Must pass Site to Observed')
+            raise CoordIOError('Site must be passed')
         if strict and site.time is None:
             raise CoordIOError(
                 "Time of observation must be specified on Site"
@@ -68,18 +68,17 @@ def verifyWavelength(kwargs, lenArray, strict=True):
         # create an array of correct length default to gfa wavelength
         wls = numpy.zeros(lenArray) + WAVELENGTH
         warnings.warn(
-            "Warning! Wavelengths not supplied, defaulting to defaults.WAVELENTH",
+            "Warning! Wavelengths not supplied, defaulting to %i angstrom"%WAVELENGTH,
             CoordIOUserWarning
         )
     else:
         if hasattr(wls, "__len__"):
             # array passed
             wls = numpy.array(wls, dtype=numpy.float64)
-            wlSet = set(wls)
         else:
             # single value passed
             wls = numpy.zeros(lenArray) + float(wls)
-            wlSet = set(wls)
+        wlSet = set(wls)
         if strict and not wlSet.issubset(VALID_WAVELENGTHS):
             raise CoordIOError(
                 "Invalid wavelength passed to FocalPlane \

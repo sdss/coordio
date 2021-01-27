@@ -140,7 +140,7 @@ class Field(Coordinate):
             yFP = fpCoords[arg, 1].squeeze()
             zFP = fpCoords[arg, 2].squeeze()
 
-            if len(xFP) == 0:
+            if hasattr(xFP, "__len__") and len(xFP) == 0:
                 continue
 
             thetaFocal, phiFocal, fieldWarn = conv.focalToField(
@@ -264,10 +264,10 @@ class FocalPlane(Coordinate):
             # apply the correct model for the coordinates' wanted
             # wavelength
 
-            thetaField = fieldCoord[arg,0].squeeze()
-            phiField = fieldCoord[arg,1].squeeze()
+            thetaField = fieldCoord[arg, 0].squeeze()
+            phiField = fieldCoord[arg, 1].squeeze()
 
-            if len(thetaField) == 0:
+            if hasattr(thetaField, "__len__") and len(thetaField) == 0:
                 continue
 
             xFP, yFP, zFP, R, b, fieldWarn = conv.fieldToFocal(
@@ -290,11 +290,23 @@ class FocalPlane(Coordinate):
         -----------
         wokCoord : `.Wok`
         """
-        pass
+        pa = wokCoord.obsAngle
+        siteName = self.site.name.upper()
+        xOff, yOff, zOff, tiltX, tiltY = defaults.getWokOrient(siteName)
+        xWok, yWok, zWok = wokCoord[:, 0], wokCoord[:, 1], wokCoord[:, 2]
+        xF, yF, zF = conv.wokToFocal(
+            xWok, yWok, zWok, pa, xOff, yOff, zOff, tiltX, tiltY
+        )
+
+        self[:, 0] = xF
+        self[:, 1] = yF
+        self[:, 2] = zF
+
+        self._fromRaw()
 
     def _fromRaw(self):
         siteName = self.site.name.upper()
-        direction = "focal"
+        direction = "focal"  # irrelevant, just grabbing sphere params
         argNamePairs = []
         for waveCat in ["Boss", "Apogee", "GFA"]:
             arg = numpy.argwhere(

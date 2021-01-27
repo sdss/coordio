@@ -49,4 +49,15 @@ Coordinates
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: coordio.telescope
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: coordio.wok
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 
