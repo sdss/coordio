@@ -724,7 +724,6 @@ def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
     if isArr:
         calibOff = numpy.array([calibOff]*len(xTangent)).T
 
-
     coords = numpy.array([xTangent,yTangent,zTangent])
 
     # apply calibration offsets
@@ -741,11 +740,9 @@ def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
 
         coords = rotMatZ.dot(coords)
 
-
-
     # offset xy plane by element height
     if isArr:
-        coords[2,:] = coords[2,:] + elementHeight
+        coords[2, :] = coords[2, :] + elementHeight
     else:
         coords[2] = coords[2] + elementHeight
 
@@ -763,15 +760,68 @@ def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
     if scaleFac != 1:
         r = numpy.sqrt(b[0]**2+b[1]**2)
         theta = numpy.arctan2(b[1], b[0])
-        r = r*scaleFac
-        b[0] = r*numpy.cos(theta)
-        b[1] = r*numpy.sin(theta)
+        r = r * scaleFac
+        b[0] = r * numpy.cos(theta)
+        b[1] = r * numpy.sin(theta)
 
     if isArr:
         b = numpy.array([b]*len(xTangent)).T
     coords = coords + b
 
-
     return coords[0], coords[1], coords[2]
+
+
+def proj2XYplane(x, y, z, rayOrigin):
+    """Given a point x, y, z orginating from rayOrigin, project
+    this point onto the xy plane.
+
+    Parameters
+    ------------
+    x: scalar or 1D array
+        x position of point to be projected
+    y: scalar or 1D array
+        y position of point to be projected
+    z: scalar or 1D array
+        z position of point to be projected
+    rayOrigin: 3-vector
+        [x,y,z] origin of ray(s)
+
+    Returns
+    --------
+    xProj: scalar or 1D array
+        projected x value
+    yProj: scalar or 1D array
+        projected y value
+    zProj: scalar or 1D array
+        projected z value (should be zero always!)
+    projDist: scalar or 1D array
+        projected distance (a proxy for something like focus offset)
+    """
+
+    # for projecting lines to planes...
+    # http://geomalgorithms.com/a05-_intersect-1.html
+    # intersect3D_SegmentPlane
+    rayOrigin = _verify3Vector(rayOrigin, "rayOrigin")
+    if hasattr(x, "__len__"):
+        rayOrigin = numpy.array([rayOrigin]*len(z), dtype="float64").T
+        x = numpy.array(x, dtype="float64")
+        y = numpy.array(y, dtype="float64")
+        z = numpy.array(z, dtype="float64")
+
+    xyz = numpy.array([x, y, z], dtype="float64")
+
+    u = xyz - rayOrigin
+    w = rayOrigin
+    zHat = numpy.array([0, 0, 1])  # normal to xy plane
+    D = zHat.dot(u)
+    N = -1 * zHat.dot(w)
+
+    sI = N / D
+    xyzProj = rayOrigin + sI * u
+    projDist = numpy.linalg.norm(xyz-xyzProj, axis=0)
+    # negative projDist for points below xy plane
+    projDist *= numpy.sign(z)
+
+    return xyzProj[0], xyzProj[1], xyzProj[2], projDist
 
 

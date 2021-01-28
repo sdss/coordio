@@ -125,16 +125,17 @@ class Field(Coordinate):
         fpCoords : `.FocalPlane`
         """
         siteName = fpCoords.site.name.upper()
-        argNamePairs = []
         for waveCat in ["Boss", "Apogee", "GFA"]:
             # find which coords are intended for which
             # wavelength
             arg = numpy.argwhere(
                 fpCoords.wavelength == defaults.INST_TO_WAVE[waveCat]
-            ).squeeze()
-            argNamePairs.append([arg, waveCat])
+            )
 
-        for (arg, waveCat) in argNamePairs:
+            if len(arg) == 0:
+                continue
+
+            arg = arg.squeeze()
 
             xFP = fpCoords[arg, 0].squeeze()
             yFP = fpCoords[arg, 1].squeeze()
@@ -189,8 +190,8 @@ class FocalPlane(Coordinate):
     ------------
     value : numpy.ndarray
         A Nx3 array where [x,y,z] are columns. Or `.Field`.  Or `.Wok`.
-    wavelength : numpy.ndarray
-        A 1D array with he observing wavelength, in angstrom.
+    wavelength : float or numpy.ndarray
+        A 1D array with he observed wavelength, in angstroms.
         Currently only values of 5400, 6231, and 16600 are valid, corresponding
         to BOSS, Apogee, and sdss-r band (GFA).  Defaults to GFA wavelength.
     site : `.Site`
@@ -251,24 +252,20 @@ class FocalPlane(Coordinate):
         fieldCoord : `.Field`
         """
         siteName = self.site.name.upper()
-        argNamePairs = []
         for waveCat in ["Boss", "Apogee", "GFA"]:
             # find which coords are intended for which
             # wavelength
             arg = numpy.argwhere(
                 self.wavelength == defaults.INST_TO_WAVE[waveCat]
-            ).squeeze()
-            argNamePairs.append([arg, waveCat])
+            )
 
-        for (arg, waveCat) in argNamePairs:
-            # apply the correct model for the coordinates' wanted
-            # wavelength
+            if len(arg) == 0:
+                continue
+
+            arg = arg.squeeze()
 
             thetaField = fieldCoord[arg, 0].squeeze()
             phiField = fieldCoord[arg, 1].squeeze()
-
-            if hasattr(thetaField, "__len__") and len(thetaField) == 0:
-                continue
 
             xFP, yFP, zFP, R, b, fieldWarn = conv.fieldToFocal(
                 thetaField,
@@ -307,13 +304,16 @@ class FocalPlane(Coordinate):
     def _fromRaw(self):
         siteName = self.site.name.upper()
         direction = "focal"  # irrelevant, just grabbing sphere params
-        argNamePairs = []
+
         for waveCat in ["Boss", "Apogee", "GFA"]:
             arg = numpy.argwhere(
-                self.wavelength == defaults.INST_TO_WAVE[waveCat]).squeeze()
-            argNamePairs.append([arg, waveCat])
+                self.wavelength == defaults.INST_TO_WAVE[waveCat])
 
-        for (arg, waveCat) in argNamePairs:
+            if len(arg) == 0:
+                continue
+
+            arg = arg.squeeze()
+
             R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(
                 siteName, direction, waveCat
             )

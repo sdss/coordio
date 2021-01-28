@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy
+from .coordinate import CoordIOError
 
 # default/constant values collected here...for now
 MICRONS_PER_MM = 1000
@@ -69,6 +70,17 @@ def getFPModelParams(site, direction, waveCat):
         9th order coeff
     """
     # filter for correct row in the model dataframe
+    if direction not in ["focal", "field"]:
+        raise CoordIOError(
+            "direction must be one of focal or field, got %s"%direction
+        )
+    if waveCat not in ["Apogee", "Boss", "GFA"]:
+        raise CoordIOError(
+            "waveCat must be one of Apogee Boss or GFA, got %s"%waveCat
+        )
+    if site not in ["LCO", "APO"]:
+        raise CoordIOError("site must be one of APO or LCO, got %s"%site)
+
     row = FP_MODEL[
         (FP_MODEL.site == site)
         & (FP_MODEL.direction == direction)
@@ -108,6 +120,8 @@ def getWokOrient(site):
     yTilt : float
         tilt of wok coord sys about focal plane y axis deg
     """
+    if site not in ["LCO", "APO"]:
+        raise CoordIOError("site must be one of APO or LCO, got %s"%site)
     row = wokOrient[wokOrient.site == site]
     x = float(row.x)
     y = float(row.y)
@@ -137,6 +151,12 @@ def getHoleOrient(site, holeID):
     kHat : numpy.ndarray
         [x,y,z] unit vector, direction of z Tangent in wok coords
     """
+
+    if site not in ["LCO", "APO"]:
+        raise CoordIOError("site must be one of APO or LCO, got %s"%site)
+    if holeID not in VALID_HOLE_IDS:
+        raise CoordIOError("%s is not a valid hole ID"%site)
+
     row = wokCoords[(wokCoords.wokType == site) & (wokCoords.holeID == holeID)]
 
     b = numpy.array([

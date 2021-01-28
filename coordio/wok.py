@@ -72,7 +72,7 @@ class Wok(Coordinate):
         """
         xOff, yOff, zOff, tiltX, tiltY = defaults.getWokOrient(self.site.name)
         xWok, yWok, zWok = conv.focalToWok(
-            fpCoords[:,0], fpCoords[:,1], fpCoords[:,2],
+            fpCoords[:, 0], fpCoords[:, 1], fpCoords[:, 2],
             self.obsAngle, xOff, yOff, zOff, tiltX, tiltY
         )
 

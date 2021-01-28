@@ -1,9 +1,53 @@
 import numpy
 
-from .coordinate import Coordinate, verifySite
+from .coordinate import Coordinate, verifySite, verifyWavelength
+from .telescope import FocalPlane
+from .wok import Wok
 from .exceptions import CoordIOError
 from . import defaults
 from . import conv
+
+
+def _getRayOrigins(site, holeID, scaleFactor, obsAngle):
+    """Return the location of the spherical focal surface center
+    in tangent coordinates for a specific wok location
+
+    site : `.Site
+        site with name attribute "APO" or "LCO"
+    holeID : str
+        A valid hole identifier
+    scaleFactor : float
+        Scale factor for wok expansion
+    obsAngle : float
+        observation (position) angle in Deg
+
+    Returns
+    --------
+    apCen : numpy.ndarray
+        3 element array in focal plane coords for center of apogee focal sphere
+    bossCen : numpy.ndarray
+        3 element array in focal plane coords for center of boss focal sphere
+    gfaCen : numpy.ndarray
+        3 element array in focal plane coords for center of gfa focal sphere
+
+    """
+    outList = []
+    direction = "focal"  # irrelevant, just getting sphere param
+    for waveCat in ["Apogee", "Boss", "GFA"]:
+        R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(
+            site.name, direction, waveCat
+        )
+        fpXYZ = [[0, 0, b]] # sphere's center in focal plane coords
+        fpCoords = FocalPlane(fpXYZ, site=site)
+        wokCoords = Wok(fpCoords, site=site, obsAngle=obsAngle)
+        tanCoords = TangentNoProj(
+            wokCoords, site=site, holeID=holeID,
+            scaleFactor=scaleFactor, obsAngle=obsAngle
+        )
+        tanCoords = numpy.array(tanCoords).squeeze()
+        outList.append(tanCoords)
+
+    return tuple(outList)
 
 
 class Tangent(Coordinate):
@@ -28,20 +72,40 @@ class Tangent(Coordinate):
     scaleFactor : float
         multiplicative factor to apply, modeling thermal expansion/contraction
         of wok holes with respect to each other.  Defaults to 1
+    wavelength : float or numpy.ndarray
+        wavelength used for projecting rays to tangent surfaces (from sphere
+        model origin).  Defaults to GFA wavelength
 
+    Attributes
+    ---------------
+    xProj : numpy.ndarray
+        x projection of coordinate to the xy plane
+    yProj : numpy.ndarray
+        y projection of coordinate to xy plane
+    distProj : numpy.ndarray
+        distance of projection (mm) proxy for focus offset
+        positive when above tangent surface, negative when coord
+        is below tangent surface
+    obsAngle : float
+        Position angle of observation. Angle measured from (image) North
+        through East to wok +y. So obsAngle of 45 deg, wok +y points NE.
+        Defaults to zero.
     """
 
-    __extra_params__ = ["site", "holeID", "scaleFactor"]
+    __extra_params__ = ["site", "holeID", "scaleFactor", "obsAngle"]
+    __extra_arrays__ = ["wavelength"]
+    __computed_arrays__ = ["xProj", "yProj", "distProj"]
 
     def __new__(cls, value, **kwargs):
 
         verifySite(kwargs, strict=False)
+        kwargs["wavelength"] = verifyWavelength(kwargs, len(value), strict=True)
 
         holeID = kwargs.get("holeID", None)
         if holeID is None:
             raise CoordIOError("Must specify holeID for Tangent Coords")
         if holeID not in defaults.VALID_HOLE_IDS:
-            raise CoordIOError("Must valid holeID for Tangent Coords")
+            raise CoordIOError("Must be valid holeID for Tangent Coords")
         scaleFactor = kwargs.get("scaleFactor", None)
         if scaleFactor is None:
             # default to scale factor of 1
@@ -49,6 +113,10 @@ class Tangent(Coordinate):
 
         if isinstance(value, Coordinate):
             if value.coordSysName == "Positioner":
+                if holeID.startswith("GFA"):
+                    raise CoordIOError(
+                        "Guide holeID supplied for Positioner coord"
+                    )
                 # going from 2D to 3D coordsys
                 # initialize array
                 initArr = numpy.zeros((len(value), 3))
@@ -57,6 +125,10 @@ class Tangent(Coordinate):
             elif value.coordSysName == "Guide":
                 # going from 2D to 3D coordsys
                 # initialize array
+                if not holeID.startswith("GFA"):
+                    raise CoordIOError(
+                        "Cannot convert from guide coords to non-GFA location"
+                    )
                 initArr = numpy.zeros((len(value), 3))
                 obj = super().__new__(cls, initArr, **kwargs)
                 obj._fromGuide(value)
@@ -66,11 +138,12 @@ class Tangent(Coordinate):
                 obj._fromWok(value)
             else:
                 raise CoordIOError(
-                    "Cannot convert to Field from %s"%value.coordSysName
+                    "Cannot convert to Tangent from %s"%value.coordSysName
                 )
 
         else:
             obj = super().__new__(cls, value, **kwargs)
+            obj._fromRaw()
 
         return obj
 
@@ -82,7 +155,8 @@ class Tangent(Coordinate):
         posCoords : `.Positioner`
 
         """
-        pass
+
+        self._fromRaw()
 
     def _fromGuide(self, guideCoords):
         """Convert from guide coords to tangent coords
@@ -91,7 +165,8 @@ class Tangent(Coordinate):
         ------------
         guideCoords : `.Guide`
         """
-        pass
+
+        self._fromRaw()
 
     def _fromWok(self, wokCoords):
         """Convert from wok coords to tangent coords
@@ -111,5 +186,42 @@ class Tangent(Coordinate):
         self[:, 0] = tx
         self[:, 1] = ty
         self[:, 2] = tz
+
+        self._fromRaw()
+
+    def _fromRaw(self):
+        """Compute projections to xy plane
+
+        """
+
+        rayCenters = _getRayOrigins(
+            self.site, self.holeID, self.scaleFactor, self.obsAngle
+        )
+
+        for cen, waveCat in zip(rayCenters, ["Apogee", "Boss", "GFA"]):
+            arg = numpy.argwhere(
+                self.wavelength == defaults.INST_TO_WAVE[waveCat]
+            )
+
+            if len(arg) == 0:
+                continue
+
+            arg = arg.squeeze()
+
+            _x, _y, _z = self[arg, 0], self[arg, 1], self[arg, 2]
+            xProj, yProj, zProj, distProj = conv.proj2XYplane(_x, _y, _z, cen)
+            # note zProj is always be zero!
+            self.xProj[arg] = xProj
+            self.yProj[arg] = yProj
+            self.distProj[arg] = distProj
+
+
+class TangentNoProj(Tangent):
+    """Class that doesn't compute projections, intended for internal
+    use only to eliminate a recursion problem.
+
+    """
+    def _fromRaw(self):
+        pass
 
 

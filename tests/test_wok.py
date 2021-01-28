@@ -1,5 +1,5 @@
 import numpy
-
+import time
 from coordio import Site, Wok, Observed, Field, FocalPlane, Tangent
 from coordio.defaults import APO_MAX_FIELD_R, LCO_MAX_FIELD_R, VALID_HOLE_IDS
 
@@ -53,7 +53,8 @@ def test_wok_tangent_cycle():
         for holeID in VALID_HOLE_IDS:
             scaleFactor = numpy.random.uniform(.97, 1.03)
             tangentCoords = Tangent(
-                wokCoords, site=site, holeID=holeID, scaleFactor=scaleFactor
+                wokCoords, site=site, holeID=holeID,
+                scaleFactor=scaleFactor, obsAngle=obsAngle
             )
             _wokCoords = Wok(tangentCoords, site=site, obsAngle=obsAngle)
             numpy.testing.assert_array_almost_equal(
