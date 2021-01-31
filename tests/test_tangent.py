@@ -4,8 +4,8 @@ import pandas
 from coordio import Site, Wok, Observed, Field, FocalPlane, Tangent
 from coordio.defaults import (APO_MAX_FIELD_R, LCO_MAX_FIELD_R, VALID_HOLE_IDS,
                               MICRONS_PER_MM, VALID_WAVELENGTHS)
-import matplotlib.pyplot as plt
-import seaborn as sns
+# import matplotlib.pyplot as plt
+# import seaborn as sns
 
 
 numpy.random.seed(0)
