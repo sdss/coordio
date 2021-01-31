@@ -13,7 +13,7 @@ import ctypes
 import numpy
 
 from . import sofa
-from .coordinate import Coordinate, verifySite, verifyWavelength
+from .coordinate import Coordinate, Coordinate2D, verifySite, verifyWavelength
 from .exceptions import CoordinateError, CoordIOError
 from .time import Time
 from .site import Site
@@ -26,7 +26,7 @@ from . import conv
 __all__ = ['ICRS', 'Observed']
 
 
-class ICRS(Coordinate):
+class ICRS(Coordinate2D):
     """A representation of ICRS coordinates.
 
     Parameters
@@ -58,7 +58,7 @@ class ICRS(Coordinate):
 
     def __new__(cls, value, **kwargs):
 
-        kwargs["wavelength"] = verifyWavelength(kwargs, len(value), strict=False)
+        verifyWavelength(kwargs, len(value), strict=False)
 
         obj = super().__new__(cls, value, **kwargs)
 
@@ -163,7 +163,7 @@ class ICRS(Coordinate):
         return new_icrs
 
 
-class Observed(Coordinate):
+class Observed(Coordinate2D):
     """The observed coordinates of a series of targets.
 
     The array contains the Alt/Az coordinates of the targets. Their RA/Dec
@@ -226,7 +226,7 @@ class Observed(Coordinate):
         # if kwargs.get('wavelength', None) is None:
         #     if hasattr(value, "wavelength"):
         #         kwargs["wavelength"] = value.wavelength
-        kwargs["wavelength"] = verifyWavelength(
+        verifyWavelength(
             kwargs, len(value), strict=False
         )
 
@@ -388,14 +388,14 @@ class Observed(Coordinate):
         Computes and sets ra, dec, ha, pa arrays.
 
         """
-        # eventually move this to coordio.conv?
+
+        self[:, 1] = self[:, 1] % 360
 
         # compute ra, dec, ha, pa here...
         dec_obs = ctypes.c_double()
         ha_obs = ctypes.c_double()
         rlat = numpy.radians(self.site.latitude)
         rlong = numpy.radians(self.site.longitude)
-        # ut1 = self.site.time.to_ut1()
         ut1 = self.site.time.to_ut1()
 
         for ii, (alt, az) in enumerate(self):

@@ -798,12 +798,12 @@ def proj2XYplane(x, y, z, rayOrigin):
         projected distance (a proxy for something like focus offset)
     """
 
-    # for projecting lines to planes...
+    # intersections of lines to planes...
     # http://geomalgorithms.com/a05-_intersect-1.html
     # intersect3D_SegmentPlane
     rayOrigin = _verify3Vector(rayOrigin, "rayOrigin")
     if hasattr(x, "__len__"):
-        rayOrigin = numpy.array([rayOrigin]*len(z), dtype="float64").T
+        rayOrigin = numpy.array([rayOrigin] * len(z), dtype="float64").T
         x = numpy.array(x, dtype="float64")
         y = numpy.array(y, dtype="float64")
         z = numpy.array(z, dtype="float64")
@@ -818,10 +818,9 @@ def proj2XYplane(x, y, z, rayOrigin):
 
     sI = N / D
     xyzProj = rayOrigin + sI * u
-    projDist = numpy.linalg.norm(xyz-xyzProj, axis=0)
+    projDist = numpy.linalg.norm(xyz - xyzProj, axis=0)
     # negative projDist for points below xy plane
     projDist *= numpy.sign(z)
 
     return xyzProj[0], xyzProj[1], xyzProj[2], projDist
-
 

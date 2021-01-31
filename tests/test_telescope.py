@@ -348,7 +348,5 @@ def test_invalid_site():
 
 
 if __name__ == "__main__":
-    test_unreasonable_field_focal_cycle()
-
-    # test_observedToField_LCO()
+    test_field_obs_cycle()
 

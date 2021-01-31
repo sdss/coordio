@@ -135,6 +135,7 @@ def getWokOrient(site):
 wokCoordFile = os.path.join(os.path.dirname(__file__), "etc", "wokCoords.csv")
 wokCoords = pd.read_csv(wokCoordFile, comment="#")
 VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
+VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
 
 
 def getHoleOrient(site, holeID):

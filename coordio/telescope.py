@@ -3,7 +3,8 @@ import numpy
 # import os
 # import warnings
 
-from .coordinate import Coordinate, verifySite, verifyWavelength
+from .coordinate import (Coordinate, Coordinate2D, Coordinate3D,
+                         verifySite, verifyWavelength)
 from .exceptions import CoordIOError, CoordIOUserWarning
 from .utils import sph2Cart, cart2Sph, cart2FieldAngle
 # from .site import Site
@@ -17,7 +18,7 @@ from . import conv
 __all__ = ["Field", "FocalPlane"]
 
 
-class Field(Coordinate):
+class Field(Coordinate2D):
     """A representation of Field Coordinates.  A spherical coordinate system
     defined by two angles: theta, phi.  Theta is the angle about the optical
     axis measured from the direction of +RA. Phi is the angle off the optical
@@ -160,11 +161,13 @@ class Field(Coordinate):
     def _fromRaw(self):
         """Populates the computed arrays
         """
+        # ensure wrapping
+        self[:,0] = self[:,0] % 360
         self.x, self.y, self.z = sph2Cart(self[:, 0], self[:, 1])
         self.x_angle, self.y_angle = cart2FieldAngle(self.x, self.y, self.z)
 
 
-class FocalPlane(Coordinate):
+class FocalPlane(Coordinate3D):
     """The focal plane coordinate system is 3D Cartesian with units of mm.
     The origin is the M1 vertex.  +x is aligned with +RA on the image, +y is
     aligned with +Dec on the image, +z points from earth to sky along the
@@ -218,7 +221,7 @@ class FocalPlane(Coordinate):
 
         verifySite(kwargs)
 
-        kwargs["wavelength"] = verifyWavelength(
+        verifyWavelength(
             kwargs, len(value), strict=True
         )
 

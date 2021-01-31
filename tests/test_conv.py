@@ -268,7 +268,7 @@ def test_xyProj():
     y = r*numpy.sin(thetas)
     z = [0.5]*len(x)
     px, py, pz, ps = proj2XYplane(x,y,z, rayOrigin)
-    print(ps)
+    # print(ps)
     mags = numpy.sqrt(px**2+py**2)
     assert numpy.max(numpy.abs(mags-1)) < SMALL_NUM
     assert numpy.max(numpy.abs(pz)) < SMALL_NUM

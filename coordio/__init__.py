@@ -39,3 +39,4 @@ from .telescope import *
 from .time import Time
 from .wok import Wok
 from .tangent import Tangent
+from .guide import Guide

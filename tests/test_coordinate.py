@@ -10,7 +10,7 @@ import numpy
 import pytest
 
 from coordio import CoordinateError
-from coordio.coordinate import Coordinate
+from coordio.coordinate import Coordinate, Coordinate2D, Coordinate3D
 
 
 class _TestCoordinate(Coordinate):
@@ -31,6 +31,11 @@ class _TestCoordinate(Coordinate):
 
         return obj
 
+class _TestCoordinate2D(Coordinate2D):
+    pass
+
+class _TestCoordinate3D(Coordinate3D):
+    pass
 
 def test_coordinate():
 
@@ -61,19 +66,24 @@ def test_None():
 
     with pytest.raises(CoordinateError) as ee:
         _TestCoordinate(None)
-    assert 'The input array must be NxM, M>=2.' in str(ee)
+    assert 'The input array must be NxM' in str(ee)
 
 
 def test_bad_input():
 
     with pytest.raises(CoordinateError) as ee:
         _TestCoordinate([[1], [2]])
-    assert 'The input array must be NxM, M>=2.' in str(ee)
+    assert 'The input array must be NxM' in str(ee)
 
     with pytest.raises(CoordinateError) as ee:
         _TestCoordinate([[1, 2], [3, 4]], array1=numpy.array([1]))
     assert 'array1 size does not match the coordinate values.' in str(ee)
 
+    with pytest.raises(CoordinateError):
+        _TestCoordinate2D([[1,2,3],[4,5,6]])
+
+    with pytest.raises(CoordinateError):
+        _TestCoordinate3D([[1,2],[4,5]])
 
 def test_slice():
 

@@ -1,12 +1,12 @@
 import numpy
 
-from .coordinate import Coordinate, verifySite
+from .coordinate import Coordinate, Coordinate3D, verifySite
 from .exceptions import CoordIOError
 from . import conv
 from . import defaults
 
 
-class Wok(Coordinate):
+class Wok(Coordinate3D):
     """A representation of a Wok Coordinates.  A 3D Cartesian coordinate
     system.  The orgin is the vertex of the Wok. -x points toward the Boss
     slithead.  +z points from earth to sky.  +y is dictated by right hand

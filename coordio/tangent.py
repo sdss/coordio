@@ -1,6 +1,6 @@
 import numpy
 
-from .coordinate import Coordinate, verifySite, verifyWavelength
+from .coordinate import Coordinate, Coordinate3D, verifySite, verifyWavelength
 from .telescope import FocalPlane
 from .wok import Wok
 from .exceptions import CoordIOError
@@ -50,7 +50,7 @@ def _getRayOrigins(site, holeID, scaleFactor, obsAngle):
     return tuple(outList)
 
 
-class Tangent(Coordinate):
+class Tangent(Coordinate3D):
     """A representation of Tangent Coordinates.  A 3D Cartesian coordinate
     system.  The xy plane of this coordinate system is tangent to the wok
     surface at a specific location (one of holeID in etc/wokCoords.csv).
@@ -99,7 +99,8 @@ class Tangent(Coordinate):
     def __new__(cls, value, **kwargs):
 
         verifySite(kwargs, strict=False)
-        kwargs["wavelength"] = verifyWavelength(kwargs, len(value), strict=True)
+        verifyWavelength(kwargs, len(value), strict=True)
+        # print("gahhh", kwargs["wavelength"])
 
         holeID = kwargs.get("holeID", None)
         if holeID is None:
@@ -165,7 +166,37 @@ class Tangent(Coordinate):
         ------------
         guideCoords : `.Guide`
         """
+        # print("from guide", self.wavelength)
+        if self.holeID not in defaults.VALID_GUIDE_IDS:
+            raise CoordIOError(
+                "Cannot convert from Guide to (non-guide) wok hole %s" %
+                self.holeID
+            )
 
+        # make sure the guide wavelength is specified for all coords
+        # this may be a little too extreme of a check
+        if numpy.sum(self.wavelength - defaults.INST_TO_WAVE["GFA"]) != 0:
+            raise CoordIOError(
+                "Cannont convert from Guide coords with non-guide wavelength"
+            )
+
+        xPix = guideCoords[:, 0]
+        yPix = guideCoords[:, 1]
+        xBin = guideCoords.xBin
+        yBin = guideCoords.yBin
+
+        xTangent = (xPix * xBin - defaults.GFA_CHIP_CENTER) * \
+                    defaults.GFA_PIXEL_SIZE / defaults.MICRONS_PER_MM
+
+        yTangent = (yPix * yBin - defaults.GFA_CHIP_CENTER) * \
+                    defaults.GFA_PIXEL_SIZE / defaults.MICRONS_PER_MM
+
+        self[:, 0] = xTangent
+        self[:, 1] = yTangent
+        self[:, 2] = 0  # by definition pixels are in the z=0 tangent plane
+
+        # don't really have to call from raw
+        # could just populate proj arrays directly...
         self._fromRaw()
 
     def _fromWok(self, wokCoords):
@@ -210,7 +241,7 @@ class Tangent(Coordinate):
 
             _x, _y, _z = self[arg, 0], self[arg, 1], self[arg, 2]
             xProj, yProj, zProj, distProj = conv.proj2XYplane(_x, _y, _z, cen)
-            # note zProj is always be zero!
+            # note zProj is always zero!
             self.xProj[arg] = xProj
             self.yProj[arg] = yProj
             self.distProj[arg] = distProj
@@ -223,5 +254,3 @@ class TangentNoProj(Tangent):
     """
     def _fromRaw(self):
         pass
-
-

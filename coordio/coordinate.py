@@ -84,7 +84,7 @@ def verifyWavelength(kwargs, lenArray, strict=True):
                 "Invalid wavelength passed to FocalPlane \
                 valid wavelengths are %s"%(str(VALID_WAVELENGTHS))
             )
-    return wls
+    kwargs["wavelength"] = wls
 
 
 class Coordinate(numpy.ndarray):
@@ -166,15 +166,24 @@ class Coordinate(numpy.ndarray):
     __extra_params__ = []
     __computed_arrays__ = []  # values that are computed (not passed)
     __warn_arrays__ = []  # boolean arrays to indicate warnings
+    __coord_dim__ = None
 
     def __new__(cls, value, **kwargs):
         if value is not None:
-            value = value.copy() # this prevents weirdness
+            value = value.copy()  # this prevents weirdness
 
         obj = numpy.asarray(value, dtype=numpy.float64).view(cls)
 
         if len(obj.shape) != 2 or obj.shape[1] < 2:
+            raise CoordinateError('The input array must be NxM')
+
+        if obj.shape[1] < 2:
             raise CoordinateError('The input array must be NxM, M>=2.')
+
+        if obj.__coord_dim__ is not None and obj.shape[1] != obj.__coord_dim__:
+            raise CoordinateError(
+                'The input array must be NxM, M=%i.' % obj.__coord_dim__
+            )
 
         for param in obj.__extra_params__:
             setattr(obj, param, kwargs.get(param, None))
@@ -270,5 +279,20 @@ class Coordinate(numpy.ndarray):
     @property
     def coordSysName(self):
         return self.__class__.__name__
+
+
+class Coordinate2D(Coordinate):
+    """2 dimensional coordinate system
+    """
+
+    __coord_dim__ = 2
+
+
+class Coordinate3D(Coordinate):
+    """3 dimensional coordinate system
+    """
+
+    __coord_dim__ = 3
+
 
 
