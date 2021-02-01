@@ -40,7 +40,7 @@ def test_get_dut1():
     # Jan 15th, 2020
     time = Time(2458863.5, scale='TAI')
 
-    assert time.get_dut1() == pytest.approx(-0.1799637, abs=1e-9)
+    assert time.get_dut1() == pytest.approx(-0.1799645, abs=1e-9)
 
 
 def test_to_now():
