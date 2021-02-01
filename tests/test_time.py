@@ -49,8 +49,8 @@ def test_to_now():
     time = Time(2458863.5, scale='TAI')
 
     time.to_now()
-    assert time.jd == pytest.approx(astropy.time.Time.now().tai.jd, abs=1e-9)
+    assert time.jd == pytest.approx(astropy.time.Time.now().tai.jd, abs=1e-8)
 
     # Now test __internal_time
     time.to_now()
-    assert time.jd == pytest.approx(astropy.time.Time.now().tai.jd, abs=1e-9)
+    assert time.jd == pytest.approx(astropy.time.Time.now().tai.jd, abs=1e-8)
