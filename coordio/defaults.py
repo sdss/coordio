@@ -133,7 +133,7 @@ def getWokOrient(site):
 
 
 wokCoordFile = os.path.join(os.path.dirname(__file__), "etc", "wokCoords.csv")
-wokCoords = pd.read_csv(wokCoordFile, comment="#")
+wokCoords = pd.read_csv(wokCoordFile, comment="#", index_col=0)
 VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
 VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
 
@@ -154,9 +154,9 @@ def getHoleOrient(site, holeID):
     """
 
     if site not in ["LCO", "APO"]:
-        raise CoordIOError("site must be one of APO or LCO, got %s"%site)
+        raise CoordIOError("site must be one of APO or LCO, got %s" % site)
     if holeID not in VALID_HOLE_IDS:
-        raise CoordIOError("%s is not a valid hole ID"%site)
+        raise CoordIOError("%s is not a valid hole ID" % holeID)
 
     row = wokCoords[(wokCoords.wokType == site) & (wokCoords.holeID == holeID)]
 
@@ -186,9 +186,53 @@ def getHoleOrient(site, holeID):
 
     return b, iHat, jHat, kHat
 
+# read in positioner table
+positionerTableFile = os.path.join(
+    os.path.dirname(__file__), "etc", "positionerTable.csv"
+)
+positionerTable = pd.read_csv(positionerTableFile, comment="#", index_col=0)
 
 
+def getPositionerData(site, holeID):
+    """Return data specific to a positioner
+
+    Returns:
+    --------
+    alphaArmLength : float
+        alpha arm length (mm)
+    metX : float
+        metrology fiber x (mm), in beta arm coordinates
+    metY : float
+        metrology fiber y (mm), in beta arm coordinates
+    apX : float
+        apogee fiber y (mm), in beta arm coordinates
+    apY : float
+        apogee fiber x (mm), in beta arm coordinates
+    bossX : float
+        boss fiber y (mm), in beta arm coordinates
+    bossY : float
+        boss fiber x (mm), in beta arm coordinates
+
+    """
+
+    if site not in ["LCO", "APO"]:
+        raise CoordIOError("site must be one of APO or LCO, got %s"%site)
+    if holeID not in VALID_HOLE_IDS:
+        raise CoordIOError("%s is not a valid hole ID" % holeID)
+
+    row = positionerTable[
+        (positionerTable.wokID == site) & (positionerTable.holeID == holeID)
+    ]
 
 
+    aal = float(row.alphaArmLen)
+    metX = float(row.metX)
+    metY = float(row.metY)
+    apX = float(row.apX)
+    apY = float(row.apY)
+    bossX = float(row.bossX)
+    bossY = float(row.bossY)
+
+    return aal, metX, metY, apX, apY, bossX, bossY
 
 

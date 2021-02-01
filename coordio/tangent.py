@@ -1,4 +1,5 @@
 import numpy
+import warnings
 
 from .coordinate import Coordinate, Coordinate3D, verifySite, verifyWavelength
 from .telescope import FocalPlane
@@ -113,7 +114,7 @@ class Tangent(Coordinate3D):
             kwargs["scaleFactor"] = 1
 
         if isinstance(value, Coordinate):
-            if value.coordSysName == "Positioner":
+            if "Positioner" in value.coordSysName:
                 if holeID.startswith("GFA"):
                     raise CoordIOError(
                         "Guide holeID supplied for Positioner coord"
@@ -139,7 +140,7 @@ class Tangent(Coordinate3D):
                 obj._fromWok(value)
             else:
                 raise CoordIOError(
-                    "Cannot convert to Tangent from %s"%value.coordSysName
+                    "Cannot convert to Tangent from %s" % value.coordSysName
                 )
 
         else:
@@ -156,6 +157,15 @@ class Tangent(Coordinate3D):
         posCoords : `.Positioner`
 
         """
+        if not numpy.isfinite(numpy.sum(posCoords)):
+            warnings.warn("NaN values propigated from positioner coordinates")
+        xTangent, yTangent = conv.positionerToTangent(
+            posCoords[:, 0], posCoords[:, 1], posCoords.xFiber,
+            posCoords.yFiber, posCoords.alphaArmLength
+        )
+        self[:, 0] = xTangent
+        self[:, 1] = yTangent
+        self[:, 2] = 0
 
         self._fromRaw()
 

@@ -824,3 +824,131 @@ def proj2XYplane(x, y, z, rayOrigin):
 
     return xyzProj[0], xyzProj[1], xyzProj[2], projDist
 
+
+def tangentToPositioner(xTangent, yTangent, xBeta, yBeta, la=7.4):
+    """
+    Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm
+    at xTangent, yTangent.
+
+    todo: include hooks for positioner non-linearity
+
+    Parameters
+    -------------
+    xTangent: scalar or 1D array
+        x position (mm) in tangent coordinates
+    yTangent: scalar or 1D array
+        y position (mm) in tangent coordinates
+    xBeta: scalar or 1D array
+        x position (mm) in beta arm frame
+    yBeta: scalar or 1D array
+        y position (mm) in beta arm frame
+    la: scalar or 1D array
+        length (mm) of alpha arm
+
+    Returns
+    ---------
+    alphaDeg: scalar or 1D array
+        alpha angle in degrees
+    betaDeg: scalar or 1D array
+        beta angle in degrees
+    isOK: boolean or 1D boolean array
+        True if point physically accessible, False otherwise
+    """
+
+    isArr = hasattr(xTangent, "__len__")
+    if isArr:
+        xTangent = numpy.array(xTangent, dtype="float64")
+        yTangent = numpy.array(yTangent, dtype="float64")
+
+    # polar coords jive better for this calculation
+    thetaTangent = numpy.arctan2(yTangent, xTangent)
+    rTangentSq = xTangent**2 + yTangent**2
+
+    # convert xy Beta to radial coords
+    # the origin of the beta coord system is the
+    # beta axis of rotation
+    thetaBAC = numpy.arctan2(yBeta, xBeta) # radians!
+    rBacSq = xBeta**2+yBeta**2
+
+    gamma = numpy.arccos(
+        (la**2 + rBacSq - rTangentSq) / (2 * la * numpy.sqrt(rBacSq))
+    )
+    xi = numpy.arccos(
+        (la**2 + rTangentSq - rBacSq) / (2 * la * numpy.sqrt(rTangentSq))
+    )
+
+    thetaTangent = numpy.degrees(thetaTangent)
+    thetaBAC = numpy.degrees(thetaBAC)
+    gamma = numpy.degrees(gamma)
+    xi = numpy.degrees(xi)
+
+    alphaDeg = thetaTangent - xi
+    betaDeg = 180 - gamma - thetaBAC
+
+    # look for nans
+    isOKAlpha = numpy.isfinite(alphaDeg)
+    isOKBeta = numpy.isfinite(betaDeg)
+    isOK = isOKAlpha & isOKBeta
+
+    if not isArr:
+        isOK = bool(isOK)
+
+    # handle wrapping? not sure it's necessary
+    alphaDeg = alphaDeg % 360
+    betaDeg = betaDeg % 360  # should already be there, but...
+    if hasattr(betaDeg, "__len__"):
+        if True in betaDeg > 180:
+            raise RuntimeError("problem in alpha/beta conversion! beta > 180")
+    elif betaDeg > 180:
+        raise RuntimeError("problem in alpha/beta conversion! beta > 180")
+
+    return alphaDeg, betaDeg, isOK
+
+
+def positionerToTangent(alphaDeg, betaDeg, xBeta, yBeta, la=7.4):
+    """
+    Determine tangent coordinates (mm) of xBeta, yBeta coords in mm
+    from alpha/beta angle.
+
+    todo: include hooks for positioner non-linearity
+
+    Parameters
+    -------------
+    alphaDeg: scalar or 1D array
+        alpha angle in degrees
+    betaDeg: scalar or 1D array
+        beta angle in degrees
+    xBeta: scalar or 1D array
+        x position (mm) in beta arm frame
+    yBeta: scalar or 1D array
+        y position (mm) in beta arm frame
+    la: scalar or 1D array
+        length (mm) of alpha arm
+
+    Returns
+    ---------
+    xTangent: scalar or 1D array
+        x position (mm) in tangent coordinates
+    yTangent: scalar or 1D array
+        y position (mm) in tangent coordinates
+    """
+    # convert xy Beta to radial coords
+    # the origin of the beta coord system is the
+    # beta axis of rotation
+    thetaBAC = numpy.arctan2(yBeta, xBeta)  # radians!
+    rBAC = numpy.sqrt(xBeta**2 + yBeta**2)
+    alphaRad = numpy.radians(alphaDeg)
+    betaRad = numpy.radians(betaDeg)
+
+    cosAlpha = numpy.cos(alphaRad)
+    sinAlpha = numpy.sin(alphaRad)
+    cosAlphaBeta = numpy.cos(alphaRad + betaRad + thetaBAC)
+    sinAlphaBeta = numpy.sin(alphaRad + betaRad + thetaBAC)
+
+    xTangent = la * cosAlpha + rBAC * cosAlphaBeta
+    yTangent = la * sinAlpha + rBAC * sinAlphaBeta
+
+    return xTangent, yTangent
+
+
+
