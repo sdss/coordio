@@ -45,11 +45,6 @@ jobs:
           python create_setup.py
           pip install -e .
 
-      - name: Copy IERS file
-        run: |
-          mkdir -p ~/.config/sdss/coordio/
-          cp tests/data/* ~/.config/sdss/coordio/
-
       # - name: Lint with flake8
       #   run: |
       #     pip install flake8
