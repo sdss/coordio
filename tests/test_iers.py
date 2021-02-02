@@ -11,7 +11,20 @@ import pytest
 from coordio import IERS, CoordIOUserWarning
 
 
-def test_iers(tmpdir):
+@pytest.fixture()
+def clear_iers_instance():
+    # Because of Python mangling for double underscores we need to modify
+    # the instance like this: https://bit.ly/3hktKEm.
+
+    # Clear before and after the test, so that this also clears in case that previous
+    # tests set the instance.
+
+    IERS._IERS__instance = None
+    yield
+    IERS._IERS__instance = None
+
+
+def test_iers(tmpdir, clear_iers_instance):
 
     iers_file = tmpdir / 'finals2000A.data.csv'
 
