@@ -46,16 +46,3 @@ def mock_iers(mocker, iers_data_path, tmpdir):
 
     # Mock urllib.request.urlretrieve so that tests work offline and faster.
     mocker.patch.object(urllib.request, 'urlretrieve', side_effect=copy_file)
-
-
-@pytest.fixture(autouse=True)
-def clear_iers_instance():
-    # Because of Python mangling for double underscores we need to modify
-    # the instance like this: https://bit.ly/3hktKEm.
-
-    # Clear before and after the test, so that this also clears in case that previous
-    # tests set the instance.
-
-    IERS._IERS__instance = None
-    yield
-    IERS._IERS__instance = None
