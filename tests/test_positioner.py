@@ -31,6 +31,7 @@ minRadMet = numpy.linalg.norm(numpy.array([7.4, 0]) - modelMetXY)
 
 nCoords = 10000
 
+
 def sampleAnnulus(nCoords, R1, R2):
     # R1 is max radius, R2 in min radius
     theta = 360 * numpy.random.random(size=nCoords)
@@ -39,7 +40,6 @@ def sampleAnnulus(nCoords, R1, R2):
     y = r * numpy.sin(numpy.radians(theta))
 
     return x, y, theta, r
-
 
 
 wl = defaults.INST_TO_WAVE["Boss"]
@@ -144,5 +144,30 @@ def test_bad_coords2():
                     _tc = Tangent(pc, site=site, holeID=holeID, wavelength=wl)
 
 
+def test_specific():
+    ab = [[0,0.001]]
+    holeID = "R0C15"
+    posList = [PositionerApogee, PositionerBoss, PositionerMetrology]
+
+    pcList = []
+    for Pos in posList:
+        pcList.append(Pos(ab, site=apoSite, holeID=holeID))
+
+    tcList = []
+    for pc in pcList:
+        tc = Tangent(pc, site=apoSite, holeID=holeID, wl=wl)
+        print("tc", tc)
+        tcList.append(tc)
+
+    _pcList = []
+    for ii in range(3):
+        tc = tcList[ii]
+        pc = pcList[ii]
+        Pos = posList[ii]
+        _pc = Pos(ab, site=apoSite, holeID=holeID)
+        print(pc, _pc)
+        _pcList.append(_pc)
+
+
 if __name__ == "__main__":
-    test_good_coords()
+    test_specific()

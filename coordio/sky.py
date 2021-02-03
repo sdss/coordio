@@ -90,7 +90,48 @@ class ICRS(Coordinate2D):
         time specifified by the site.
 
         """
-        raise NotImplementedError()
+
+        # We need the epoch to be J2000.0 because that's what iauAtco13 likes.
+        # icrs_2000 = icrsCoords.to_epoch(2451545.0, site=self.site)
+
+        # rra = numpy.radians(icrs_2000[:, 0])
+        # rdec = numpy.radians(icrs_2000[:, 1])
+        # rpmra = numpy.radians(icrs_2000.pmra / 1000. / 3600.) / numpy.cos(rdec)
+        # rpmdec = numpy.radians(icrs_2000.pmdec / 1000. / 3600.)
+
+        rlong = numpy.radians(obsCoords.site.longitude)
+        rlat = numpy.radians(obsCoords.site.latitude)
+        rZD = numpy.radians(90 - obsCoords[:,0])
+        rAz = numpy.radians(obsCoords[:,1])
+        wavelength = obsCoords.wavelength / 10000.
+        _type = "A".encode()  # coords are azimuth, zenith dist
+
+        time = obsCoords.site.time
+
+        utc = time.to_utc()
+        utc1 = int(utc)
+        utc2 = utc - utc1
+        dut1 = time.get_dut1()
+
+        _ra = ctypes.c_double()
+        _dec = ctypes.c_double()
+
+        ra = numpy.zeros(len(obsCoords))
+        dec = numpy.zeros(len(obsCoords))
+
+        for ii in range(len(rAz)):
+
+            sofa.iauAtoc13(
+                _type, rAz[ii], rZD[ii], utc1, utc2, dut1,
+                rlong, rlat, obsCoords.site.altitude, 0.0, 0.0,
+                obsCoords.site.pressure, obsCoords.site.temperature,
+                obsCoords.site.rh, wavelength[ii], _ra, _dec
+            )
+            ra[ii] = numpy.degrees(_ra.value)
+            dec[ii] = numpy.degrees(_dec.value)
+
+        self[:, 0] = ra
+        self[:, 1] = dec
 
     def to_epoch(self, jd, site=None):
         """Convert the coordinates to a new epoch.

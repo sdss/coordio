@@ -53,6 +53,11 @@ ARGTYPES = [
                    POINTER(c_double), POINTER(c_double), POINTER(c_double),
                    POINTER(c_double), POINTER(c_double), POINTER(c_double))),
 
+
+    ('iauAtoc13', (c_char_p, c_double, c_double, c_double, c_double, c_double,
+                   c_double, c_double, c_double, c_double, c_double, c_double,
+                   c_double, c_double, c_double, POINTER(c_double), POINTER(c_double))),
+
     # double date1, double date2, double ut, double elong, double u, double v
     ('iauDtdb', (c_double, c_double, c_double, c_double, c_double, c_double)),
 

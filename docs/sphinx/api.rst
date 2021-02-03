@@ -59,5 +59,25 @@ Coordinates
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: coordio.tangent
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
+.. automodule:: coordio.guide
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
+.. automodule:: coordio.positioner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Conversions
+-------------
+
+.. automodule:: coordio.conv
+   :members:
+   :undoc-members:
+   :show-inheritance:
