@@ -128,24 +128,18 @@ def test_to_observed():
     # numpy.testing.assert_array_almost_equal(icrs, _icrs, decimal=5)
 
 def test_icrs_obs_cycle():
-    icrs = ICRS([[100, 10], [101., 11]],
-                epoch=[2451545, 2451545], wavelength=wavelength)
-    site.set_time(2458863, scale='TAI')
+    time = 2451545
+    icrs = ICRS([[100, 10], [101., 11], [180., 30]],
+                epoch=time, wavelength=wavelength)
+
+    site.set_time(time, scale='TAI')
     observed = Observed(icrs, site=site)
+    _icrs = ICRS(observed, wavelength=wavelength)
 
-    # this seems wierd, epoch should be specified by time *now* right?
-    # how to test...
-    _icrs = ICRS(observed, epoch=[2451545, 2451545], wavelength=wavelength)
-
-    icrs_2020 = icrs.to_epoch(jd=2458863, site=site)
-    _icrs_2020 = _icrs.to_epoch(jd=2458863, site=site)
-
-    a1 = SkyCoord(ra=icrs_2020[:,0] * u.deg, dec=icrs_2020[:,1] * u.deg)
-    a2 = SkyCoord(ra=_icrs_2020[:,0] * u.deg, dec=_icrs_2020[:,1] * u.deg)
+    a1 = SkyCoord(ra=icrs[:,0] * u.deg, dec=icrs[:,1] * u.deg)
+    a2 = SkyCoord(ra=_icrs[:,0] * u.deg, dec=_icrs[:,1] * u.deg)
     sep = a1.separation(a2)
-    # better than 10 arcseconds? seems like it should be better
-    assert not False in numpy.array(sep)*3600 < 10
-    # import pdb; pdb.set_trace()
+    assert numpy.max(numpy.array(sep)*3600) < 0.5
 
 if __name__ == "__main__":
     test_icrs_obs_cycle()
