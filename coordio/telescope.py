@@ -6,7 +6,7 @@ import numpy
 from .coordinate import (Coordinate, Coordinate2D, Coordinate3D,
                          verifySite, verifyWavelength)
 from .exceptions import CoordIOError, CoordIOUserWarning
-from .utils import sph2Cart, cart2Sph, cart2FieldAngle
+from .conv import sph2Cart, cart2Sph, cart2FieldAngle
 # from .site import Site
 from . import defaults
 from . import conv

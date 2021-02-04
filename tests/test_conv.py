@@ -1,7 +1,7 @@
 import numpy
 
-from coordio.utils import sph2Cart, cart2Sph
-from coordio.conv import fieldToFocal, focalToWok, proj2XYplane
+from coordio.conv import (fieldToFocal, focalToWok, proj2XYplane,
+                          sph2Cart, cart2Sph)
 
 SMALL_NUM = 1e-10
 

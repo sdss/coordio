@@ -1,6 +1,6 @@
 import numpy
 
-from coordio.utils import cart2FieldAngle, fieldAngle2Cart, cart2Sph, sph2Cart
+from coordio.conv import cart2FieldAngle, fieldAngle2Cart, cart2Sph, sph2Cart
 
 
 SMALL_NUM = SMALL_NUM = 1e-9

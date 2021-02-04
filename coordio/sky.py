@@ -19,7 +19,6 @@ from .time import Time
 from .site import Site
 # from .telescope import Field
 from . import defaults
-from .utils import cart2Sph
 from . import conv
 
 
