@@ -53,6 +53,11 @@ ARGTYPES = [
                    POINTER(c_double), POINTER(c_double), POINTER(c_double),
                    POINTER(c_double), POINTER(c_double), POINTER(c_double))),
 
+
+    ('iauAtoc13', (c_char_p, c_double, c_double, c_double, c_double, c_double,
+                   c_double, c_double, c_double, c_double, c_double, c_double,
+                   c_double, c_double, c_double, POINTER(c_double), POINTER(c_double))),
+
     # double date1, double date2, double ut, double elong, double u, double v
     ('iauDtdb', (c_double, c_double, c_double, c_double, c_double, c_double)),
 
@@ -64,7 +69,22 @@ ARGTYPES = [
     ('iauPmsafe', (c_double, c_double, c_double, c_double, c_double, c_double,
                    c_double, c_double, c_double, c_double,
                    POINTER(c_double), POINTER(c_double), POINTER(c_double),
-                   POINTER(c_double), POINTER(c_double), POINTER(c_double)))
+                   POINTER(c_double), POINTER(c_double), POINTER(c_double))),
+
+    # compute position angle http://www.iausofa.org/2019_0722_C/sofa/hd2pa.c
+    # args: hour angle, declination, site latitude (radians)
+    ('iauHd2pa', (c_double, c_double, c_double)),
+
+    # Horizon to equatorial coordinates: transform azimuth and altitude
+    # to hour angle and declination.
+    # args: double az, double alt, double latitude, double *ha, double *dec
+    ('iauAe2hd', (c_double, c_double, c_double,
+                  POINTER(c_double), POINTER(c_double))),
+
+    # Earth rotation angle
+    # sum of the arguments should be jd in the UT1 scale
+    # args: double jd, double 0
+    ('iauEra00', (c_double, c_double))
 
 ]
 
@@ -108,6 +128,8 @@ class SOFA(ctypes.CDLL):
         # Some special cases of function that do not return
         # an integer error check.
         self.iauDtdb.restype = c_double
+        self.iauHd2pa.restype = c_double
+        self.iauEra00.restype = c_double
 
     def get_internal_date(self, date=None, scale='UTC'):
         """Returns the internal representation of a date.

@@ -6,6 +6,7 @@
 # @Filename: conftest.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
+from coordio.iers import IERS
 import pathlib
 import shutil
 import urllib.request

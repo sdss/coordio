@@ -34,7 +34,7 @@ extra_link_args = []
 
 ext_modules = [
     Extension(
-        'python.coordio.libsofa',
+        'coordio.libsofa',
         sources=get_sources(),
         include_dirs=[LIBSOFA_PATH],
         libraries=[],

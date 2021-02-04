@@ -35,4 +35,9 @@ from .exceptions import *
 from .iers import IERS
 from .site import Site
 from .sky import *
+from .telescope import *
 from .time import Time
+from .wok import Wok
+from .tangent import Tangent
+from .guide import Guide
+from .positioner import PositionerBoss, PositionerApogee, PositionerMetrology

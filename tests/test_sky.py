@@ -11,13 +11,18 @@ import numpy
 from astropy import units as u
 from astropy.coordinates import AltAz, Distance, EarthLocation, SkyCoord
 
-from coordio import ICRS, Observed, Site
+from coordio import ICRS, Observed, Site, CoordIOError
 
+import pytest
+
+wavelength = 7000
 
 icrs = ICRS([[100, 10], [101., 11]],
             pmra=[100, 0.1], pmdec=[-15, -0.5],
             parallax=[10., 10.], rvel=[100, 1000],
-            epoch=[2451545, 2451545])
+            epoch=[2451545, 2451545], wavelength=wavelength)
+
+
 
 astropy_icrs = SkyCoord(ra=[100, 101] * u.deg, dec=[10, 11] * u.deg,
                         frame='icrs',
@@ -71,7 +76,11 @@ def test_to_observed():
 
     site.set_time(2458863, scale='TAI')
 
-    observed = icrs.to_observed(site)
+    # test for failure if site isn't provided
+    with pytest.raises(CoordIOError):
+        observed = Observed(icrs)
+
+    observed = Observed(icrs, site=site)
 
     new_obstime = astropy.time.Time(2458863, format='jd', scale='tai')
     new_astropy_icrs = astropy_icrs.apply_space_motion(new_obstime=new_obstime)
@@ -81,7 +90,7 @@ def test_to_observed():
               pressure=site.pressure * u.mbar,
               temperature=site.temperature * u.deg_C,
               relative_humidity=site.rh,
-              obswl=site.wavelength * u.Angstrom))
+              obswl=wavelength * u.Angstrom))
 
     assert isinstance(observed, Observed)
 
@@ -92,3 +101,48 @@ def test_to_observed():
         observed[:, 1], astropy_observed.az.deg,
         atol=3e-5 / numpy.cos(numpy.radians(astropy_observed.alt.deg)).max(),
         rtol=1e-7)
+
+    # test that raw initialization of observed yeilds the same answers
+    obsArr = numpy.array(observed)
+    observed2 = Observed(obsArr, site=site)
+
+    numpy.testing.assert_allclose(observed[:,0], observed2[:,0],
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed[:,1], observed2[:,1],
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed.ra, observed2.ra,
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed.dec, observed2.dec,
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed.ha, observed2.ha,
+                                  atol=3e-7, rtol=0)
+
+    numpy.testing.assert_allclose(observed.pa, observed2.pa,
+                                  atol=3e-7, rtol=0)
+
+    # _icrs = ICRS(observed, wavelength=wavelength)
+    # numpy.testing.assert_array_almost_equal(icrs, _icrs, decimal=5)
+
+def test_icrs_obs_cycle():
+    time = 2451545
+    icrs = ICRS([[100, 10], [101., 11], [180., 30]],
+                epoch=time, wavelength=wavelength)
+
+    site.set_time(time, scale='TAI')
+    observed = Observed(icrs, site=site)
+    _icrs = ICRS(observed, wavelength=wavelength)
+
+    a1 = SkyCoord(ra=icrs[:,0] * u.deg, dec=icrs[:,1] * u.deg)
+    a2 = SkyCoord(ra=_icrs[:,0] * u.deg, dec=_icrs[:,1] * u.deg)
+    sep = a1.separation(a2)
+    assert numpy.max(numpy.array(sep)*3600) < 0.5
+
+if __name__ == "__main__":
+    test_icrs_obs_cycle()
+
+
+

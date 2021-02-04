@@ -97,7 +97,11 @@ class IERS:
             URL = BASE_URL + 'standard/csv/finals.data.csv'
             warnings.warn(f'Downloading IERS table from {URL}.',
                           CoordIOUserWarning)
-            urllib.request.urlretrieve(URL, path)
+            url = urllib.request.urlopen(URL)
+            data = url.read()
+            with open(path, 'wb') as fd:
+                fd.write(data)
+            url.close()
         else:
             raise NotImplementedError('Only finals channels is implemented.')
 

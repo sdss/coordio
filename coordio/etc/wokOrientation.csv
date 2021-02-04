@@ -1,0 +1,9 @@
+# defines the wok orientation in focal plane coordinates at zero position
+# angle.  XYZ position is the location of the wok vertex in focal plane coords.
+# Z position is measured from solid model.  XY position and XY tilts
+# must be determined after installation on telescope with on sky testing.  If
+# wok is aligned perfectly with the rotator XY position and XY tilts should be
+# zero.  Tilt about x is applied before tilt about y.
+site,x,y,z,xTilt,yTilt
+APO,0,0,-919.4791,0,0
+LCO,0,0,-1136.0665,0,0

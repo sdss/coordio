@@ -11,3 +11,9 @@ site:
         altitude: 2788
         wavelength: 7500
         system_time_scale: TAI
+    LCO:
+        longitude: 289.307920
+        latitude: -29.01597
+        altitude: 2380
+        wavelength: 7500
+        system_time_scale: TAI
