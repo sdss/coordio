@@ -191,8 +191,8 @@ def test_raises():
 
 def test_field_obs_cycle():
     # try a bunch of pointings make sure the round trip works
-    azCens = numpy.random.uniform(0,360, size=30)
-    altCens = numpy.random.uniform(0,90, size=30)
+    azCens = numpy.random.uniform(1,359, size=30)
+    altCens = numpy.random.uniform(0,89, size=30)
     for site in [lcoSite, apoSite]:
         for azCen, altCen in zip(azCens, altCens):
             azCoords = azCen + numpy.random.uniform(-1,1, size=10)
@@ -202,12 +202,16 @@ def test_field_obs_cycle():
             fc = Observed([[altCen, azCen]], site=site)
             field = Field(obs, field_center=fc)
             obs1 = Observed(field, site=site)
+            # with open("/Users/csayres/Desktop/last.txt", "w") as f:
+            #     f.write("%s %.8f %.8f\n"%(site.name, azCen, altCen))
+            #     for coord in altAzs:
+            #         f.write("%.8f %.8f\n"%(coord[0], coord[1]))
 
-            numpy.testing.assert_array_almost_equal(obs, obs1, decimal=10)
-            numpy.testing.assert_array_almost_equal(obs.ra, obs1.ra, decimal=10)
-            numpy.testing.assert_array_almost_equal(obs.dec, obs1.dec, decimal=10)
-            numpy.testing.assert_array_almost_equal(obs.ha, obs1.ha, decimal=10)
-            numpy.testing.assert_array_almost_equal(obs.pa, obs1.pa, decimal=10)
+            numpy.testing.assert_array_almost_equal(obs, obs1, decimal=9)
+            numpy.testing.assert_array_almost_equal(obs.ra, obs1.ra, decimal=9)
+            numpy.testing.assert_array_almost_equal(obs.dec, obs1.dec, decimal=9)
+            numpy.testing.assert_array_almost_equal(obs.ha, obs1.ha, decimal=9)
+            numpy.testing.assert_array_almost_equal(obs.pa, obs1.pa, decimal=9)
 
             fieldArr = numpy.array(field.copy())
             field1 = Field(fieldArr, field_center=fc)
@@ -215,7 +219,7 @@ def test_field_obs_cycle():
             numpy.testing.assert_equal(field, field1)
             for attr in ['x', 'y', 'z', 'x_angle', 'y_angle']:
                 numpy.testing.assert_almost_equal(
-                    getattr(field, attr), getattr(field1, attr), decimal=10
+                    getattr(field, attr), getattr(field1, attr), decimal=9
                 )
 
 
