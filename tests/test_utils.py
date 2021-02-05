@@ -1,97 +1,218 @@
-# import numpy
+from coordio.utils import radec2wokxy, wokxy2radec
+import time
+import matplotlib.pyplot as plt
+import numpy
+import coordio.fitData as fitData
 
-# from coordio.conv import cart2FieldAngle, fieldAngle2Cart, cart2Sph, sph2Cart
-
-
-# SMALL_NUM = SMALL_NUM = 1e-9
-# nPts = 100000
-# thetas = numpy.random.uniform(size=nPts) * 2 * numpy.pi
-# # maximum of 4 degrees off axis
-# phis = numpy.radians(numpy.random.uniform(size=nPts) * 4)
-# r = 1
-# xs = r * numpy.cos(thetas) * numpy.sin(phis)
-# ys = r * numpy.sin(thetas) * numpy.sin(phis)
-# zs = r * numpy.cos(phis)
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 
 
-# def test_phiConversion(verbose=False):
-#     for fieldAngle in numpy.linspace(-10,10,100):
-#         x,y,z = fieldAngle2Cart(fieldAngle, 0)
-#         theta, phi = cart2Sph(x,y,z)
-#         if verbose:
-#             print(numpy.abs(phi-fieldAngle))
-#         else:
-#             assert numpy.abs(phi-numpy.abs(fieldAngle)) < SMALL_NUM
+# apo plate 15017
+apo = {}
+apo["utcJD"] = 2459249.6184
+apo["alt"] = 54  # at the JD supplied...
+apo["file"] = "plPlugMapP-15017.par"
 
-#         x,y,z = fieldAngle2Cart(0, fieldAngle)
-#         theta, phi = cart2Sph(x,y,z)
-#         if verbose:
-#             print(numpy.abs(phi-fieldAngle))
-#         else:
-#             assert numpy.abs(phi-numpy.abs(fieldAngle)) < SMALL_NUM
+# lco plate 12377
+lco = {}
+lco["utcJD"] = 2459249.8428
+lco["alt"] = 45.18  # at the JD supplied
+lco["file"] = "plPlugMapP-12377.par"
 
 
-# def test_cartField():
-#     # pick some random points on the unit sphere near the +Z cap
-#     for theta, phi, x, y, z in zip(thetas, phis, xs, ys, zs):
-#         xField, yField = cart2FieldAngle(x, y, z)
-#         if theta < numpy.pi / 2 or theta > 3 * numpy.pi / 2:
-#             assert xField < 0
-#         else:
-#             assert xField > 0
+def parsePlugmap(plPlugFile):
+    with open(plPlugFile) as f:
+        rawLines = f.readlines()
 
-#         if theta < numpy.pi:
-#             assert yField < 0
-#         else:
-#             assert yField > 0
+    info = {}
+    info["xFocal"] = []
+    info["yFocal"] = []
+    info["fiberType"] = []
+    info["ra"] = []
+    info["dec"] = []
 
-#         xSolve, ySolve, zSolve = fieldAngle2Cart(xField, yField)
-#         # print(xSolve - x, ySolve - y, zSolve - z)
+    for line in rawLines:
+        if line.startswith("ha "):
+            info["ha"] = float(line.split()[1])
+        if line.startswith("temp "):
+            info["temp"] = float(line.split()[-1])
+        if line.startswith("raCen "):
+            info["raCen"] = float(line.split()[-1])
+        if line.startswith("decCen "):
+            info["decCen"] = float(line.split()[-1])
+        if line.startswith("PLUGMAPOBJ "):
+            if " QSO " in line:
+                # assume this is a boss fiber
+                split = line.split(" QSO ")[-1].split()
+                info["xFocal"].append(float(split[0]))
+                info["yFocal"].append(float(split[1]))
 
-#         assert numpy.abs(xSolve-x) < SMALL_NUM
-#         assert numpy.abs(ySolve-y) < SMALL_NUM
-#         assert numpy.abs(zSolve-z) < SMALL_NUM
+                split = line.split(" OBJECT ")[-1].split()
+                info["ra"].append(float(split[0]))
+                info["dec"].append(float(split[1]))
+
+                info["fiberType"].append("Boss")
+            elif " STAR_BHB " in line:
+                split = line.split(" STAR_BHB ")[-1].split()
+                info["xFocal"].append(float(split[0]))
+                info["yFocal"].append(float(split[1]))
+
+                split = line.split(" OBJECT ")[-1].split()
+                info["ra"].append(float(split[0]))
+                info["dec"].append(float(split[1]))
+
+                info["fiberType"].append("Apogee")
+
+    return info
 
 
-# def test_cartFieldCycle():
-#     # check round trippage
-#     inds = numpy.random.choice(range(nPts), size=100)
-#     for ind in inds:
-#         x = xs[ind]
-#         y = ys[ind]
-#         z = zs[ind]
-#         _x = xs[ind]
-#         _y = ys[ind]
-#         _z = zs[ind]
-#         for ii in range(100):
-#             # print("ii", ii)
-#             xField, yField = cart2FieldAngle(_x,_y,_z)
-#             _x, _y, _z = fieldAngle2Cart(xField, yField)
-#             # repeated round trips require extra numerical buffer
-#             assert numpy.abs(_x-x) < SMALL_NUM
-#             assert numpy.abs(_y-y) < SMALL_NUM
-#             assert numpy.abs(_z-z) < SMALL_NUM
+def run_field(siteName, plot=False):
+    if siteName == "LCO":
+        dd = lco
+    else:
+        dd = apo
+    plateData = parsePlugmap(dd["file"])
+
+    xWok, yWok, fieldWarn, ha, pa = radec2wokxy(
+        plateData["ra"], plateData["dec"], dd["utcJD"], plateData["fiberType"],
+        plateData["raCen"], plateData["decCen"], 0, siteName, dd["utcJD"]
+    )
+
+    dHA = ha - plateData["ha"]
+
+    # convert to hours
+    dHA = 24/360.*dHA
+
+    # convert to days
+    dHA = dHA/24
+
+    # update time of observation to be at designed hour angle
+    timeObs = dd["utcJD"] - dHA
+
+    xWok, yWok, fieldWarn, ha, pa = radec2wokxy(
+        plateData["ra"], plateData["dec"], timeObs, plateData["fiberType"],
+        plateData["raCen"], plateData["decCen"], 0, siteName, timeObs
+    )
+
+    print("obs ha", ha)
+    print("design ha", plateData["ha"])
+    xFocal = numpy.array(plateData["xFocal"])
+    yFocal = numpy.array(plateData["yFocal"])
+
+    # lco xy is backwards
+    if siteName == "LCO":
+        xFocal = xFocal*-1
+        yFocal = yFocal*-1
+
+    if plot:
+        plt.figure(figsize=(8,8))
+        plt.plot(xFocal, yFocal, 'x')
+        plt.axis("equal")
+        plt.title("focal")
+
+        plt.figure(figsize=(8,8))
+        plt.plot(xWok, yWok, 'x')
+        plt.axis("equal")
+        plt.title("wok")
+
+    dx = xFocal - xWok
+    dy = yFocal - yWok
+
+    if plot:
+        plt.figure()
+        plt.hist(dx*1000)
+        plt.xlabel("x err (micron)")
+
+        plt.figure()
+        plt.hist(dy*1000)
+        plt.xlabel("y err (micron)")
+
+        plt.figure()
+        plt.hist(numpy.sqrt(dx**2+dy**2)*1000)
+        plt.xlabel("r err (micron)")
 
 
-# def test_sphCartCycle():
-#     # check round trippage
-#     inds = numpy.random.choice(range(nPts), size=100)
-#     for ind in inds:
-#         x = xs[ind]
-#         y = ys[ind]
-#         z = zs[ind]
-#         theta = numpy.degrees(thetas[ind])
-#         phi = numpy.degrees(phis[ind])
-#         _x = xs[ind]
-#         _y = ys[ind]
-#         _z = zs[ind]
-#         for ii in range(100):
-#             _theta, _phi = cart2Sph(_x, _y, _z)
-#             # print("[%.4f, %.4f] == %.5e, %.5e"%(theta, phi, phiTheta[0]-theta, phiTheta[1]-phi))
-#             assert numpy.abs(_theta - theta) < SMALL_NUM
-#             assert numpy.abs(_phi - phi) < SMALL_NUM
-#             _x, _y, _z = sph2Cart(_theta, _phi)
-#             assert numpy.abs(_x-x) < SMALL_NUM
-#             assert numpy.abs(_y-y) < SMALL_NUM
-#             assert numpy.abs(_z-z) < SMALL_NUM
+    rmsErr = numpy.sqrt(numpy.sum(dx**2+dy**2) / len(dx))
 
+    print("rms error (micron)", rmsErr*1000)
+
+    if plot:
+        plt.figure(figsize=(8,8))
+        plt.title("Raw Residuals")
+        plt.quiver(xWok,yWok,dx,dy, angles="xy")
+        plt.axis("equal")
+
+
+    # fit translation, rotation, scale
+    fitTransRotScale = fitData.ModelFit(
+        model=fitData.TransRotScaleModel(),
+        measPos=numpy.array([xWok, yWok]).T,
+        nomPos=numpy.array([xFocal, yFocal]).T,
+        doRaise=True,
+    )
+
+    xyOff, rotAngle, scale = fitTransRotScale.model.getTransRotScale()
+    print("xyOff (micron)", xyOff * 1000)
+    print("rot (deg)", rotAngle)
+    print("scale", scale)
+
+    posErr = fitTransRotScale.getPosError()
+    rmsErr = numpy.sqrt(numpy.sum(posErr**2) / len(posErr))
+    print("fit rms error (micron)", rmsErr*1000)
+
+    if siteName == "LCO":
+        assert rmsErr*1000 < 1
+
+    if plot:
+        plt.figure()
+        plt.hist(posErr[:,0]*1000)
+        plt.xlabel("fit x err (micron)")
+
+        plt.figure()
+        plt.hist(posErr[:,1]*1000)
+        plt.xlabel("fit y err (micron)")
+
+        plt.figure()
+        plt.hist(numpy.sqrt(posErr[:,0]**2+posErr[:,1]**2)*1000)
+        plt.xlabel("fit r err (micron)")
+
+        plt.figure(figsize=(8,8))
+        plt.title("Fit Residuals")
+        plt.quiver(xWok,yWok,posErr[:,0], posErr[:,1], angles="xy")
+        plt.axis("equal")
+
+    # run the reverse
+    ra, dec, fieldWarn = wokxy2radec(
+        xWok, yWok, plateData["fiberType"], plateData["raCen"],
+        plateData["decCen"], 0, siteName, timeObs
+    )
+
+    sk1 = SkyCoord(ra=ra * u.deg, dec=dec * u.deg)
+    sk2 = SkyCoord(ra=plateData["ra"] * u.deg, dec=plateData["dec"] * u.deg)
+
+    angSep = sk1.separation(sk2)
+    asec = numpy.array(angSep)*3600
+    assert numpy.max(asec) < 0.5  # less than 0.5 arcsecs round trip
+    if plot:
+        plt.figure()
+        plt.hist(asec)
+        plt.title("angular sep (arcsec)")
+        plt.show()
+
+
+def test_utils():
+    run_field("APO")
+    run_field("LCO")
+
+
+if __name__ == "__main__":
+    print("APO")
+    print("-----------")
+    run_field("APO", plot=True)
+    print("\n\n")
+
+    print("LCO")
+    print("-----------")
+    run_field("LCO", plot=True)
+    # print("\n\n")

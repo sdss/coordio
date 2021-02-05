@@ -41,3 +41,5 @@ from .wok import Wok
 from .tangent import Tangent
 from .guide import Guide
 from .positioner import PositionerBoss, PositionerApogee, PositionerMetrology
+from .utils import *
+from .fitData import TransRotScaleModel

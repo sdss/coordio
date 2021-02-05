@@ -7,12 +7,49 @@ from .site import Site
 from . import defaults
 
 
+def wokCurveAPO(r):
+    """ZEMAX Modeled curve of the focal plane at APO at radial position r
+
+    Parameters
+    -----------
+    r : scalar or 1D array
+        radius (cylindrical coords) mm
+
+    Returns:
+    ---------
+    result : scalar or 1D array
+        z (height) of wok surface in mm (0 at vertex)
+    """
+    A = 9199.322517101522
+    return A - numpy.sqrt(A**2 - r**2)
+
+
+def wokCurveLCO(r):
+    """ZEMAX Modeled curve of the focal plane LCO at radial position r
+
+    Parameters
+    -----------
+    r : scalar or 1D array
+        radius (cylindrical coords) mm
+
+    Returns:
+    ---------
+    result : scalar or 1D array
+        z (height) of wok surface in mm (0 at vertex)
+    """
+    A = 0.000113636363636
+    B = 0.0000000129132231405
+    C = 0.0000012336318
+    return A * r**2 / (1 + numpy.sqrt(1 - B * r**2)) + C * r**2
+
+
 def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, pmra=None, pmdec=None, parallax=None,
                 radVel=None, pressure=None, relativeHumidity=0.5,
                 temperature=10):
     r"""
-    Convert from ra, dec ICRS coords to a flat-wok XY in mm
+    Convert from ra, dec ICRS coords to a flat-wok XY in mm.  At obsAngle=0
+    wok +y is a aligned with +dec, and wok +x is aligned with +ra
 
     Question for José, do we need to enforce a time scale?  I think everything
     defaults to UTC.
@@ -80,6 +117,10 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     fieldWarn : numpy.array
         boolean array.  Where True the coordinate converted should be eyed with
         suspicion.  (It came from very far off axis).
+    hourAngle : float
+        hour angle of field center in degrees
+    positionAngle : float
+        position angle of field center in degrees
     """
     nCoords = len(ra)
 
@@ -104,20 +145,29 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     # use the guide wavelength for field center
     # epoch not needed, no propermotions, etc (josé verify?)
     icrsCen = ICRS([[raCen, decCen]], wavelength=defaults.INST_TO_WAVE["GFA"])
-    obsCen = Observed(icrsCen, site=site)
+    obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
+
 
     radec = numpy.array([ra, dec]).T
+
     icrs = ICRS(
         radec, epoch=coordEpoch, pmra=pmra, pmdec=pmdec, parallax=parallax,
         rvel=radVel, wavelength=wavelength
     )
 
-    obs = Observed(icrs, site=site)
-    field = Field(obs, field_center=obsCen)
+    # propogate propermotions, etc
+    icrs = icrs.to_epoch(obsTime, site=site)
+
+    obs = Observed(icrs, site=site, wavelength=wavelength)
+    field = Field(obs, field_center=obsCen, wavelength=wavelength)
     focal = FocalPlane(field, wavelength=wavelength, site=site)
     wok = Wok(focal, site=site, obsAngle=obsAngle)
 
-    return wok[:, 0], wok[:, 1], focal.field_warn
+    output = (
+        wok[:, 0], wok[:, 1], focal.field_warn,
+        float(obsCen.ha), float(obsCen.pa)
+    )
+    return output
 
 
 def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
@@ -200,22 +250,32 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
     # use the guide wavelength for field center
     # epoch not needed, no propermotions, etc (josé verify?)
     icrsCen = ICRS([[raCen, decCen]], wavelength=defaults.INST_TO_WAVE["GFA"])
-    obsCen = Observed(icrsCen, site=site)
+    obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
 
     # hack in z wok position of 143 mm
     # could do a little better and estimate the curve of focal surface
     xyzWok = numpy.zeros((nCoords, 3))
+    rWok = numpy.sqrt(xWok**2 + yWok**2)
+
+    # this is not totally correct
+    # but probably better than modeling as flat
+    # project the xy positions onto the 3d surface
+    # and add 143 (the positioner height)
+    if obsSite == "APO":
+        zWok = 143 + wokCurveAPO(rWok)
+    else:
+        zWok = 143 + wokCurveLCO(rWok)
+
     xyzWok[:, 0] = xWok
     xyzWok[:, 1] = yWok
-    xyzWok[:, 2] = 143
+    xyzWok[:, 2] = zWok
 
     wok = Wok(xyzWok, site=site, obsAngle=obsAngle)
     focal = FocalPlane(wok, wavelength=wavelength, site=site)
-    field = Field(focal, field_center=obsCen)
-    obs = Observed(field, site=site)
+    field = Field(focal, field_center=obsCen, wavelength=wavelength)
+    obs = Observed(field, site=site, wavelength=wavelength)
     icrs = ICRS(obs, epoch=obsTime, wavelength=wavelength)
 
-
-    return icrs[:, 0], icrs[:, 1], focal.field_warn
+    return icrs[:, 0], icrs[:, 1], field.field_warn
 
 
