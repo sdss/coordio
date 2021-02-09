@@ -4,6 +4,13 @@
 coordio Reference
 =================
 
+High Level Utility Functions
+------------------------------
+.. automodule:: coordio.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 SOFA
 ----
 
