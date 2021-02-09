@@ -105,44 +105,37 @@ def run_field(siteName, plot=False):
         xFocal = xFocal*-1
         yFocal = yFocal*-1
 
-    if plot:
-        plt.figure(figsize=(8,8))
-        plt.plot(xFocal, yFocal, 'x')
-        plt.axis("equal")
-        plt.title("focal")
+    # if plot:
+    #     plt.figure(figsize=(8,8))
+    #     plt.plot(xFocal, yFocal, 'x')
+    #     plt.axis("equal")
+    #     plt.title("focal")
 
-        plt.figure(figsize=(8,8))
-        plt.plot(xWok, yWok, 'x')
-        plt.axis("equal")
-        plt.title("wok")
+    #     plt.figure(figsize=(8,8))
+    #     plt.plot(xWok, yWok, 'x')
+    #     plt.axis("equal")
+    #     plt.title("wok")
 
     dx = xFocal - xWok
     dy = yFocal - yWok
+    rmsErr = numpy.sqrt(numpy.mean(dx**2+dy**2))*1000
 
     if plot:
-        plt.figure()
-        plt.hist(dx*1000)
-        plt.xlabel("x err (micron)")
 
         plt.figure()
-        plt.hist(dy*1000)
-        plt.xlabel("y err (micron)")
-
-        plt.figure()
+        plt.title("%s\nRaw RMS error %.2f microns"%(siteName, rmsErr))
         plt.hist(numpy.sqrt(dx**2+dy**2)*1000)
-        plt.xlabel("r err (micron)")
+        plt.xlabel("err (micron)")
 
-
-    rmsErr = numpy.sqrt(numpy.sum(dx**2+dy**2) / len(dx))
-
-    print("rms error (micron)", rmsErr*1000)
-
-    if plot:
         plt.figure(figsize=(8,8))
-        plt.title("Raw Residuals")
+        plt.title(
+            "%s\nRaw Residuals\nRMS error %.2f microns"%(siteName, rmsErr)
+        )
         plt.quiver(xWok,yWok,dx,dy, angles="xy")
+        plt.xlabel("x wok (mm)")
+        plt.ylabel("y wok (mm)")
         plt.axis("equal")
-
+        plt.savefig("%sErrs.png"%siteName, dpi=150)
 
     # fit translation, rotation, scale
     fitTransRotScale = fitData.ModelFit(
@@ -153,34 +146,41 @@ def run_field(siteName, plot=False):
     )
 
     xyOff, rotAngle, scale = fitTransRotScale.model.getTransRotScale()
-    print("xyOff (micron)", xyOff * 1000)
+    print("xy translation (micron)", xyOff * 1000)
     print("rot (deg)", rotAngle)
     print("scale", scale)
 
     posErr = fitTransRotScale.getPosError()
-    rmsErr = numpy.sqrt(numpy.sum(posErr**2) / len(posErr))
-    print("fit rms error (micron)", rmsErr*1000)
+    print("posErr shape", posErr.shape)
+    rmsErr = numpy.sqrt(numpy.mean(posErr[:,0]**2 + posErr[:,1]**2))*1000
+    print("fit rms error (micron)", rmsErr)
 
     if siteName == "LCO":
-        assert rmsErr*1000 < 1
+        assert rmsErr < 1
 
     if plot:
-        plt.figure()
-        plt.hist(posErr[:,0]*1000)
-        plt.xlabel("fit x err (micron)")
+        # plt.figure()
+        # plt.hist(posErr[:,0]*1000)
+        # plt.xlabel("fit x err (micron)")
+
+        # plt.figure()
+        # plt.hist(posErr[:,1]*1000)
+        # plt.xlabel("fit y err (micron)")
 
         plt.figure()
-        plt.hist(posErr[:,1]*1000)
-        plt.xlabel("fit y err (micron)")
-
-        plt.figure()
+        plt.title("%s Fit\nRMS error %.2f microns"%(siteName, rmsErr))
         plt.hist(numpy.sqrt(posErr[:,0]**2+posErr[:,1]**2)*1000)
-        plt.xlabel("fit r err (micron)")
+        plt.xlabel("fit err (micron)")
 
         plt.figure(figsize=(8,8))
-        plt.title("Fit Residuals")
+        plt.title(
+            "%s Fit Residuals\nRMS error %.2f microns"%(siteName, rmsErr)
+        )
         plt.quiver(xWok,yWok,posErr[:,0], posErr[:,1], angles="xy")
+        plt.xlabel("x wok (mm)")
+        plt.ylabel("y wok (mm)")
         plt.axis("equal")
+        plt.savefig("%sfitErrs.png"%siteName, dpi=150)
 
     # run the reverse
     ra, dec, fieldWarn = wokxy2radec(
@@ -198,7 +198,7 @@ def run_field(siteName, plot=False):
         plt.figure()
         plt.hist(asec)
         plt.title("angular sep (arcsec)")
-        plt.show()
+
 
 
 def test_utils():
@@ -215,4 +215,5 @@ if __name__ == "__main__":
     print("LCO")
     print("-----------")
     run_field("LCO", plot=True)
+    plt.show()
     # print("\n\n")
