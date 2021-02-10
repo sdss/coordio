@@ -110,11 +110,11 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 
     Returns
     ---------
-    xWok : numpy.array
+    xWok : numpy.ndarray
         x wok coordinate, mm
-    yWok : numpy.array
+    yWok : numpy.ndarray
         y wok coordinate, mm
-    fieldWarn : numpy.array
+    fieldWarn : numpy.ndarray
         boolean array.  Where True the coordinate converted should be eyed with
         suspicion.  (It came from very far off axis).
     hourAngle : float
@@ -174,7 +174,7 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, pressure=None, relativeHumidity=0.5,
                 temperature=10):
     r"""
-    Convert from ra, dec ICRS coords to a flat-wok XY in mm
+    Convert from flat-wok XY (mm) to ra, dec ICRS coords (deg)
 
     Question for José, do we need to enforce a time scale?  I think everything
     defaults to UTC.
@@ -219,11 +219,11 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
 
     Returns
     ---------
-    xWok : numpy.array
+    xWok : numpy.ndarray
         x wok coordinate, mm
-    yWok : numpy.array
+    yWok : numpy.ndarray
         y wok coordinate, mm
-    fieldWarn : numpy.array
+    fieldWarn : numpy.ndarray
         boolean array.  Where True the coordinate converted should be eyed with
         suspicion.  (It came from very far off axis).
     """
