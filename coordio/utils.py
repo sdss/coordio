@@ -8,7 +8,7 @@ from . import defaults
 
 
 def wokCurveAPO(r):
-    """ZEMAX Modeled curve of the focal plane at APO at radial position r
+    """Curve of the wok at APO at radial position r
 
     Parameters
     -----------
@@ -25,7 +25,7 @@ def wokCurveAPO(r):
 
 
 def wokCurveLCO(r):
-    """ZEMAX Modeled curve of the focal plane LCO at radial position r
+    """Curve of the wok LCO at radial position r
 
     Parameters
     -----------

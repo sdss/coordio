@@ -41,8 +41,8 @@ def verifySite(kwargs, strict=True):
 
 def verifyWavelength(kwargs, lenArray, strict=True):
     """Search through kwargs for wavelength parameter.  If not existent,
-    return the GFA wavelength (of the right size).  If strict and wavelengths
-    do not correspond to Apogee, Boss, or GFA wavelengths, raise a
+    return insert GFA wavelength to kwargs (of the right size).  If strict and
+    wavelengths do not correspond to Apogee, Boss, or GFA wavelengths, raise a
     CoordIOError
 
     Parameters
@@ -54,12 +54,6 @@ def verifyWavelength(kwargs, lenArray, strict=True):
     strict : bool
         if strict is True, wavelengths may only be those corresponding to
         Apogee, Boss, or GFA
-
-    Returns
-    ---------
-    wls : numpy.ndarray
-        1D array of length lenArray of wavelengths, defauts to
-        `defaults.WAVELENGTH`
 
     """
 
@@ -84,6 +78,8 @@ def verifyWavelength(kwargs, lenArray, strict=True):
                 "Invalid wavelength passed to FocalPlane \
                 valid wavelengths are %s"%(str(VALID_WAVELENGTHS))
             )
+
+    # modify
     kwargs["wavelength"] = wls
 
 
@@ -182,7 +178,7 @@ class Coordinate(numpy.ndarray):
 
         if obj.__coord_dim__ is not None and obj.shape[1] != obj.__coord_dim__:
             raise CoordinateError(
-                'The input array must be NxM, M=%i.' % obj.__coord_dim__
+                'The input array must be Nx%i.' % obj.__coord_dim__
             )
 
         for param in obj.__extra_params__:
