@@ -3,22 +3,25 @@ import time
 import matplotlib.pyplot as plt
 import numpy
 import coordio.fitData as fitData
+import os
+
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
+filedir = os.path.dirname(os.path.abspath(__file__))
 
 # apo plate 15017
 apo = {}
 apo["utcJD"] = 2459249.6184
 apo["alt"] = 54  # at the JD supplied...
-apo["file"] = "plPlugMapP-15017.par"
+apo["file"] = os.path.join(filedir, "plPlugMapP-15017.par")
 
 # lco plate 12377
 lco = {}
 lco["utcJD"] = 2459249.8428
 lco["alt"] = 45.18  # at the JD supplied
-lco["file"] = "plPlugMapP-12377.par"
+lco["file"] = os.path.join(filedir, "plPlugMapP-12377.par")
 
 
 def parsePlugmap(plPlugFile):
