@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sdss-coordio"
-version = "0.1.0-alpha.0"
+version = "1.0.0"
 description = "Coordinate conversion for SDSS-V"
 authors = ["José Sánchez-Gallego <gallegoj@uw.edu>",
            "Conor Sayres <csayres@uw.edu>"]

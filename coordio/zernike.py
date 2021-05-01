@@ -6,6 +6,9 @@ from .exceptions import CoordIOError
 def unitDiskify(x, y, scaleR=None):
     """
     Convert x y to unit disk, return the radial scale factor
+
+    # note scaleR is the max radius of the disk in original units
+    # divide by this to put things on a unit disk...
     """
     r = numpy.sqrt(x**2 + y**2)
     theta = numpy.arctan2(y, x)
@@ -351,7 +354,7 @@ def gradZern(x, y, zernOrder=20):
 
 class ZernFit(object):
     def __init__(self, xMeas, yMeas, xExpect,
-                 yExpect, orders=20, method="ortho"):
+                 yExpect, orders=20, method="ortho", scaleR=None):
         """
         Basic least squares fitter for zernike gradients.  Translation,
         rotation and scale are expected to be removed from x/y Meas prior to
@@ -376,6 +379,9 @@ class ZernFit(object):
             https://doi.org/10.1364/JOSAA.35.000840
             Grad uses method from:
             https://doi.org/10.1364/OE.26.018878
+        scaleR : float or None
+            if not None, apply this radial scale to xyMeas input
+            to put coords on unit disk
         """
         self.orders = orders
         self.xMeas = xMeas
@@ -387,7 +393,9 @@ class ZernFit(object):
 
         # force all measurements to unit disk
         # scale expected locations by same factor
-        self.xMeasUnit, self.yMeasUnit, self.rScale = unitDiskify(xMeas, yMeas)
+        self.xMeasUnit, self.yMeasUnit, self.rScale = unitDiskify(
+            xMeas, yMeas, scaleR
+        )
         self.xExpectUnit, self.yExpectUnit, _junk = unitDiskify(
             xExpect, yExpect, self.rScale
         )
