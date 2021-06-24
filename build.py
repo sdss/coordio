@@ -17,6 +17,9 @@ import sys
 LIBSOFA_PATH = os.path.join(os.path.dirname(__file__),
                             'cextern/sofa')
 
+CCOORDIO_PATH = os.path.join(os.path.dirname(__file__),
+                            'cextern/conv.cpp')
+
 
 def get_sources():
 
@@ -77,7 +80,7 @@ ext_modules = [
         optional=False),
     Extension(
         'coordio.ccoordio',
-        sources=["/Users/csayres/code/coordio/cextern/conv.cpp"],
+        sources=[CCOORDIO_PATH],
         include_dirs=getIncludes(),
         extra_compile_args = extra_compile_args2,
         extra_link_args = extra_link_args2),
