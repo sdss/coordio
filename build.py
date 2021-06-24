@@ -11,6 +11,7 @@ import os
 import shutil
 from distutils.command.build_ext import build_ext
 from distutils.core import Distribution, Extension
+import sys
 
 
 LIBSOFA_PATH = os.path.join(os.path.dirname(__file__),
@@ -31,6 +32,37 @@ def get_sources():
 extra_compile_args = ['-c', '-pedantic', '-Wall', '-W', '-O']
 extra_link_args = []
 
+class getPybindInclude(object):
+    """Helper class to determine the pybind11 include path
+    The purpose of this class is to postpone importing pybind11
+    until it is actually installed, so that the ``get_include()``
+    method can be invoked.
+    https://github.com/pybind/python_example/blob/master/setup.py
+    """
+
+    def __init__(self, user=False):
+        self.user = user
+
+    def __str__(self):
+        import pybind11
+        return pybind11.get_include(self.user)
+
+def getIncludes():
+    return [
+        'include',
+        # '/usr/local/include',
+        '/usr/local/include/eigen3',
+        '/usr/include/eigen3',
+        # '/usr/include',
+        getPybindInclude(),
+        getPybindInclude(user=True)
+    ]
+
+extra_compile_args2 = ["--std=c++11", "-fPIC", "-v", "-O3"]
+extra_link_args2 = None
+if sys.platform == 'darwin':
+    extra_compile_args2 += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
+    extra_link_args2 = ["-v", '-mmacosx-version-min=10.9']
 
 ext_modules = [
     Extension(
@@ -43,6 +75,12 @@ ext_modules = [
         extra_link_args=extra_link_args,
         language='c',
         optional=False),
+    Extension(
+        'coordio.ccoordio',
+        sources=["/Users/csayres/code/coordio/cextern/conv.cpp"],
+        include_dirs=getIncludes(),
+        extra_compile_args = extra_compile_args2,
+        extra_link_args = extra_link_args2),
 ]
 
 
