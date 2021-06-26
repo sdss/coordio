@@ -3,7 +3,7 @@ import numpy
 from coordio.conv import (fieldToFocal, focalToWok, proj2XYplane,
                           sph2Cart, cart2Sph, fieldAngle2Cart, cart2FieldAngle)
 
-SMALL_NUM = 1e-9
+SMALL_NUM = 2e-9
 nPts = 100000
 thetas = numpy.random.uniform(size=nPts) * 2 * numpy.pi
 # maximum of 4 degrees off axis

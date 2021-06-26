@@ -54,8 +54,8 @@ def getIncludes():
     return [
         'include',
         # '/usr/local/include',
-        '/usr/local/include/eigen3',
-        '/usr/include/eigen3',
+        # '/usr/local/include/eigen3',
+        # '/usr/include/eigen3',
         # '/usr/include',
         getPybindInclude(),
         getPybindInclude(user=True)
@@ -79,7 +79,7 @@ ext_modules = [
         language='c',
         optional=False),
     Extension(
-        'coordio.ccoordio',
+        'coordio.libcoordio',
         sources=[CCOORDIO_PATH],
         include_dirs=getIncludes(),
         extra_compile_args = extra_compile_args2,

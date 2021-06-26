@@ -4,6 +4,8 @@ import warnings
 from . import defaults
 from .exceptions import CoordIOUserWarning
 
+from . import libcoordio
+
 # low level, functional conversions
 
 def fieldAngle2Cart(xField, yField):
@@ -686,14 +688,39 @@ def wokToFocal(
 def _verify3Vector(checkMe, label):
     if not hasattr(checkMe, "__len__"):
         raise RuntimeError("%s must be a 3-vector"%label)
-    elif len(checkMe) != 3:
+    checkMe = numpy.array(checkMe).squeeze()
+    if len(checkMe) != 3:
         raise RuntimeError("%s must be a 3-vector"%label)
-    else:
-        checkMe = numpy.array(checkMe)
+    if checkMe.ndim != 1:
+        raise RuntimeError("%s must be a 3-vector"%label)
     return checkMe
 
 
 def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
+                 elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
+                 dx=0, dy=0, dz=0, dRot=0):
+    # format into list of lists
+    if hasattr(xWok, "__len__"):
+        xyzWok = numpy.array([xWok,yWok,zWok]).T.tolist()
+        # xyzWok = [list(a) for a in zip(xWok,yWok,zWok)]
+
+        xyzTangent = libcoordio.wokToTangentArr(
+            xyzWok, list(b), list(iHat), list(jHat), list(kHat),
+            elementHeight, scaleFac, dx, dy, dz, dRot)
+
+        xyzTangent = numpy.array(xyzTangent)
+        xTangent = xyzTangent[:,0]
+        yTangent = xyzTangent[:,1]
+        zTangent = xyzTangent[:,2]
+    else:
+        xTangent, yTangent, zTangent = libcoordio.wokToTangent(
+            [xWok, yWok, zWok], b, iHat, jHat, kHat,
+            elementHeight, scaleFac, dx, dy, dz, dRot
+            )
+    return xTangent, yTangent, zTangent
+
+
+def _wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
                  dx=0, dy=0, dz=0, dRot=0):
     """
@@ -809,6 +836,28 @@ def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
 
 
 def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
+                 elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
+                 dx=0, dy=0, dz=0, dRot=0):
+    # format into list of lists
+    if hasattr(xTangent, "__len__"):
+        xyzTangent = numpy.array([xTangent,yTangent,zTangent]).T.tolist()
+        xyzWok = libcoordio.tangentToWokArr(
+            xyzTangent, list(b), list(iHat), list(jHat), list(kHat),
+            elementHeight, scaleFac, dx, dy, dz, dRot)
+
+        xyzWok = numpy.array(xyzWok)
+        xWok = xyzWok[:,0]
+        yWok = xyzWok[:,1]
+        zWok = xyzWok[:,2]
+    else:
+        xWok, yWok, zWok = libcoordio.tangentToWok(
+            [xTangent, yTangent, zTangent], b, iHat, jHat, kHat,
+            elementHeight, scaleFac, dx, dy, dz, dRot
+            )
+    return xWok, yWok, zWok
+
+
+def _tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
                  dx=0, dy=0, dz=0, dRot=0):
     """

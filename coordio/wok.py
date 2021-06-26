@@ -95,6 +95,7 @@ class Wok(Coordinate3D):
         b, iHat, jHat, kHat = defaults.getHoleOrient(
             tangentCoords.site.name, tangentCoords.holeID
         )
+
         xWok, yWok, zWok = conv.tangentToWok(
             tx, ty, tz, b, iHat, jHat, kHat, scaleFac=tangentCoords.scaleFactor
         )
