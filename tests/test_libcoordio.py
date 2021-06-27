@@ -36,16 +36,17 @@ def test_tangentAndPositioner():
         xb = 15
         yb = 0
         alphaLen = 7.4
+        alphaOff = 0
         betaOff = 0
         # tz = 0
 
-        tx, ty = libcoordio.positionerToTangent([alpha,beta], [xb,yb], alphaLen, betaOff)
+        tx, ty = libcoordio.positionerToTangent([alpha,beta], [xb,yb], alphaLen, alphaOff, betaOff)
 
         assert tx == pytest.approx(alphaLen + xb)
         assert ty == pytest.approx(0)
 
         _alpha, _beta = libcoordio.tangentToPositioner(
-            [tx,ty], [xb,yb], alphaLen, betaOff
+            [tx,ty], [xb,yb], alphaLen, alphaOff, betaOff
         )
 
         assert _alpha == pytest.approx(alpha, rel=angTol, abs=angTol)
@@ -55,14 +56,14 @@ def test_tangentAndPositioner():
         beta = 0
         betaOff = 5
 
-        tx, ty = libcoordio.positionerToTangent([alpha,beta], [xb,yb], alphaLen, betaOff)
+        tx, ty = libcoordio.positionerToTangent([alpha,beta], [xb,yb], alphaLen, alphaOff, betaOff)
 
 
         _alpha, _beta = libcoordio.tangentToPositioner(
-            [tx,ty], [xb,yb], alphaLen, betaOff
+            [tx,ty], [xb,yb], alphaLen, alphaOff, betaOff
         )
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
 
 
@@ -80,7 +81,6 @@ def test_wokAndTangent():
             dx = numpy.random.uniform(-0.01,0.01)
             dy = numpy.random.uniform(-0.01,0.01)
             dz = numpy.random.uniform(-0.01,0.01)
-            dRot = numpy.random.uniform(-5,5)
 
             for addMe in [0, numpy.zeros(4)]:
                 _tx = tx + addMe
@@ -88,9 +88,9 @@ def test_wokAndTangent():
                 _tz = tz + addMe
 
                 wx1,wy1,wz1 = conv.tangentToWok(_tx, _ty, _tz, b, iHat, jHat, kHat,
-                    scaleFac=scaleFac, dx=dx, dy=dy, dz=dz, dRot=dRot)
+                    scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
                 wx2,wy2,wz2 = conv._tangentToWok(_tx, _ty, _tz, b, iHat, jHat, kHat,
-                    scaleFac=scaleFac, dx=dx, dy=dy, dz=dz, dRot=dRot)
+                    scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
 
 
 
@@ -100,9 +100,9 @@ def test_wokAndTangent():
 
 
                 tx1,ty1,tz1 = conv.wokToTangent(wx1, wy1, wz1, b, iHat, jHat, kHat,
-                    scaleFac=scaleFac, dx=dx, dy=dy, dz=dz, dRot=dRot)
+                    scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
                 tx2,ty2,tz2 = conv._wokToTangent(wx1, wy1, wz1, b, iHat, jHat, kHat,
-                    scaleFac=scaleFac, dx=dx, dy=dy, dz=dz, dRot=dRot)
+                    scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
 
                 assert tx1 == pytest.approx(tx2)
                 assert ty1 == pytest.approx(ty2)
