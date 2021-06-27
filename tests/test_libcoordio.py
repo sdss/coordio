@@ -9,6 +9,7 @@ from coordio.defaults import MICRONS_PER_MM, positionerTable, wokCoords, POSITIO
 # import seaborn as sns
 
 from coordio import conv
+from coordio import libcoordio
 
 
 # get tangent coords at these locations
@@ -22,6 +23,47 @@ tanCoordList = [
     [-4, 180, 2],
     [60, 4, -1]
 ]
+
+angTol = 1e-5 ## Deg, much less than a fraction of a micron for a positioner
+
+
+def test_tangentAndPositioner():
+
+        alpha = 0
+        beta = 0
+        tx = 10
+        ty = 0
+        xb = 15
+        yb = 0
+        alphaLen = 7.4
+        betaOff = 0
+        # tz = 0
+
+        tx, ty = libcoordio.positionerToTangent([alpha,beta], [xb,yb], alphaLen, betaOff)
+
+        assert tx == pytest.approx(alphaLen + xb)
+        assert ty == pytest.approx(0)
+
+        _alpha, _beta = libcoordio.tangentToPositioner(
+            [tx,ty], [xb,yb], alphaLen, betaOff
+        )
+
+        assert _alpha == pytest.approx(alpha, rel=angTol, abs=angTol)
+        assert _beta == pytest.approx(beta, rel=angTol, abs=angTol)
+
+        alpha = 0
+        beta = 0
+        betaOff = 5
+
+        tx, ty = libcoordio.positionerToTangent([alpha,beta], [xb,yb], alphaLen, betaOff)
+
+
+        _alpha, _beta = libcoordio.tangentToPositioner(
+            [tx,ty], [xb,yb], alphaLen, betaOff
+        )
+
+        import pdb; pdb.set_trace()
+
 
 
 def test_wokAndTangent():
@@ -73,7 +115,7 @@ def test_wokAndTangent():
         # break
 
 if __name__ == "__main__":
-    test_wokAndTangent()
+    test_tangentAndPositioner()
 #     tx,ty,tz = numpy.zeros(1000)+22, numpy.zeros(1000)-4, numpy.zeros(1000)
 
 

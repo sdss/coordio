@@ -1,42 +1,44 @@
 #include <pybind11/pybind11.h>
-#include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include "conv.h"
 
-typedef std::array<double, 3> vec3;
+// #include <pybind11/eigen.h>
 
-double dot(vec3 & a, vec3 & b){
+// typedef std::array<double, 3> vec3;
+// typedef std::array<double, 2> vec2;
+
+double dot3(vec3 & a, vec3 & b){
     // might wanna consider numerical stability here?
     return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
 }
 
-vec3 rotZ(vec3 & inArr, double thetaDeg, bool invert = false){
-    // rotate a 3 vector about the z axis
-    // theta in degrees
-    vec3 dotArr;
-    vec3 outArr;
+// vec3 rotZ(vec3 & inArr, double thetaDeg, bool invert = false){
+//     // rotate a 3 vector about the z axis
+//     // theta in degrees
+//     vec3 dotArr;
+//     vec3 outArr;
 
-    double thetaRad = thetaDeg * M_PI / 180.0;
-    if (invert){
-        thetaRad = -1*thetaRad;
-    }
-    auto cosZ = cos(thetaRad);
-    auto sinZ = sin(thetaRad);
+//     double thetaRad = thetaDeg * M_PI / 180.0;
+//     if (invert){
+//         thetaRad = -1*thetaRad;
+//     }
+//     auto cosZ = cos(thetaRad);
+//     auto sinZ = sin(thetaRad);
 
-    dotArr[0] = cosZ;
-    dotArr[1] = sinZ;
-    dotArr[2] = 0;
+//     dotArr[0] = cosZ;
+//     dotArr[1] = sinZ;
+//     dotArr[2] = 0;
 
-    outArr[0] = dot(dotArr, inArr);
+//     outArr[0] = dot3(dotArr, inArr);
 
-    dotArr[0] = -1*sinZ;
-    dotArr[1] = cosZ;
+//     dotArr[0] = -1*sinZ;
+//     dotArr[1] = cosZ;
 
-    outArr[1] = dot(dotArr, inArr);
-    outArr[2] = inArr[2];
+//     outArr[1] = dot3(dotArr, inArr);
+//     outArr[2] = inArr[2];
 
-    return outArr;
-}
+//     return outArr;
+// }
 
 vec3 rigidTransform(
     vec3 & inArr, vec3 & iHat, vec3 & jHat, vec3 & kHat, bool invert = false
@@ -62,9 +64,9 @@ vec3 rigidTransform(
         zDir = kHat;
     }
 
-    outArr[0] = dot(xDir, inArr);
-    outArr[1] = dot(yDir, inArr);
-    outArr[2] = dot(zDir, inArr);
+    outArr[0] = dot3(xDir, inArr);
+    outArr[1] = dot3(yDir, inArr);
+    outArr[2] = dot3(zDir, inArr);
     return outArr;
 }
 
@@ -106,8 +108,7 @@ vec3 wokToTangent(
     double scaleFac,
     double dx,
     double dy,
-    double dz,
-    double dRot // degrees
+    double dz
 ){
 
     vec3 tangentXYZ = wokXYZ;
@@ -122,10 +123,10 @@ vec3 wokToTangent(
     tangentXYZ[2] -= elementHeight;
 
     // apply rotational calibrations
-    if (dRot != 0){
-        // convert dRot to radians
-        tangentXYZ = rotZ(tangentXYZ, dRot);
-    }
+    // if (dRot != 0){
+    //     // convert dRot to radians
+    //     tangentXYZ = rotZ(tangentXYZ, dRot);
+    // }
 
     // apply offset calibrations
     if (dx != 0){
@@ -150,8 +151,8 @@ vec3 tangentToWok(
     double scaleFac,
     double dx,
     double dy,
-    double dz,
-    double dRot
+    double dz
+    // double dRot
 ){
 
     vec3 wokXYZ = tangentXYZ;
@@ -168,10 +169,10 @@ vec3 tangentToWok(
     }
 
     // apply rotational calibrations
-    if (dRot != 0){
-        // convert dRot to radians
-        wokXYZ = rotZ(wokXYZ, dRot, true);
-    }
+    // if (dRot != 0){
+    //     // convert dRot to radians
+    //     wokXYZ = rotZ(wokXYZ, dRot, true);
+    // }
 
     wokXYZ[2] += elementHeight;
 
@@ -193,8 +194,7 @@ std::vector<vec3> wokToTangentArr(
     double scaleFac,
     double dx,
     double dy,
-    double dz,
-    double dRot
+    double dz
 ){
     std::vector<std::array<double,3>> outArr;
     int nCoords = wokXYZ.size();
@@ -211,8 +211,7 @@ std::vector<vec3> wokToTangentArr(
                 scaleFac,
                 dx,
                 dy,
-                dz,
-                dRot
+                dz
             )
         );
     }
@@ -230,8 +229,7 @@ std::vector<vec3> tangentToWokArr(
     double scaleFac,
     double dx,
     double dy,
-    double dz,
-    double dRot
+    double dz
 ){
     std::vector<vec3> outArr;
     int nCoords = tangentXYZ.size();
@@ -248,14 +246,138 @@ std::vector<vec3> tangentToWokArr(
                 scaleFac,
                 dx,
                 dy,
-                dz,
-                dRot
+                dz
             )
         );
     }
 
     return outArr;
 }
+
+vec2 positionerToTangent(vec2 alphaBetaDeg,
+    vec2 xyBeta,
+    double alphaLen,
+    double alphaOffDeg,
+    double betaOffDeg
+){
+
+    vec2 outArr;
+
+    auto betaOffRad = betaOffDeg * M_PI / 180.0;
+    auto alphaOffRad = alphaOffDeg * M_PI / 180.0;
+    auto alphaRad = alphaBetaDeg[0] * M_PI / 180.0;
+    auto betaRad = alphaBetaDeg[1] * M_PI / 180.0;
+
+    auto thetaBAC = atan2(xyBeta[1], xyBeta[0]);  // radians!
+    auto rBAC = hypot(xyBeta[0], xyBeta[1]);
+
+    auto cosAlpha = cos(alphaRad + alphaOffRad);
+    auto sinAlpha = sin(alphaRad + alphaOffRad);
+    auto cosAlphaBeta = cos(alphaRad + betaRad + thetaBAC + betaOffRad + alphaOffRad);
+    auto sinAlphaBeta = sin(alphaRad + betaRad + thetaBAC + betaOffRad + alphaOffRad);
+
+    outArr[0] = alphaLen * cosAlpha + rBAC * cosAlphaBeta;
+    outArr[1] = alphaLen * sinAlpha + rBAC * sinAlphaBeta;
+    return outArr;
+
+}
+
+vec2 tangentToPositioner(vec2 xyTangent,
+    vec2 xyBeta,
+    double alphaLen,
+    double alphaOffDeg,
+    double betaOffDeg
+){
+    vec2 outArr;
+
+    auto thetaTangent = atan2(xyTangent[1], xyTangent[0]);
+
+    // polar coords jive better for this calculation
+    auto rTangentSq = xyTangent[0]*xyTangent[0] + xyTangent[1]*xyTangent[1];
+    auto rTangent = hypot(xyTangent[0], xyTangent[1]);
+
+    // convert xy Beta to radial coords
+    // the origin of the beta coord system is the
+    // beta axis of rotation
+    auto thetaBAC = atan2(xyBeta[1], xyBeta[0]); // radians!
+    auto rBacSq = xyBeta[0]*xyBeta[0] + xyBeta[1]*xyBeta[1];
+    auto rBac = hypot(xyBeta[0], xyBeta[1]);
+    auto la2 = alphaLen*alphaLen;
+
+    auto gamma = acos(
+        (la2 + rBacSq - rTangentSq) / (2 * alphaLen * rBac)
+    );
+    auto xi = acos(
+        (la2 + rTangentSq - rBacSq) / (2 * alphaLen * rTangent)
+    );
+
+    thetaTangent = thetaTangent * 180.0 / M_PI;
+    thetaBAC = thetaBAC * 180.0 / M_PI;
+    gamma = gamma * 180.0 / M_PI;
+    xi = xi * 180.0 / M_PI;
+
+    auto alphaDeg = thetaTangent - xi - alphaOffDeg;  // alpha angle
+    auto betaDeg = 180 - gamma - thetaBAC - betaOffDeg;  // beta angle
+
+    alphaDeg = fmod(alphaDeg,360);
+    if (alphaDeg < 0)
+        alphaDeg += 360;
+
+    outArr[0] = alphaDeg;
+    outArr[1] = betaDeg;
+
+    return outArr;
+}
+
+std::vector<vec2> positionerToTangentArr(
+    std::vector<vec2> & alphaBetaDeg,
+    std::vector<vec2> & xyBeta,
+    double alphaLen,
+    double alphaOffDeg,
+    double betaOffDeg
+){
+    std::vector<vec2> outArr;
+    int nCoords = alphaBetaDeg.size();
+
+    for (int ii = 0; ii < nCoords; ii++){
+        outArr.push_back(
+            positionerToTangent(
+                alphaBetaDeg[ii],
+                xyBeta[ii],
+                alphaLen,
+                alphaOffDeg,
+                betaOffDeg
+            )
+        );
+    }
+    return outArr;
+}
+
+std::vector<vec2> tangentToPositionerArr(
+    std::vector<vec2> & xyTangent,
+    std::vector<vec2> & xyBeta,
+    double alphaLen,
+    double alphaOffDeg,
+    double betaOffDeg
+){
+    std::vector<vec2> outArr;
+    int nCoords = xyTangent.size();
+
+    for (int ii = 0; ii < nCoords; ii++){
+        outArr.push_back(
+            positionerToTangent(
+                xyTangent[ii],
+                xyBeta[ii],
+                alphaLen,
+                alphaOffDeg,
+                betaOffDeg
+            )
+        );
+    }
+    return outArr;
+}
+
+
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -265,4 +387,8 @@ PYBIND11_MODULE(libcoordio, m) {
     m.def("wokToTangentArr", &wokToTangentArr);
     m.def("tangentToWok", &tangentToWok);
     m.def("tangentToWokArr", &tangentToWokArr);
+    m.def("tangentToPositioner", &tangentToPositioner);
+    m.def("tangentToPositionerArr", &tangentToPositionerArr);
+    m.def("positionerToTangent", &positionerToTangent);
+    m.def("positionerToTangentArr", &positionerToTangentArr);
 }

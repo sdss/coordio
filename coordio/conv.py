@@ -698,7 +698,7 @@ def _verify3Vector(checkMe, label):
 
 def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
-                 dx=0, dy=0, dz=0, dRot=0):
+                 dx=0, dy=0, dz=0):
     # format into list of lists
     if hasattr(xWok, "__len__"):
         xyzWok = numpy.array([xWok,yWok,zWok]).T.tolist()
@@ -706,7 +706,7 @@ def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
 
         xyzTangent = libcoordio.wokToTangentArr(
             xyzWok, list(b), list(iHat), list(jHat), list(kHat),
-            elementHeight, scaleFac, dx, dy, dz, dRot)
+            elementHeight, scaleFac, dx, dy, dz)
 
         xyzTangent = numpy.array(xyzTangent)
         xTangent = xyzTangent[:,0]
@@ -715,14 +715,14 @@ def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
     else:
         xTangent, yTangent, zTangent = libcoordio.wokToTangent(
             [xWok, yWok, zWok], b, iHat, jHat, kHat,
-            elementHeight, scaleFac, dx, dy, dz, dRot
+            elementHeight, scaleFac, dx, dy, dz
             )
     return xTangent, yTangent, zTangent
 
 
 def _wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
-                 dx=0, dy=0, dz=0, dRot=0):
+                 dx=0, dy=0, dz=0):
     """
     Convert from wok coordinates to tangent coordinates.
 
@@ -769,9 +769,6 @@ def _wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
     dz: scalar
         z offset (mm), calibration to capture small displacements of
         tangent x
-    dRot: scalar
-        rotation (deg) about tangent z axis, capture small calibrated rotations
-        of the elements in the wok
 
     Returns
     ---------
@@ -820,15 +817,15 @@ def _wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
         coords[2] = coords[2] - elementHeight
 
     # apply rotational calibration
-    if dRot != 0:
-        rotZ = numpy.radians(dRot)
-        rotMatZ = numpy.array([
-            [numpy.cos(rotZ), numpy.sin(rotZ), 0],
-            [-numpy.sin(rotZ), numpy.cos(rotZ), 0],
-            [0, 0, 1]
-        ])
+    # if dRot != 0:
+    #     rotZ = numpy.radians(dRot)
+    #     rotMatZ = numpy.array([
+    #         [numpy.cos(rotZ), numpy.sin(rotZ), 0],
+    #         [-numpy.sin(rotZ), numpy.cos(rotZ), 0],
+    #         [0, 0, 1]
+    #     ])
 
-        coords = rotMatZ.dot(coords)
+    #     coords = rotMatZ.dot(coords)
 
     coords = coords - calibOff
 
@@ -837,13 +834,13 @@ def _wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
 
 def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
-                 dx=0, dy=0, dz=0, dRot=0):
+                 dx=0, dy=0, dz=0):
     # format into list of lists
     if hasattr(xTangent, "__len__"):
         xyzTangent = numpy.array([xTangent,yTangent,zTangent]).T.tolist()
         xyzWok = libcoordio.tangentToWokArr(
             xyzTangent, list(b), list(iHat), list(jHat), list(kHat),
-            elementHeight, scaleFac, dx, dy, dz, dRot)
+            elementHeight, scaleFac, dx, dy, dz)
 
         xyzWok = numpy.array(xyzWok)
         xWok = xyzWok[:,0]
@@ -852,14 +849,14 @@ def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
     else:
         xWok, yWok, zWok = libcoordio.tangentToWok(
             [xTangent, yTangent, zTangent], b, iHat, jHat, kHat,
-            elementHeight, scaleFac, dx, dy, dz, dRot
-            )
+            elementHeight, scaleFac, dx, dy, dz
+        )
     return xWok, yWok, zWok
 
 
 def _tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
-                 dx=0, dy=0, dz=0, dRot=0):
+                 dx=0, dy=0, dz=0):
     """
     Convert from tangent coordinates at b to wok coordinates.
 
@@ -903,9 +900,6 @@ def _tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
     dz: scalar
         z offset (mm), calibration to capture small displacements of
         tangent x
-    dRot: scalar
-        rotation (deg) about tangent z axis, capture small calibrated rotations
-        of the elements in the wok
 
     Returns
     ---------
@@ -936,15 +930,15 @@ def _tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
     coords = coords + calibOff
 
     # apply rotational calibration
-    if dRot != 0:
-        rotZ = -1*numpy.radians(dRot)
-        rotMatZ = numpy.array([
-            [numpy.cos(rotZ), numpy.sin(rotZ), 0],
-            [-numpy.sin(rotZ), numpy.cos(rotZ), 0],
-            [0, 0, 1]
-        ])
+    # if dRot != 0:
+    #     rotZ = -1*numpy.radians(dRot)
+    #     rotMatZ = numpy.array([
+    #         [numpy.cos(rotZ), numpy.sin(rotZ), 0],
+    #         [-numpy.sin(rotZ), numpy.cos(rotZ), 0],
+    #         [0, 0, 1]
+    #     ])
 
-        coords = rotMatZ.dot(coords)
+    #     coords = rotMatZ.dot(coords)
 
     # offset xy plane by element height
     if isArr:
@@ -1031,7 +1025,9 @@ def proj2XYplane(x, y, z, rayOrigin):
     return xyzProj[0], xyzProj[1], xyzProj[2], projDist
 
 
-def tangentToPositioner(xTangent, yTangent, xBeta, yBeta, la=7.4):
+def tangentToPositioner(
+    xTangent, yTangent, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0
+    ):
     """
     Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm
     at xTangent, yTangent.
@@ -1050,6 +1046,10 @@ def tangentToPositioner(xTangent, yTangent, xBeta, yBeta, la=7.4):
         y position (mm) in beta arm frame
     la: scalar or 1D array
         length (mm) of alpha arm
+    alphaOffDeg: scalar
+        alpha zeropoint offset (deg)
+    betaOffDeg: scalar
+        beta zeropoint offset (deg)
 
     Returns
     ---------
@@ -1088,8 +1088,8 @@ def tangentToPositioner(xTangent, yTangent, xBeta, yBeta, la=7.4):
     gamma = numpy.degrees(gamma)
     xi = numpy.degrees(xi)
 
-    alphaDeg = thetaTangent - xi
-    betaDeg = 180 - gamma - thetaBAC
+    alphaDeg = thetaTangent - xi - alphaOffDeg
+    betaDeg = 180 - gamma - thetaBAC - betaOffDeg
 
     # look for nans
     isOKAlpha = numpy.isfinite(alphaDeg)
@@ -1111,7 +1111,9 @@ def tangentToPositioner(xTangent, yTangent, xBeta, yBeta, la=7.4):
     return alphaDeg, betaDeg, isOK
 
 
-def positionerToTangent(alphaDeg, betaDeg, xBeta, yBeta, la=7.4):
+def positionerToTangent(
+    alphaDeg, betaDeg, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0
+):
     """
     Determine tangent coordinates (mm) of xBeta, yBeta coords in mm
     from alpha/beta angle.
@@ -1130,6 +1132,10 @@ def positionerToTangent(alphaDeg, betaDeg, xBeta, yBeta, la=7.4):
         y position (mm) in beta arm frame
     la: scalar or 1D array
         length (mm) of alpha arm
+    alphaOffDeg: scalar
+        alpha zeropoint offset (deg)
+    betaOffDeg: scalar
+        beta zeropoint offset (deg)
 
     Returns
     ---------
@@ -1143,8 +1149,8 @@ def positionerToTangent(alphaDeg, betaDeg, xBeta, yBeta, la=7.4):
     # beta axis of rotation
     thetaBAC = numpy.arctan2(yBeta, xBeta)  # radians!
     rBAC = numpy.sqrt(xBeta**2 + yBeta**2)
-    alphaRad = numpy.radians(alphaDeg)
-    betaRad = numpy.radians(betaDeg)
+    alphaRad = numpy.radians(alphaDeg+alphaOffDeg)
+    betaRad = numpy.radians(betaDeg+betaOffDeg)
 
     cosAlpha = numpy.cos(alphaRad)
     sinAlpha = numpy.sin(alphaRad)
