@@ -699,24 +699,83 @@ def _verify3Vector(checkMe, label):
 def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
                  dx=0, dy=0, dz=0):
+    """
+    Convert from wok coordinates to tangent coordinates.
+
+    xyz Wok coords are mm with orgin at wok vertex. +z points from wok toward M2.
+    -x points toward the boss slithead
+
+    In the tangent coordinate frame the xy plane is tangent to the wok
+    surface at xyz position b.  The origin is set to be elementHeight above
+    the wok surface.
+
+    Parameters
+    -------------
+    xWok: scalar or 1D array
+        x position of object in wok space mm
+        (+x aligned with +RA on image at PA = 0)
+    yWok: scalar or 1D array
+        y position of object in wok space mm
+        (+y aligned with +Dec on image at PA = 0)
+    zWok: scalar or 1D array
+        z position of object in wok space mm
+        (+z aligned boresight and increases from the telescope to the sky)
+    b: 3-vector
+        x,y,z position (mm) of element hole on wok surface measured in wok coords
+    iHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate x axis
+    jHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate y axis
+    kHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate z axis
+    elementHeight: scalar
+        height (mm) of positioner/GFA chip above wok surface
+    scaleFac: scalar
+        scale factor to apply to b to account for thermal expansion of wok.
+        scale is applied to b radially
+    dx: scalar
+        x offset (mm), calibration to capture small displacements of
+        tangent x
+    dy: scalar
+        y offset (mm), calibration to capture small displacements of
+        tangent y
+    dz: scalar
+        z offset (mm), calibration to capture small displacements of
+        tangent x
+
+    Returns
+    ---------
+    xTangent: scalar or 1D array
+        x position (mm) in tangent coordinates
+    yTangent: scalar or 1D array
+        y position (mm) in tangent coordinates
+    zTangent: scalar or 1D array
+        z position (mm) in tangent coordinates
+    """
+    b = _verify3Vector(b, "b")
+    iHat = _verify3Vector(iHat, "iHat")
+    jHat = _verify3Vector(jHat, "jHat")
+    kHat = _verify3Vector(kHat, "kHat")
     # format into list of lists
     if hasattr(xWok, "__len__"):
-        xyzWok = numpy.array([xWok,yWok,zWok]).T.tolist()
-        # xyzWok = [list(a) for a in zip(xWok,yWok,zWok)]
+        xyzWok = numpy.array([xWok, yWok, zWok]).T.tolist()
 
         xyzTangent = libcoordio.wokToTangentArr(
             xyzWok, list(b), list(iHat), list(jHat), list(kHat),
             elementHeight, scaleFac, dx, dy, dz)
 
         xyzTangent = numpy.array(xyzTangent)
-        xTangent = xyzTangent[:,0]
-        yTangent = xyzTangent[:,1]
-        zTangent = xyzTangent[:,2]
+        xTangent = xyzTangent[:, 0]
+        yTangent = xyzTangent[:, 1]
+        zTangent = xyzTangent[:, 2]
     else:
         xTangent, yTangent, zTangent = libcoordio.wokToTangent(
-            [xWok, yWok, zWok], b, iHat, jHat, kHat,
+            [xWok, yWok, zWok], list(b), list(iHat), list(jHat), list(kHat),
             elementHeight, scaleFac, dx, dy, dz
-            )
+        )
     return xTangent, yTangent, zTangent
 
 
@@ -835,6 +894,66 @@ def _wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
 def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
                  dx=0, dy=0, dz=0):
+    """
+    Convert from tangent coordinates at b to wok coordinates.
+
+    xyz Wok coords are mm with orgin at wok vertex. +z points from wok toward M2.
+    -x points toward the boss slithead
+
+    In the tangent coordinate frame the xy plane is tangent to the wok
+    surface at xyz position b.  The origin is set to be elementHeight above
+    the wok surface.
+
+    Parameters
+    -------------
+    xTangent: scalar or 1D array
+        x position (mm) in tangent coordinates
+    yTangent: scalar or 1D array
+        y position (mm) in tangent coordinates
+    zTangent: scalar or 1D array
+        z position (mm) in tangent coordinates
+    b: 3-vector
+        x,y,z position (mm) of element hole on wok surface measured in wok coords
+    iHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate x axis
+    jHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate y axis
+    kHat: 3-vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate z axis
+    elementHeight: scalar
+        height (mm) of positioner/GFA chip above wok surface
+    scaleFac: scalar
+        scale factor to apply to b to account for thermal expansion of wok.
+        scale is applied to b radially
+    dx: scalar
+        x offset (mm), calibration to capture small displacements of
+        tangent x
+    dy: scalar
+        y offset (mm), calibration to capture small displacements of
+        tangent y
+    dz: scalar
+        z offset (mm), calibration to capture small displacements of
+        tangent x
+
+    Returns
+    ---------
+    xWok: scalar or 1D array
+        x position of object in wok space mm
+        (+x aligned with +RA on image at PA = 0)
+    yWok: scalar or 1D array
+        y position of object in wok space mm
+        (+y aligned with +Dec on image at PA = 0)
+    zWok: scalar or 1D array
+        z position of object in wok space mm
+        (+z aligned boresight and increases from the telescope to the sky)
+    """
+    b = _verify3Vector(b, "b")
+    iHat = _verify3Vector(iHat, "iHat")
+    jHat = _verify3Vector(jHat, "jHat")
+    kHat = _verify3Vector(kHat, "kHat")
     # format into list of lists
     if hasattr(xTangent, "__len__"):
         xyzTangent = numpy.array([xTangent,yTangent,zTangent]).T.tolist()
@@ -848,8 +967,8 @@ def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
         zWok = xyzWok[:,2]
     else:
         xWok, yWok, zWok = libcoordio.tangentToWok(
-            [xTangent, yTangent, zTangent], b, iHat, jHat, kHat,
-            elementHeight, scaleFac, dx, dy, dz
+            [xTangent, yTangent, zTangent], list(b), list(iHat), list(jHat),
+            list(kHat), elementHeight, scaleFac, dx, dy, dz
         )
     return xWok, yWok, zWok
 
@@ -1027,7 +1146,75 @@ def proj2XYplane(x, y, z, rayOrigin):
 
 def tangentToPositioner(
     xTangent, yTangent, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0
-    ):
+):
+    """
+    Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm
+    at xTangent, yTangent.
+
+    todo: include hooks for positioner non-linearity
+
+    Parameters
+    -------------
+    xTangent: scalar or 1D array
+        x position (mm) in tangent coordinates
+    yTangent: scalar or 1D array
+        y position (mm) in tangent coordinates
+    xBeta: scalar or 1D array
+        x position (mm) in beta arm frame
+    yBeta: scalar or 1D array
+        y position (mm) in beta arm frame
+    la: scalar or 1D array
+        length (mm) of alpha arm
+    alphaOffDeg: scalar
+        alpha zeropoint offset (deg)
+    betaOffDeg: scalar
+        beta zeropoint offset (deg)
+
+    Returns
+    ---------
+    alphaDeg: scalar or 1D array
+        alpha angle in degrees
+    betaDeg: scalar or 1D array
+        beta angle in degrees
+    isOK: boolean or 1D boolean array
+        True if point physically accessible, False otherwise
+    """
+    # C++ wrapped stuff wants lists, not numpy arrays
+    isArr = hasattr(xTangent, "__len__")
+    if isArr:
+        xyTangent = numpy.array([xTangent, yTangent]).T.tolist()
+
+        if hasattr(xBeta, "__len__"):
+            xyBeta = numpy.array([xBeta, yBeta]).T.tolist()
+        else:
+            xyBeta = [[xBeta, yBeta]]*len(xyTangent)
+
+        alphaBeta = libcoordio.tangentToPositionerArr(
+            xyTangent, xyBeta, la, alphaOffDeg, betaOffDeg
+        )
+
+        alphaBeta = numpy.array(alphaBeta)
+        alpha = alphaBeta[:, 0]
+        beta = alphaBeta[:, 1]
+    else:
+        alpha, beta = libcoordio.tangentToPositioner(
+            [xTangent, yTangent], [xBeta, yBeta],
+            la, alphaOffDeg, betaOffDeg
+        )
+
+    isOKAlpha = numpy.isfinite(alpha)
+    isOKBeta = numpy.isfinite(beta)
+    isOK = isOKAlpha & isOKBeta
+
+    if not isArr:
+        isOK = bool(isOK)
+
+    return alpha, beta, isOK
+
+
+def _tangentToPositioner(
+    xTangent, yTangent, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0
+):
     """
     Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm
     at xTangent, yTangent.
@@ -1066,6 +1253,10 @@ def tangentToPositioner(
         xTangent = numpy.array(xTangent, dtype="float64")
         yTangent = numpy.array(yTangent, dtype="float64")
 
+    if hasattr(xBeta, "__len__"):
+        xBeta = numpy.array(xBeta, dtype="float64")
+        yBeta = numpy.array(yBeta, dtype="float64")
+
     # polar coords jive better for this calculation
     thetaTangent = numpy.arctan2(yTangent, xTangent)
     rTangentSq = xTangent**2 + yTangent**2
@@ -1102,11 +1293,11 @@ def tangentToPositioner(
     # handle wrapping? not sure it's necessary
     alphaDeg = alphaDeg % 360
     betaDeg = betaDeg % 360  # should already be there, but...
-    if hasattr(betaDeg, "__len__"):
-        if True in betaDeg > 180:
-            raise RuntimeError("problem in alpha/beta conversion! beta > 180")
-    elif betaDeg > 180:
-        raise RuntimeError("problem in alpha/beta conversion! beta > 180")
+    # if hasattr(betaDeg, "__len__"):
+    #     if True in betaDeg > 180:
+    #         raise RuntimeError("problem in alpha/beta conversion! beta > 180")
+    # elif betaDeg > 180:
+    #     raise RuntimeError("problem in alpha/beta conversion! beta > 180")
 
     return alphaDeg, betaDeg, isOK
 
@@ -1144,9 +1335,69 @@ def positionerToTangent(
     yTangent: scalar or 1D array
         y position (mm) in tangent coordinates
     """
+    if hasattr(alphaDeg, "__len__"):
+        alphaBeta = numpy.array([alphaDeg, betaDeg]).T.tolist()
+
+        if hasattr(xBeta, "__len__"):
+            xyBeta = numpy.array([xBeta, yBeta]).T.tolist()
+        else:
+            xyBeta = [[xBeta, yBeta]] * len(alphaBeta)
+
+        xyTangent = libcoordio.positionerToTangentArr(
+            alphaBeta, xyBeta, la, alphaOffDeg, betaOffDeg
+        )
+
+        xyTangent = numpy.array(xyTangent)
+        xTangent = xyTangent[:, 0]
+        yTangent = xyTangent[:, 1]
+    else:
+        xTangent, yTangent = libcoordio.positionerToTangent(
+            [alphaDeg, betaDeg], [xBeta, yBeta],
+            la, alphaOffDeg, betaOffDeg
+        )
+    return xTangent, yTangent
+
+
+def _positionerToTangent(
+    alphaDeg, betaDeg, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0
+):
+    """
+    Determine tangent coordinates (mm) of xBeta, yBeta coords in mm
+    from alpha/beta angle.
+
+    todo: include hooks for positioner non-linearity
+
+    Parameters
+    -------------
+    alphaDeg: scalar or 1D array
+        alpha angle in degrees
+    betaDeg: scalar or 1D array
+        beta angle in degrees
+    xBeta: scalar or 1D array
+        x position (mm) in beta arm frame
+    yBeta: scalar or 1D array
+        y position (mm) in beta arm frame
+    la: scalar or 1D array
+        length (mm) of alpha arm
+    alphaOffDeg: scalar
+        alpha zeropoint offset (deg)
+    betaOffDeg: scalar
+        beta zeropoint offset (deg)
+
+    Returns
+    ---------
+    xTangent: scalar or 1D array
+        x position (mm) in tangent coordinates
+    yTangent: scalar or 1D array
+        y position (mm) in tangent coordinates
+    """
     # convert xy Beta to radial coords
     # the origin of the beta coord system is the
     # beta axis of rotation
+    if hasattr(xBeta, "__len__"):
+        xBeta = numpy.array(xBeta, dtype="float64")
+        yBeta = numpy.array(yBeta, dtype="float64")
+
     thetaBAC = numpy.arctan2(yBeta, xBeta)  # radians!
     rBAC = numpy.sqrt(xBeta**2 + yBeta**2)
     alphaRad = numpy.radians(alphaDeg+alphaOffDeg)

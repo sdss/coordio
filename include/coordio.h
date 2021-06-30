@@ -2,8 +2,6 @@
 #include <cmath>
 #include <vector>
 #include <array>
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
 
 typedef std::array<double, 3> vec3;
 typedef std::array<double, 2> vec2;

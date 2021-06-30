@@ -1,6 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include "conv.h"
+#include "coordio.h"
 
 // #include <pybind11/eigen.h>
 
@@ -254,7 +254,8 @@ std::vector<vec3> tangentToWokArr(
     return outArr;
 }
 
-vec2 positionerToTangent(vec2 alphaBetaDeg,
+vec2 positionerToTangent(
+    vec2 alphaBetaDeg,
     vec2 xyBeta,
     double alphaLen,
     double alphaOffDeg,
@@ -270,7 +271,6 @@ vec2 positionerToTangent(vec2 alphaBetaDeg,
 
     auto thetaBAC = atan2(xyBeta[1], xyBeta[0]);  // radians!
     auto rBAC = hypot(xyBeta[0], xyBeta[1]);
-
     auto cosAlpha = cos(alphaRad + alphaOffRad);
     auto sinAlpha = sin(alphaRad + alphaOffRad);
     auto cosAlphaBeta = cos(alphaRad + betaRad + thetaBAC + betaOffRad + alphaOffRad);
@@ -282,7 +282,8 @@ vec2 positionerToTangent(vec2 alphaBetaDeg,
 
 }
 
-vec2 tangentToPositioner(vec2 xyTangent,
+vec2 tangentToPositioner(
+    vec2 xyTangent,
     vec2 xyBeta,
     double alphaLen,
     double alphaOffDeg,
@@ -317,11 +318,11 @@ vec2 tangentToPositioner(vec2 xyTangent,
     xi = xi * 180.0 / M_PI;
 
     auto alphaDeg = thetaTangent - xi - alphaOffDeg;  // alpha angle
-    auto betaDeg = 180 - gamma - thetaBAC - betaOffDeg;  // beta angle
+    auto betaDeg = 180.0 - gamma - thetaBAC - betaOffDeg;  // beta angle
 
     alphaDeg = fmod(alphaDeg,360);
-    if (alphaDeg < 0)
-        alphaDeg += 360;
+    if (alphaDeg < 0.0)
+        alphaDeg += 360.0;
 
     outArr[0] = alphaDeg;
     outArr[1] = betaDeg;
@@ -365,7 +366,7 @@ std::vector<vec2> tangentToPositionerArr(
 
     for (int ii = 0; ii < nCoords; ii++){
         outArr.push_back(
-            positionerToTangent(
+            tangentToPositioner(
                 xyTangent[ii],
                 xyBeta[ii],
                 alphaLen,

@@ -17,7 +17,7 @@ import sys
 LIBSOFA_PATH = os.path.join(os.path.dirname(__file__),
                             'cextern/sofa')
 
-CCOORDIO_PATH = os.path.join(os.path.dirname(__file__),
+LIBCOORDIO_PATH = os.path.join(os.path.dirname(__file__),
                             'cextern/conv.cpp')
 
 
@@ -61,6 +61,7 @@ def getIncludes():
         getPybindInclude(user=True)
     ]
 
+
 extra_compile_args2 = ["--std=c++11", "-fPIC", "-v", "-O3"]
 extra_link_args2 = None
 if sys.platform == 'darwin':
@@ -80,7 +81,7 @@ ext_modules = [
         optional=False),
     Extension(
         'coordio.libcoordio',
-        sources=[CCOORDIO_PATH],
+        sources=[LIBCOORDIO_PATH],
         include_dirs=getIncludes(),
         extra_compile_args = extra_compile_args2,
         extra_link_args = extra_link_args2),
