@@ -4,41 +4,12 @@
 
 // #include <pybind11/eigen.h>
 
-// typedef std::array<double, 3> vec3;
-// typedef std::array<double, 2> vec2;
 
 double dot3(vec3 & a, vec3 & b){
     // might wanna consider numerical stability here?
     return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
 }
 
-// vec3 rotZ(vec3 & inArr, double thetaDeg, bool invert = false){
-//     // rotate a 3 vector about the z axis
-//     // theta in degrees
-//     vec3 dotArr;
-//     vec3 outArr;
-
-//     double thetaRad = thetaDeg * M_PI / 180.0;
-//     if (invert){
-//         thetaRad = -1*thetaRad;
-//     }
-//     auto cosZ = cos(thetaRad);
-//     auto sinZ = sin(thetaRad);
-
-//     dotArr[0] = cosZ;
-//     dotArr[1] = sinZ;
-//     dotArr[2] = 0;
-
-//     outArr[0] = dot3(dotArr, inArr);
-
-//     dotArr[0] = -1*sinZ;
-//     dotArr[1] = cosZ;
-
-//     outArr[1] = dot3(dotArr, inArr);
-//     outArr[2] = inArr[2];
-
-//     return outArr;
-// }
 
 vec3 rigidTransform(
     vec3 & inArr, vec3 & iHat, vec3 & jHat, vec3 & kHat, bool invert = false

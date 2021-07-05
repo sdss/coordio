@@ -26,6 +26,8 @@ INST_TO_WAVE = {
 }
 
 POSITIONER_HEIGHT = 143  # mm, distance from wok surface to fiber
+ALPHA_LEN = 7.4  # mm, length of the alpha arm (distance between alpha and beta axes)
+BETA_LEN = 16.2  #mm, distance from beta axis to top edge of the robot
 # extracted from ZEMAX model model
 # z location of wok vertex in FP coords
 APO_WOK_Z_OFFSET_ZEMAX = -776.4791 - POSITIONER_HEIGHT
@@ -33,6 +35,13 @@ LCO_WOK_Z_OFFSET_ZEMAX = -993.0665 - POSITIONER_HEIGHT
 
 APO_MAX_FIELD_R = 1.5  # max field radius (deg)
 LCO_MAX_FIELD_R = 1.1  # max field radius (deg)
+
+# nominal fiber positions in beta arm frame
+MET_BETA_XY = [14.314, 0]
+# boss xy position in solid model
+BOSS_BETA_XY = [14.965, -0.376]
+# apogee xy position in solid model
+AP_BETA_XY = [14.965, 0.376]
 
 # read in the focal plane model file
 fpModelFile = os.path.join(os.path.dirname(__file__), "etc", "focalPlaneModel.csv")

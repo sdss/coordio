@@ -6,6 +6,8 @@
 typedef std::array<double, 3> vec3;
 typedef std::array<double, 2> vec2;
 
+double dot3(vec3 & a, vec3 & b);
+
 vec3 wokToTangent(
     std::array<double, 3> & wokXYZ,
     std::array<double, 3> & basePos,
@@ -25,6 +27,32 @@ std::vector<vec3> wokToTangentArr(
     std::array<double, 3> & iHat,
     std::array<double, 3> & jHat,
     std::array<double, 3> & kHat,
+    double elementHeight,
+    double scaleFac,
+    double dx,
+    double dy,
+    double dz
+);
+
+vec3 tangentToWok(
+    vec3 & tangentXYZ,
+    vec3 & basePos,
+    vec3 & iHat,
+    vec3 & jHat,
+    vec3 & kHat,
+    double elementHeight,
+    double scaleFac,
+    double dx,
+    double dy,
+    double dz
+);
+
+std::vector<vec3> tangentToWokArr(
+    std::vector<vec3> & tangentXYZ,
+    vec3 & basePos,
+    vec3 & iHat,
+    vec3 & jHat,
+    vec3 & kHat,
     double elementHeight,
     double scaleFac,
     double dx,
