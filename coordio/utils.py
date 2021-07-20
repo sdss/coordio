@@ -262,9 +262,9 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
     # project the xy positions onto the 3d surface
     # and add 143 (the positioner height)
     if obsSite == "APO":
-        zWok = 143 + wokCurveAPO(rWok)
+        zWok = defaults.POSITIONER_HEIGHT + wokCurveAPO(rWok)
     else:
-        zWok = 143 + wokCurveLCO(rWok)
+        zWok = defaults.POSITIONER_HEIGHT + wokCurveLCO(rWok)
 
     xyzWok[:, 0] = xWok
     xyzWok[:, 1] = yWok

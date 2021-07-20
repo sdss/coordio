@@ -25,9 +25,9 @@ INST_TO_WAVE = {
     "Apogee": 16600.0
 }
 
-POSITIONER_HEIGHT = 143  # mm, distance from wok surface to fiber
+POSITIONER_HEIGHT = 143.1  # mm, distance from wok surface to fiber
 ALPHA_LEN = 7.4  # mm, length of the alpha arm (distance between alpha and beta axes)
-BETA_LEN = 16.2  #mm, distance from beta axis to top edge of the robot
+BETA_LEN = 16.2  # mm, distance from beta axis to top flat edge of the robot
 # extracted from ZEMAX model model
 # z location of wok vertex in FP coords
 APO_WOK_Z_OFFSET_ZEMAX = -776.4791 - POSITIONER_HEIGHT
@@ -43,8 +43,14 @@ BOSS_BETA_XY = [14.965, -0.376]
 # apogee xy position in solid model
 AP_BETA_XY = [14.965, 0.376]
 
+# default orientation of tangent to a flat wok
+IHAT = [0, -1, 0]
+JHAT = [1, 0, 0]
+KHAT = [0, 0, 1]
+
 # read in the focal plane model file
-fpModelFile = os.path.join(os.path.dirname(__file__), "etc", "focalPlaneModel.csv")
+etcPath = os.path.join(os.path.dirname(__file__), "etc")
+fpModelFile = os.path.join(etcPath, "focalPlaneModel.csv")
 FP_MODEL = pd.read_csv(fpModelFile, comment="#")
 
 
@@ -120,9 +126,9 @@ def getWokOrient(site):
     --------
     x : float
         x position of wok vertex in focal plane coords mm
-    x : float
+    y : float
         y position of wok vertex in focal plane coords mm
-    x : float
+    z : float
         z position of wok vertex in focal plane coords mm
     xTilt : float
         tilt of wok coord sys about focal plane x axis deg
@@ -243,5 +249,59 @@ def getPositionerData(site, holeID):
     bossY = float(row.bossY)
 
     return aal, metX, metY, apX, apY, bossX, bossY
+
+
+def parseDesignRef():
+    designRefFile = os.path.join(etcPath, "rawData", "fps_DesignReference.txt")
+    _row = []
+    _col = []
+    _xWok = []
+    _yWok = []
+    _fType = []
+    _holeName = []
+
+    with open(designRefFile, "r") as f:
+        lines = f.readlines()
+    for line in lines:
+        line = line.strip()
+        line = line.split("#")[0]
+        if not line:
+            continue
+        row, col, x, y, fType = line.split()
+        # make col 1 indexed to match pdf maps
+        # and wok hole naming convention
+        col = int(col) + 1
+        row = int(row)
+
+        if row <= 0:
+            holeName = "R%iC%i"%(row,col)
+        else:
+            holeName = "R+%iC%i"%(row,col)
+
+        _row.append(row)
+        _col.append(col)
+        _xWok.append(float(x))
+        _yWok.append(float(y))
+        _fType.append(fType)
+        _holeName.append(holeName)
+
+    d = {}
+    d["holeName"] = _holeName
+    d["row"] = _row
+    d["col"] = _col
+    d["xWok"] = _xWok
+    d["yWok"] = _yWok
+    d["fType"] = _fType
+
+    df = pd.DataFrame(d)
+    return df
+
+designRef = parseDesignRef()
+
+configDir = os.environ["WOKCALIB_DIR"] #os.path.dirname(coordio.__file__) + "/etc/uwMiniWok"
+positionerTable = pd.read_csv(configDir + "/positionerTable.csv")
+wokCoords = pd.read_csv(configDir + "/wokCoords.csv")
+fiducialCoords = pd.read_csv(configDir + "/fiducialCoords.csv")
+
 
 

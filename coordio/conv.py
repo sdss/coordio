@@ -1,5 +1,6 @@
 import numpy
 import warnings
+from skimage.transform import AffineTransform, EuclideanTransform, SimilarityTransform
 
 from . import defaults
 from .exceptions import CoordIOUserWarning
@@ -1149,7 +1150,7 @@ def tangentToPositioner(
 ):
     """
     Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm
-    at xTangent, yTangent.
+    at xTangent, yTangent.  CPP Version.
 
     todo: include hooks for positioner non-linearity
 
@@ -1217,7 +1218,7 @@ def _tangentToPositioner(
 ):
     """
     Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm
-    at xTangent, yTangent.
+    at xTangent, yTangent.  Python Version.
 
     todo: include hooks for positioner non-linearity
 
@@ -1307,7 +1308,7 @@ def positionerToTangent(
 ):
     """
     Determine tangent coordinates (mm) of xBeta, yBeta coords in mm
-    from alpha/beta angle.
+    from alpha/beta angle.  CPP version.
 
     todo: include hooks for positioner non-linearity
 
@@ -1363,7 +1364,7 @@ def _positionerToTangent(
 ):
     """
     Determine tangent coordinates (mm) of xBeta, yBeta coords in mm
-    from alpha/beta angle.
+    from alpha/beta angle.  Python version.
 
     todo: include hooks for positioner non-linearity
 
@@ -1414,4 +1415,34 @@ def _positionerToTangent(
     return xTangent, yTangent
 
 
+class FVCUW(object):
+    # right now this is for UWs test bench, fix image scale and use
+    # euclidean transforms
+    defaultScale = 0.026926930620282834
+    defaultRotation = -0.005353542811111436
+    defaultTranslation = numpy.array([-75.69606047, -48.68561274])
+    # transform from CCD pixels to mm
+    def __init__(self):
+
+        self.tform = SimilarityTransform(
+            scale=self.defaultScale,
+            rotation=self.defaultRotation,
+            translation=self.defaultTranslation
+         )
+
+    def fit(self, xpix, ypix, xWok, yWok):
+        xypixels = numpy.array([xpix, ypix]).T
+        xyWok = numpy.array([xWok,yWok]).T
+        self.tform.estimate(xypixels, xyWok)
+
+
+    def fvcToWok(self, xpix, ypix):
+        xypixels = numpy.array([xpix, ypix]).T
+        xyWok = self.tform(xypixels)
+        return xyWok[:,0], xyWok[:,1]
+
+    def wokToFVC(self, xWok, yWok):
+        xyWok = numpy.array([xWok, yWok]).T
+        xypix = self.tform.inverse(xyWok)
+        return xypix[:,0], xypix[:,1]
 
