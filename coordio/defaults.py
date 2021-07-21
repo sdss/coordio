@@ -252,7 +252,7 @@ def getPositionerData(site, holeID):
 
 
 def parseDesignRef():
-    designRefFile = os.path.join(etcPath, "rawData", "fps_DesignReference.txt")
+    designRefFile = os.path.join(etcPath, "fps_DesignReference.txt")
     _row = []
     _col = []
     _xWok = []
