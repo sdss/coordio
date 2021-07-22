@@ -299,9 +299,9 @@ def parseDesignRef():
 designRef = parseDesignRef()
 
 configDir = os.environ["WOKCALIB_DIR"] #os.path.dirname(coordio.__file__) + "/etc/uwMiniWok"
-positionerTable = pd.read_csv(configDir + "/positionerTable.csv")
-wokCoords = pd.read_csv(configDir + "/wokCoords.csv")
-fiducialCoords = pd.read_csv(configDir + "/fiducialCoords.csv")
+positionerTableCalib = pd.read_csv(configDir + "/positionerTable.csv")
+wokCoordsCalib = pd.read_csv(configDir + "/wokCoords.csv")
+fiducialCoordsCalib = pd.read_csv(configDir + "/fiducialCoords.csv")
 
 
 
