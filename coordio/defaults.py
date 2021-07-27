@@ -268,15 +268,21 @@ def parseDesignRef():
         if not line:
             continue
         row, col, x, y, fType = line.split()
-        # make col 1 indexed to match pdf maps
-        # and wok hole naming convention
-        col = int(col) + 1
+
+        col = int(col)
         row = int(row)
 
-        if row <= 0:
-            holeName = "R%iC%i"%(row,col)
+        # make col 1 indexed to match pdf maps
+        # and wok hole naming convention
+        if row == -99:
+            holeName = "F%i"%col
+            col = None
+            row = None
+
+        elif row <= 0:
+            holeName = "R%iC%i"%(row,col+1)
         else:
-            holeName = "R+%iC%i"%(row,col)
+            holeName = "R+%iC%i"%(row,col+1)
 
         _row.append(row)
         _col.append(col)
