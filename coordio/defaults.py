@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy
 from .coordinate import CoordIOError
+import warnings
 
 # default/constant values collected here...for now
 MICRONS_PER_MM = 1000
@@ -304,10 +305,13 @@ def parseDesignRef():
 
 designRef = parseDesignRef()
 
-configDir = os.environ["WOKCALIB_DIR"] #os.path.dirname(coordio.__file__) + "/etc/uwMiniWok"
-positionerTableCalib = pd.read_csv(configDir + "/positionerTable.csv")
-wokCoordsCalib = pd.read_csv(configDir + "/wokCoords.csv")
-fiducialCoordsCalib = pd.read_csv(configDir + "/fiducialCoords.csv")
+try:
+    configDir = os.environ["WOKCALIB_DIR"] #os.path.dirname(coordio.__file__) + "/etc/uwMiniWok"
+    positionerTableCalib = pd.read_csv(configDir + "/positionerTable.csv")
+    wokCoordsCalib = pd.read_csv(configDir + "/wokCoords.csv")
+    fiducialCoordsCalib = pd.read_csv(configDir + "/fiducialCoords.csv")
+except KeyError:
+    warnings.warn("$WOKCALIB_DIR not set")
 
 
 
