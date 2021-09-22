@@ -258,9 +258,11 @@ vec2 tangentToPositioner(
     vec2 xyBeta,
     double alphaLen,
     double alphaOffDeg,
-    double betaOffDeg
+    double betaOffDeg,
+    bool lefthand
 ){
     vec2 outArr;
+    double alphaDeg, betaDeg;
 
     auto thetaTangent = atan2(xyTangent[1], xyTangent[0]);
 
@@ -288,8 +290,15 @@ vec2 tangentToPositioner(
     gamma = gamma * 180.0 / M_PI;
     xi = xi * 180.0 / M_PI;
 
-    auto alphaDeg = thetaTangent - xi - alphaOffDeg;  // alpha angle
-    auto betaDeg = 180.0 - gamma - thetaBAC - betaOffDeg;  // beta angle
+    if (lefthand){
+        alphaDeg = thetaTangent + xi - alphaOffDeg;
+        betaDeg = 180 + gamma - thetaBAC - alphaOffDeg;
+    }
+
+    else {
+        alphaDeg = thetaTangent - xi - alphaOffDeg;  // alpha angle
+        betaDeg = 180.0 - gamma - thetaBAC - betaOffDeg;  // beta angle
+    }
 
     alphaDeg = fmod(alphaDeg,360);
     if (alphaDeg < 0.0)
