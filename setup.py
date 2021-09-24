@@ -15,6 +15,8 @@ import glob
 import sys
 from distutils.core import Extension
 
+from shutil import copyfile
+import os
 
 LIBSOFA_PATH = 'cextern/sofa'
 LIBCOORDIO_PATH = 'cextern/conv.cpp'
@@ -77,3 +79,13 @@ ext_modules = [
 ]
 
 setup(ext_modules=ext_modules)
+
+buildDir = glob.glob("build/lib*")[0]
+soFiles = glob.glob(buildDir + "/coordio/lib*.so")
+for soFile in soFiles:
+    base, filename = os.path.split(soFile)
+    dest = "coordio/%s"%filename
+    copyfile(soFile, dest)
+    mode = os.stat(dest).st_mode
+    mode |= (mode & 0o444) >> 2
+    os.chmod(dest, mode)
