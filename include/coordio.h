@@ -75,7 +75,7 @@ vec2 tangentToPositioner(
     double alphaLen,
     double alphaOffDeg,
     double betaOffDeg,
-    bool lefthand=true
+    bool lefthand=false
 );
 
 std::vector<vec2> positionerToTangentArr(
