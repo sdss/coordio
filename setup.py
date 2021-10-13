@@ -15,15 +15,14 @@ import glob
 import sys
 from distutils.core import Extension
 
-from shutil import copyfile
-import os
 
-LIBSOFA_PATH = 'cextern/sofa'
-LIBCOORDIO_PATH = 'cextern/conv.cpp'
+LIBSOFA_PATH = 'coordio/cextern/sofa'
+LIBCOORDIO_PATH = 'coordio/cextern/conv.cpp'
 
 
 extra_compile_args = ['-c', '-pedantic', '-Wall', '-W', '-O']
 extra_link_args = []
+
 
 class getPybindInclude(object):
     """Helper class to determine the pybind11 include path
@@ -44,10 +43,7 @@ class getPybindInclude(object):
 sofa_sources = glob.glob(LIBSOFA_PATH + '/*.c')
 includes = [
     'include',
-    # '/usr/local/include',
-    # '/usr/local/include/eigen3',
-    # '/usr/include/eigen3',
-    # '/usr/include',
+
     getPybindInclude(),
     getPybindInclude(user=True)
 ]
@@ -58,6 +54,7 @@ extra_link_args2 = None
 if sys.platform == 'darwin':
     extra_compile_args2 += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
     extra_link_args2 = ["-v", '-mmacosx-version-min=10.9']
+
 
 ext_modules = [
     Extension(
