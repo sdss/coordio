@@ -16,8 +16,8 @@ import sys
 from distutils.core import Extension
 
 
-LIBSOFA_PATH = 'coordio/cextern/sofa'
-LIBCOORDIO_PATH = 'coordio/cextern/conv.cpp'
+LIBSOFA_PATH = 'cextern/sofa'
+LIBCOORDIO_PATH = 'coordio/src/conv.cpp'
 
 
 extra_compile_args = ['-c', '-pedantic', '-Wall', '-W', '-O']
