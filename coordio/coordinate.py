@@ -181,6 +181,10 @@ class Coordinate(numpy.ndarray):
                 'The input array must be Nx%i.' % obj.__coord_dim__
             )
 
+        for kwarg in kwargs:
+            if kwarg not in obj.__extra_arrays__ and kwarg not in obj.__extra_params__:
+                raise CoordinateError(f'Invalid input argument {kwarg!r}.')
+
         for param in obj.__extra_params__:
             setattr(obj, param, kwargs.get(param, None))
 
@@ -205,13 +209,11 @@ class Coordinate(numpy.ndarray):
 
         # initialize computed arrays to zeros
         for param in obj.__computed_arrays__:
-            # array = kwargs.get(param, None)
             array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
             setattr(obj, param, array)
 
         # initialize warning arrays to false
         for param in obj.__warn_arrays__:
-            # array = kwargs.get(param, None)
             array = numpy.array([False] * obj.shape[0])
             setattr(obj, param, array)
 
