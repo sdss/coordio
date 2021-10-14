@@ -16,8 +16,6 @@ from . import sofa
 from .coordinate import Coordinate, Coordinate2D, verifySite, verifyWavelength
 from .exceptions import CoordinateError, CoordIOError
 from .time import Time
-from .site import Site
-# from .telescope import Field
 from . import defaults
 from . import conv
 
@@ -49,7 +47,7 @@ class ICRS(Coordinate2D):
         A 1D array with the radial velocity in km/s, positive when receding.
     wavelength : numpy.ndarray
         A 1D array with he observing wavelength, in angstrom.
-        Defaults to the value in `defaults.WAVELENGTH` (GFA, sdss-r)
+        Defaults to the value in ``defaults.WAVELENGTH`` (GFA sdss-r).
 
     """
 
@@ -64,14 +62,6 @@ class ICRS(Coordinate2D):
         if kwargs.get('epoch', None) is None:
             obj.epoch += defaults.EPOCH
 
-        # if kwargs.get('wavelength', None) is None:
-        #     if hasattr(value, "wavelength"):
-        #         obj.wavelength = value.wavelength
-        #     else:
-        #         obj.wavelength += defaults.wavelength
-
-        # check if a coordinate was passed that we can just
-        # 'cast' into Observed
         if isinstance(value, Coordinate):
 
             if value.coordSysName == 'Observed':
@@ -79,7 +69,7 @@ class ICRS(Coordinate2D):
 
             else:
                 raise CoordIOError(
-                    'Cannot convert to ICRS from %s'%value.coordSysName
+                    'Cannot convert to ICRS from %s' % value.coordSysName
                 )
 
         return obj
@@ -100,8 +90,8 @@ class ICRS(Coordinate2D):
 
         rlong = numpy.radians(obsCoords.site.longitude)
         rlat = numpy.radians(obsCoords.site.latitude)
-        rZD = numpy.radians(90 - obsCoords[:,0])
-        rAz = numpy.radians(obsCoords[:,1])
+        rZD = numpy.radians(90 - obsCoords[:, 0])
+        rAz = numpy.radians(obsCoords[:, 1])
         wavelength = obsCoords.wavelength / 10000.
         _type = "A".encode()  # coords are azimuth, zenith dist
 
@@ -454,5 +444,3 @@ class Observed(Coordinate2D):
             _ra = _ra % 360  # wrap ra
 
             self.ra[ii] = _ra
-
-

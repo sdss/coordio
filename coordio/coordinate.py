@@ -62,7 +62,7 @@ def verifyWavelength(kwargs, lenArray, strict=True):
         # create an array of correct length default to gfa wavelength
         wls = numpy.zeros(lenArray) + WAVELENGTH
         warnings.warn(
-            "Warning! Wavelengths not supplied, defaulting to %i angstrom"%WAVELENGTH,
+            "Warning! Wavelengths not supplied, defaulting to %i angstrom" % WAVELENGTH,
             CoordIOUserWarning
         )
     else:
@@ -76,7 +76,7 @@ def verifyWavelength(kwargs, lenArray, strict=True):
         if strict and not wlSet.issubset(VALID_WAVELENGTHS):
             raise CoordIOError(
                 "Invalid wavelength passed to FocalPlane \
-                valid wavelengths are %s"%(str(VALID_WAVELENGTHS))
+                valid wavelengths are %s" % (str(VALID_WAVELENGTHS))
             )
 
     # modify
@@ -212,8 +212,9 @@ class Coordinate(numpy.ndarray):
         # initialize warning arrays to false
         for param in obj.__warn_arrays__:
             # array = kwargs.get(param, None)
-            array = numpy.array([False]*obj.shape[0])
+            array = numpy.array([False] * obj.shape[0])
             setattr(obj, param, array)
+
         return obj
 
     def __array_finalize__(self, obj):
@@ -246,12 +247,9 @@ class Coordinate(numpy.ndarray):
         # https://scipy-cookbook.readthedocs.io/items/ViewsVsCopies.html
         # is helpful
         sliced = super().__getitem__(sl)
-        # print("slice", sl, type(sl))
 
-        # print("sltype", sl, type(sl), sliced, type(sliced))
         if (not isinstance(sliced, numpy.ndarray) or
                 sliced.ndim != 2 or sliced.shape[1] != self.shape[1]):
-            # print("were here")
             return sliced.view(numpy.ndarray)
 
         arrays2slice = []
@@ -260,14 +258,11 @@ class Coordinate(numpy.ndarray):
         arrays2slice += self.__warn_arrays__
 
         for param in arrays2slice:
-            # print(param, getattr(sliced, param))
             if isinstance(sl, tuple):
                 # index looks something like arr[2:4,:]
                 setattr(sliced, param, getattr(sliced, param)[sl[0]])
             else:
                 # index looks something like arr[arr<4]
-                # x = getattr(sliced, param)
-                # print("x", x)
                 setattr(sliced, param, getattr(sliced, param)[sl])
 
         return sliced
@@ -289,6 +284,3 @@ class Coordinate3D(Coordinate):
     """
 
     __coord_dim__ = 3
-
-
-
