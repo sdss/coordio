@@ -72,7 +72,8 @@ ext_modules = [
         sources=[LIBCOORDIO_PATH],
         include_dirs=includes,
         extra_compile_args=extra_compile_args2,
-        extra_link_args=extra_link_args2),
+        extra_link_args=extra_link_args2,
+        optional=False),
 ]
 
 setup(ext_modules=ext_modules)
