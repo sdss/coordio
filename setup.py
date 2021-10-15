@@ -43,7 +43,7 @@ class getPybindInclude(object):
 sofa_sources = glob.glob(LIBSOFA_PATH + '/*.c')
 includes = [
     'include',
-    'coordio/include',
+    'src/coordio/include',
     getPybindInclude(),
     getPybindInclude(user=True)
 ]
