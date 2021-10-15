@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-import numpy
 from .coordinate import CoordIOError
 import warnings
 
@@ -157,6 +156,15 @@ VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
 def getHoleOrient(site, holeID):
     """Return orientation of hole position in the wok
 
+    Parameters
+    ----------
+    site : str
+        The wok site (APO or LCO).
+    holeID : str or list of str
+        Either a string with a valid holeID (e.g. R+13C1) or a list of
+        valid holeIDs. In the latter case, the returned arrays are
+        2D with axis 1 being the holeID dimmension.
+
     Returns
     --------
     b : numpy.ndarray
@@ -171,36 +179,31 @@ def getHoleOrient(site, holeID):
 
     if site not in ["LCO", "APO"]:
         raise CoordIOError("site must be one of APO or LCO, got %s" % site)
-    if holeID not in VALID_HOLE_IDS:
-        raise CoordIOError("%s is not a valid hole ID" % holeID)
 
-    row = wokCoords[(wokCoords.wokType == site) & (wokCoords.holeID == holeID)]
+    if isinstance(holeID, str):
+        holeID = [holeID]
 
-    b = numpy.array([
-        float(row.x),
-        float(row.y),
-        float(row.z)
-    ])
+    wokCoordsH = wokCoords.loc[wokCoords.wokType == site].set_index('holeID')
 
-    iHat = numpy.array([
-        float(row.ix),
-        float(row.iy),
-        float(row.iz)
-    ])
+    mismatched = set(holeID) - set(wokCoordsH.index)
+    if len(mismatched) > 0:
+        raise CoordIOError(f"{mismatched} are not valid hole IDs")
 
-    jHat = numpy.array([
-        float(row.jx),
-        float(row.jy),
-        float(row.jz)
-    ])
+    wokCoordsH = wokCoordsH.loc[holeID]
 
-    kHat = numpy.array([
-        float(row.kx),
-        float(row.ky),
-        float(row.kz)
-    ])
+    b = wokCoordsH.loc[:, ['x', 'y', 'z']].to_numpy()
+    iHat = wokCoordsH.loc[:, ['ix', 'iy', 'iz']].to_numpy()
+    jHat = wokCoordsH.loc[:, ['jx', 'jy', 'jz']].to_numpy()
+    kHat = wokCoordsH.loc[:, ['kx', 'ky', 'kz']].to_numpy()
+
+    if len(holeID) == 1:
+        b = b[0]
+        iHat = iHat[0]
+        jHat = jHat[0]
+        kHat = kHat[0]
 
     return b, iHat, jHat, kHat
+
 
 # read in positioner table
 positionerTableFile = os.path.join(
