@@ -155,7 +155,7 @@ def test_specific():
 
     tcList = []
     for pc in pcList:
-        tc = Tangent(pc, site=apoSite, holeID=holeID, wl=wl)
+        tc = Tangent(pc, site=apoSite, holeID=holeID, wavelength=wl)
         print("tc", tc)
         tcList.append(tc)
 

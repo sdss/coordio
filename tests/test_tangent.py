@@ -1,9 +1,8 @@
 import numpy
-import time
 import pandas
 from coordio import Site, Wok, Observed, Field, FocalPlane, Tangent
 from coordio.defaults import (APO_MAX_FIELD_R, LCO_MAX_FIELD_R, VALID_HOLE_IDS,
-                              MICRONS_PER_MM, VALID_WAVELENGTHS)
+                              MICRONS_PER_MM)
 # import matplotlib.pyplot as plt
 # import seaborn as sns
 
@@ -30,13 +29,11 @@ phiFieldAPO = numpy.sqrt(numpy.random.uniform(0, APO_MAX_FIELD_R**2, size=nCoord
 
 fieldAPO = Field(
     numpy.array([thetaField, phiFieldAPO]).T,
-    field_center=fcAPO,
-    site=apoSite)
+    field_center=fcAPO)
 
 fieldLCO = Field(
     numpy.array([thetaField, phiFieldLCO]).T,
-    field_center=fcLCO,
-    site=lcoSite
+    field_center=fcLCO
 )
 
 focalAPO = FocalPlane(fieldAPO, site=apoSite)
@@ -110,7 +107,3 @@ def test_proj():
 
 if __name__ == "__main__":
     test_proj()
-
-
-
-

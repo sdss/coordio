@@ -23,13 +23,12 @@ phiFieldAPO = numpy.random.uniform(0, APO_MAX_FIELD_R, size=nCoords)
 
 fieldAPO = Field(
     numpy.array([thetaField, phiFieldAPO]).T,
-    field_center=fcAPO,
-    site=apoSite)
+    field_center=fcAPO
+)
 
 fieldLCO = Field(
     numpy.array([thetaField, phiFieldLCO]).T,
-    field_center=fcLCO,
-    site=lcoSite
+    field_center=fcLCO
 )
 
 focalAPO = FocalPlane(fieldAPO, site=apoSite)
