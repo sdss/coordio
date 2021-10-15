@@ -42,8 +42,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Clone fps_calibrations
-        run: |
-          git clone git@github.com:sdss/fps_calibrations ../fps_calibrations
+        uses: actions/checkout@master
+        with:
+          name: sdss/fps_calibrations
 
       - name: Install dependencies
         run: |
