@@ -102,8 +102,3 @@ def test_proj():
             # plt.figure()
             # plt.plot(df.r, df.z*MICRONS_PER_MM, '.')
             # plt.show()
-
-
-
-if __name__ == "__main__":
-    test_proj()

@@ -59,6 +59,3 @@ def test_wok_tangent_cycle():
             numpy.testing.assert_array_almost_equal(
                 wokCoords, _wokCoords, decimal=10
             )
-
-if __name__ == "__main__":
-    test_wok_tangent_cycle()
