@@ -135,8 +135,10 @@ def getWokOrient(site):
     yTilt : float
         tilt of wok coord sys about focal plane y axis deg
     """
+
     if site not in ["LCO", "APO"]:
-        raise CoordIOError("site must be one of APO or LCO, got %s"%site)
+        raise CoordIOError("site must be one of APO or LCO, got %s" % site)
+
     row = wokOrient[wokOrient.site == site]
     x = float(row.x)
     y = float(row.y)
@@ -315,6 +317,3 @@ try:
     fiducialCoordsCalib = pd.read_csv(configDir + "/fiducialCoords.csv")
 except KeyError:
     warnings.warn("$WOKCALIB_DIR not set")
-
-
-
