@@ -48,11 +48,9 @@ class ICRS(Coordinate2D):
 
     """
 
-    __extra_arrays__ = ['epoch', 'pmra', 'pmdec', 'parallax', 'rvel', 'wavelength']
+    __extra_arrays__ = ['epoch', 'pmra', 'pmdec', 'parallax', 'rvel']
 
     def __new__(cls, value, **kwargs):
-
-        verifyWavelength(kwargs, len(value), strict=False)
 
         obj = super().__new__(cls, value, **kwargs)
 
@@ -71,7 +69,7 @@ class ICRS(Coordinate2D):
 
         return obj
 
-    def _fromObserved(self, obsCoords, wavelength=None):
+    def _fromObserved(self, obsCoords):
         """Converts from `.Observed` coordinates.  Epoch is the
         time specifified by the site.
 
@@ -81,13 +79,7 @@ class ICRS(Coordinate2D):
         rlat = numpy.radians(obsCoords.site.latitude)
         rZD = numpy.radians(90 - obsCoords[:, 0])
         rAz = numpy.radians(obsCoords[:, 1])
-
-        if wavelength:
-            wavelength = wavelength / 10000.
-        else:
-            if obsCoords.wavelength is None:
-                raise CoordIOError('No wavelengths provided.')
-            wavelength = obsCoords.wavelength / 10000.
+        wavelength = obsCoords.wavelength / 10000.
 
         _type = "A".encode()  # coords are azimuth, zenith dist
 
@@ -139,6 +131,7 @@ class ICRS(Coordinate2D):
 
         rra = numpy.radians(self[:, 0])
         rdec = numpy.radians(self[:, 1])
+
         rpmra = numpy.radians(self.pmra / 1000. / 3600.) / numpy.cos(rdec)
         rpmdec = numpy.radians(self.pmdec / 1000. / 3600.)
 
@@ -336,7 +329,7 @@ class Observed(Coordinate2D):
                 utc1, utc2, dut1,
                 rlong, rlat, self.site.altitude, 0.0, 0.0,
                 self.site.pressure, self.site.temperature,
-                self.site.rh, icrs_2000.wavelength[ii] / 10000.,
+                self.site.rh, self.wavelength[ii] / 10000.,
                 az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs
             )
 
