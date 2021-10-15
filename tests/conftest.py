@@ -35,7 +35,7 @@ def iers_data_path():
 
 
 @pytest.fixture(autouse=True)
-def mock_iers(mocker, iers_data_path, tmpdir):
+def mock_iers(mocker, iers_data_path):
 
     iers_data_file = iers_data_path / 'finals2000A.data.csv'
 
