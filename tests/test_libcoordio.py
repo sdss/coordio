@@ -368,27 +368,3 @@ def test_wokAndTangent():
                 assert _tx == pytest.approx(tx2)
                 assert _ty == pytest.approx(ty2)
                 assert _tz == pytest.approx(tz2)
-
-        # break
-
-if __name__ == "__main__":
-    plot_degenerateSolns()
-#     tx,ty,tz = numpy.zeros(1000)+22, numpy.zeros(1000)-4, numpy.zeros(1000)
-
-
-
-#     import pdb; pdb.set_trace()
-
-#     tstart = time.time()
-#     _tx1, _ty1, _tz1 = conv.wokToTangent(wx,wy,wz,b,iHat,jHat,kHat)
-#     print("carr", time.time()-tstart)
-#     tstart = time.time()
-#     _tx2, _ty2, _tz2 = conv._wokToTangent(wx,wy,wz,b,iHat,jHat,kHat)
-#     print("narr", time.time()-tstart)
-
-
-#     import pdb; pdb.set_trace()
-#     break
-
-
-# import pdb; pdb.set_trace()

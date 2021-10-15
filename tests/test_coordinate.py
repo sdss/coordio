@@ -239,13 +239,3 @@ def test_warn_arr():
     _array12 = array12[slicer]
     _warn = warn[slicer]
     assert _tc.param1 == "hi"
-
-
-if __name__ == "__main__":
-    test_warn_arr()
-
-
-
-
-
-

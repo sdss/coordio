@@ -322,8 +322,3 @@ class FocalPlane(Coordinate3D):
             )
             self.b[arg] = b
             self.R[arg] = R
-
-
-if __name__ == "__main__":
-    pass
-

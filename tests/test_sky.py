@@ -139,7 +139,3 @@ def test_icrs_obs_cycle():
     a2 = SkyCoord(ra=_icrs[:, 0] * u.deg, dec=_icrs[:, 1] * u.deg)
     sep = a1.separation(a2)
     assert numpy.max(numpy.array(sep) * 3600) < 0.5
-
-
-if __name__ == "__main__":
-    test_icrs_obs_cycle()

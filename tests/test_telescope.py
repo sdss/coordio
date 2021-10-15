@@ -349,8 +349,3 @@ def test_invalid_site():
     site = Site("APO") # time not specified
     with pytest.raises(CoordIOError):
         fc = Observed([[80, 120]], site=site)
-
-
-if __name__ == "__main__":
-    test_field_obs_cycle()
-

@@ -436,6 +436,3 @@ def test_xyProj2():
     assert numpy.abs(yExpect - py[1]) < SMALL_NUM
     assert numpy.abs(zExpect - pz[1]) < SMALL_NUM
     assert numpy.abs(-1 * projExpect - pd[1]) < SMALL_NUM
-
-if __name__ == "__main__":
-    test_xyProj2()

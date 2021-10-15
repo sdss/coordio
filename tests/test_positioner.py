@@ -167,7 +167,3 @@ def test_specific():
         _pc = Pos(ab, site=apoSite, holeID=holeID)
         print(pc, _pc)
         _pcList.append(_pc)
-
-
-if __name__ == "__main__":
-    test_specific()

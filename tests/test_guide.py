@@ -135,7 +135,3 @@ def test_guide_fail():
     with pytest.raises(CoordIOError) as ee:
         Tangent(gc, site=apoSite, holeID="GFA-S1", wavelength=wl)
     assert "non-guide wavelength" in str(ee)
-
-
-if __name__ == "__main__":
-    test_guide_cycle()
