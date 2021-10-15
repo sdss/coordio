@@ -47,6 +47,14 @@ jobs:
           repository: sdss/fps_calibrations
           path: fps_calibrations
 
+      - name: LS
+        run: |
+          pwd
+          ls
+
+      - name: LS ..
+        run: ls ../
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
