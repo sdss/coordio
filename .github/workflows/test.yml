@@ -23,7 +23,7 @@ jobs:
         python-version: [3.7, 3.8, 3.9]
 
     env:
-      FPS_CALIBRATIONS_DIR: "$(pwd)/../fps_calibrations"
+      FPS_CALIBRATIONS_DIR: "/home/runner/work/fps_calibrations"
 
     steps:
       - uses: actions/checkout@v2
