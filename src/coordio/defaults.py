@@ -1,7 +1,10 @@
 import os
-import pandas as pd
-from .coordinate import CoordIOError
 import warnings
+
+import pandas as pd
+
+from .coordinate import CoordIOError
+
 
 # default/constant values collected here...for now
 MICRONS_PER_MM = 1000
@@ -47,11 +50,6 @@ AP_BETA_XY = [14.965, 0.376]
 IHAT = [0, -1, 0]
 JHAT = [1, 0, 0]
 KHAT = [0, 0, 1]
-
-# read in the focal plane model file
-etcPath = os.path.join(os.path.dirname(__file__), "etc")
-fpModelFile = os.path.join(etcPath, "focalPlaneModel.csv")
-FP_MODEL = pd.read_csv(fpModelFile, comment="#")
 
 
 def getFPModelParams(site, direction, waveCat):
@@ -102,8 +100,6 @@ def getFPModelParams(site, direction, waveCat):
         & (FP_MODEL.waveCat == waveCat)
     ]
 
-    # print("row", row)
-
     R = float(row.R)
     b = float(row.b)
     c0 = float(row.c0)
@@ -112,11 +108,6 @@ def getFPModelParams(site, direction, waveCat):
     c3 = float(row.c3)
     c4 = float(row.c4)
     return R, b, c0, c1, c2, c3, c4
-
-
-# read in the wok orientation model file
-wokOrientFile = os.path.join(os.path.dirname(__file__), "etc", "wokOrientation.csv")
-wokOrient = pd.read_csv(wokOrientFile, comment="#")
 
 
 def getWokOrient(site):
@@ -147,12 +138,6 @@ def getWokOrient(site):
     yTilt = float(row.yTilt)
 
     return x, y, z, xTilt, yTilt
-
-
-wokCoordFile = os.path.join(os.path.dirname(__file__), "etc", "wokCoords.csv")
-wokCoords = pd.read_csv(wokCoordFile, comment="#", index_col=0)
-VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
-VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
 
 
 def getHoleOrient(site, holeID):
@@ -207,13 +192,6 @@ def getHoleOrient(site, holeID):
     return b, iHat, jHat, kHat
 
 
-# read in positioner table
-positionerTableFile = os.path.join(
-    os.path.dirname(__file__), "etc", "positionerTable.csv"
-)
-positionerTable = pd.read_csv(positionerTableFile, comment="#", index_col=0)
-
-
 def getPositionerData(site, holeID):
     """Return data specific to a positioner
 
@@ -245,7 +223,6 @@ def getPositionerData(site, holeID):
         (positionerTable.wokID == site) & (positionerTable.holeID == holeID)
     ]
 
-
     aal = float(row.alphaArmLen)
     metX = float(row.metX)
     metY = float(row.metY)
@@ -258,7 +235,7 @@ def getPositionerData(site, holeID):
 
 
 def parseDesignRef():
-    designRefFile = os.path.join(etcPath, "fps_DesignReference.txt")
+    designRefFile = os.path.join(fps_calibs, "fps_DesignReference.txt")
     _row = []
     _col = []
     _xWok = []
@@ -308,12 +285,27 @@ def parseDesignRef():
     df = pd.DataFrame(d)
     return df
 
-designRef = parseDesignRef()
 
 try:
-    configDir = os.environ["WOKCALIB_DIR"] #os.path.dirname(coordio.__file__) + "/etc/uwMiniWok"
-    positionerTableCalib = pd.read_csv(configDir + "/positionerTable.csv")
-    wokCoordsCalib = pd.read_csv(configDir + "/wokCoords.csv")
-    fiducialCoordsCalib = pd.read_csv(configDir + "/fiducialCoords.csv")
+    fps_calibs = os.path.abspath(os.environ["FPS_CALIBRATIONS_DIR"])
+
+    fpModelFile = os.path.join(fps_calibs, "focalPlaneModel.csv")
+    FP_MODEL = pd.read_csv(fpModelFile, comment="#")
+
+    # read in the wok orientation model file
+    wokOrientFile = os.path.join(fps_calibs, "wokOrientation.csv")
+    wokOrient = pd.read_csv(wokOrientFile, comment="#")
+
+    # read in positioner table
+    positionerTableFile = os.path.join(fps_calibs, "positionerTable.csv")
+    positionerTable = pd.read_csv(positionerTableFile, comment="#", index_col=0)
+
+    wokCoordFile = os.path.join(fps_calibs, "wokCoords.csv")
+    wokCoords = pd.read_csv(wokCoordFile, comment="#", index_col=0)
+    VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
+    VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
+
+    designRef = parseDesignRef()
+
 except KeyError:
-    warnings.warn("$WOKCALIB_DIR not set")
+    warnings.warn("$FPS_CALIBRTIONS_DIR not set. Most things will fail quickly.")
