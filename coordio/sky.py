@@ -45,9 +45,6 @@ class ICRS(Coordinate2D):
         A 1D array with the parallax for the N targets, in milliarcsec.
     rvel : numpy.ndarray
         A 1D array with the radial velocity in km/s, positive when receding.
-    wavelength : numpy.ndarray
-        A 1D array with he observing wavelength, in angstrom.
-        Defaults to the value in ``defaults.WAVELENGTH`` (GFA sdss-r).
 
     """
 
@@ -74,25 +71,24 @@ class ICRS(Coordinate2D):
 
         return obj
 
-    def _fromObserved(self, obsCoords):
+    def _fromObserved(self, obsCoords, wavelength=None):
         """Converts from `.Observed` coordinates.  Epoch is the
         time specifified by the site.
 
         """
 
-        # We need the epoch to be J2000.0 because that's what iauAtco13 likes.
-        # icrs_2000 = icrsCoords.to_epoch(2451545.0, site=self.site)
-
-        # rra = numpy.radians(icrs_2000[:, 0])
-        # rdec = numpy.radians(icrs_2000[:, 1])
-        # rpmra = numpy.radians(icrs_2000.pmra / 1000. / 3600.) / numpy.cos(rdec)
-        # rpmdec = numpy.radians(icrs_2000.pmdec / 1000. / 3600.)
-
         rlong = numpy.radians(obsCoords.site.longitude)
         rlat = numpy.radians(obsCoords.site.latitude)
         rZD = numpy.radians(90 - obsCoords[:, 0])
         rAz = numpy.radians(obsCoords[:, 1])
-        wavelength = obsCoords.wavelength / 10000.
+
+        if wavelength:
+            wavelength = wavelength / 10000.
+        else:
+            if obsCoords.wavelength is None:
+                raise CoordIOError('No wavelengths provided.')
+            wavelength = obsCoords.wavelength / 10000.
+
         _type = "A".encode()  # coords are azimuth, zenith dist
 
         time = obsCoords.site.time
@@ -238,34 +234,9 @@ class Observed(Coordinate2D):
         # should we do range checks (eg alt < 90)? probably.
 
         verifySite(kwargs)
-
-        # if kwargs.get('site', None) is None:
-        #     raise CoordIOError('Site must be passed to Observed')
-
-        # else:
-        #     site = kwargs.get('site')
-        #     if not isinstance(site, Site):
-        #         raise CoordIOError('Must pass Site to Observed')
-        #     if site.time is None:
-        #         raise CoordIOError(
-        #             "Time of observation must be specified on Site"
-        #         )
-
-        # should we prefer wavelength passed, or wavelength
-        # existing on value (if it does exist).  Here preferring passed
-        # if kwargs.get('wavelength', None) is None:
-        #     if hasattr(value, "wavelength"):
-        #         kwargs["wavelength"] = value.wavelength
-        verifyWavelength(
-            kwargs, len(value), strict=False
-        )
+        verifyWavelength(kwargs, len(value), strict=False)
 
         obj = super().__new__(cls, value, **kwargs)
-
-        # if kwargs.get('wavelength', None) is None:
-        #     obj.wavelength += defaults.wavelength
-
-
 
         # check if a coordinate was passed that we can just
         # 'cast' into Observed
@@ -279,7 +250,7 @@ class Observed(Coordinate2D):
 
             else:
                 raise CoordIOError(
-                    'Cannot convert to Observed from %s'%value.coordSysName
+                    'Cannot convert to Observed from %s' % value.coordSysName
                 )
 
         else:
@@ -406,8 +377,8 @@ class Observed(Coordinate2D):
             altCenter, azCenter, pa
         )
 
-        self[:,0] = alt
-        self[:,1] = az
+        self[:, 0] = alt
+        self[:, 1] = az
 
         self._fromRaw()
 

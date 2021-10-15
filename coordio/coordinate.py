@@ -221,7 +221,6 @@ class Coordinate(numpy.ndarray):
 
     def __array_finalize__(self, obj):
         # self is the new array, obj is the old array
-        # print("array finalize called", obj, "ist the obj")
         if obj is None or not isinstance(obj, numpy.ndarray):
             return obj
 
