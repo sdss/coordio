@@ -13,6 +13,7 @@ import pytest
 
 from coordio import config
 
+print('y')
 
 @pytest.fixture(autouse=True)
 def hack_config(tmpdir):
