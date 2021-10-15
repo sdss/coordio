@@ -23,7 +23,7 @@ jobs:
         python-version: [3.7, 3.8, 3.9]
 
     env:
-      FPS_CALIBRATIONS_DIR: "$(pwd)/../"
+      FPS_CALIBRATIONS_DIR: "$(pwd)/../fps_calibrations"
 
     steps:
       - uses: actions/checkout@v2
@@ -40,6 +40,10 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Clone fps_calibrations
+        run: |
+          git clone git@github.com:sdss/fps_calibrations ../fps_calibrations
 
       - name: Install dependencies
         run: |
