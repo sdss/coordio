@@ -6,7 +6,6 @@
 # @Filename: conftest.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
-from coordio.iers import IERS
 import pathlib
 import shutil
 import urllib.request
@@ -41,8 +40,6 @@ def mock_iers(mocker, iers_data_path, tmpdir):
 
     iers_data_file = iers_data_path / 'finals2000A.data.csv'
 
-    def copy_file(*_):
-        shutil.copyfile(iers_data_file, tmpdir / 'finals2000A.data.csv')
-
-    # Mock urllib.request.urlretrieve so that tests work offline and faster.
-    mocker.patch.object(urllib.request, 'urlretrieve', side_effect=copy_file)
+    # Mock urllib.request.urlopen so that tests work offline and faster.
+    mocker.patch.object(urllib.request, 'urlopen',
+                        return_value=open(iers_data_file, 'rb'))

@@ -42,7 +42,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -e .
-          ls coordio/
 
       # - name: Lint with flake8
       #   run: |
