@@ -20,7 +20,7 @@ def hack_config(tmpdir):
     orig_config = config.copy()
 
     config['iers']['path'] = str(tmpdir)
-
+    print('hack_config')
     yield
 
     config.update(orig_config)
@@ -38,6 +38,7 @@ def iers_data_path():
 def mock_iers(mocker, iers_data_path):
 
     iers_data_file = iers_data_path / 'finals2000A.data.csv'
+    print('mock_iers')
 
     # Mock urllib.request.urlopen so that tests work offline and faster.
     mocker.patch.object(urllib.request, 'urlopen',
