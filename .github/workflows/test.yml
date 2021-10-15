@@ -44,8 +44,7 @@ jobs:
       - name: Clone fps_calibrations
         uses: actions/checkout@master
         with:
-          name: sdss/fps_calibrations
-          path: ../
+          repository: sdss/fps_calibrations
 
       - name: Install dependencies
         run: |
