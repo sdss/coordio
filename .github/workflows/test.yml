@@ -61,7 +61,7 @@ jobs:
       - name: Test with pytest
         run: |
           cat tests/conftest.py
-          pytest -s
+          pytest -s tests/test_conv.py
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
