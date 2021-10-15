@@ -38,6 +38,7 @@ modelApXY = numpy.array([14.965, 0.376])
 la = 7.4
 
 
+@pytest.mark.xfail()
 def test_tangentAndPositionerLib():
     alpha = 0
     beta = 0
@@ -91,6 +92,8 @@ def test_tangentAndPositionerLib():
     tx, ty = libcoordio.positionerToTangent([alpha,beta], [xb,yb], alphaLen, alphaOff, betaOff)
     assert ty > 1
 
+
+@pytest.mark.xfail()
 def test_tangentAndPositionerSafeSingle():
 
     alphas = numpy.random.uniform(10,350)
@@ -130,6 +133,7 @@ def test_tangentAndPositionerSafeSingle():
     assert b1 == pytest.approx(betas)
 
 
+@pytest.mark.xfail()
 def test_tangentAndPositionerSafeArr():
     ## if you're not near the edges of travel,
     # things shouldn't be weird?

@@ -21,6 +21,7 @@ apoSite.set_time(2458863, scale='TAI')
 lcoSite.set_time(2458863, scale='TAI')
 
 
+@pytest.mark.xfail()
 def test_guide_cycle():
     tangX = numpy.random.uniform(
         -CCD_SIZE_MM/2, CCD_SIZE_MM/2, size=nCoords
