@@ -341,14 +341,18 @@ def test_wokAndTangent():
                 wx2,wy2,wz2 = conv._tangentToWok(_tx, _ty, _tz, b, iHat, jHat, kHat,
                     scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
 
-
-
                 assert wx1 == pytest.approx(wx2)
                 assert wy1 == pytest.approx(wy2)
                 assert wz1 == pytest.approx(wz2)
 
+                nrepeats = 1 if numpy.isscalar(_tx) else len(_tx)
+                bArr = numpy.repeat(numpy.atleast_2d(b), nrepeats, axis=0)
+                iHatArr = numpy.repeat(numpy.atleast_2d(iHat), nrepeats, axis=0)
+                jHatArr = numpy.repeat(numpy.atleast_2d(jHat), nrepeats, axis=0)
+                kHatArr = numpy.repeat(numpy.atleast_2d(kHat), nrepeats, axis=0)
 
-                tx1,ty1,tz1 = conv.wokToTangent(wx1, wy1, wz1, b, iHat, jHat, kHat,
+                tx1,ty1,tz1 = conv.wokToTangent(
+                    wx1, wy1, wz1, bArr, iHatArr, jHatArr, kHatArr,
                     scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
                 tx2,ty2,tz2 = conv._wokToTangent(wx1, wy1, wz1, b, iHat, jHat, kHat,
                     scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
@@ -384,9 +388,3 @@ if __name__ == "__main__":
 
 
 # import pdb; pdb.set_trace()
-
-
-
-
-
-

@@ -23,15 +23,15 @@ vec3 wokToTangent(
 
 std::vector<vec3> wokToTangentArr(
     std::vector<std::array<double,3>> & wokXYZ,
-    std::array<double, 3> & basePos,
-    std::array<double, 3> & iHat,
-    std::array<double, 3> & jHat,
-    std::array<double, 3> & kHat,
-    double elementHeight,
-    double scaleFac,
-    double dx,
-    double dy,
-    double dz
+    std::vector<vec3> & basePos,
+    std::vector<vec3> & iHat,
+    std::vector<vec3> & jHat,
+    std::vector<vec3> & kHat,
+    std::vector<double> & elementHeight,
+    std::vector<double> & scaleFac,
+    std::vector<double> & dx,
+    std::vector<double> & dy,
+    std::vector<double> & dz
 );
 
 vec3 tangentToWok(

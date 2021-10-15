@@ -697,11 +697,20 @@ def _verify3Vector(checkMe, label):
     return checkMe
 
 
+def repeat_scalar(input, n):
+    """Returns an array with an scalar repeated ``n`` times. Does not affect arrays."""
+
+    if numpy.isscalar(input):
+        return numpy.repeat(input, n)
+
+    return input
+
+
 def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
                  dx=0, dy=0, dz=0):
     """
-    Convert from wok coordinates to tangent coordinates.
+    Convert an array of wok coordinates to tangent coordinates.
 
     xyz Wok coords are mm with orgin at wok vertex. +z points from wok toward M2.
     -x points toward the boss slithead
@@ -712,77 +721,82 @@ def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
 
     Parameters
     -------------
-    xWok: scalar or 1D array
+    xWok: 1D array
         x position of object in wok space mm
         (+x aligned with +RA on image at PA = 0)
-    yWok: scalar or 1D array
+    yWok: 1D array
         y position of object in wok space mm
         (+y aligned with +Dec on image at PA = 0)
-    zWok: scalar or 1D array
+    zWok: 1D array
         z position of object in wok space mm
         (+z aligned boresight and increases from the telescope to the sky)
-    b: 3-vector
-        x,y,z position (mm) of element hole on wok surface measured in wok coords
-    iHat: 3-vector
+    b: 2D array of 3D vectors
+        x,y,z position (mm) of each hole element on wok surface measured in wok coords
+    iHat: 2D array of 3D vectors
         x,y,z unit vector in wok coords that indicate the direction
-        of the tangent coordinate x axis
-    jHat: 3-vector
+        of the tangent coordinate x axis for each hole.
+    jHat: 2D array of 3D vectors
         x,y,z unit vector in wok coords that indicate the direction
-        of the tangent coordinate y axis
-    kHat: 3-vector
+        of the tangent coordinate y axis for each hole.
+    kHat: 2D array of 3D vectors
         x,y,z unit vector in wok coords that indicate the direction
-        of the tangent coordinate z axis
-    elementHeight: scalar
+        of the tangent coordinate z axis for each hole.
+    elementHeight: 1D array
         height (mm) of positioner/GFA chip above wok surface
-    scaleFac: scalar
+    scaleFac: 1D array
         scale factor to apply to b to account for thermal expansion of wok.
         scale is applied to b radially
-    dx: scalar
+    dx: 1D array
         x offset (mm), calibration to capture small displacements of
         tangent x
-    dy: scalar
+    dy: 1D array
         y offset (mm), calibration to capture small displacements of
         tangent y
-    dz: scalar
+    dz: 1D array
         z offset (mm), calibration to capture small displacements of
         tangent x
 
     Returns
     ---------
-    xTangent: scalar or 1D array
+    xTangent: 1D array
         x position (mm) in tangent coordinates
-    yTangent: scalar or 1D array
+    yTangent: 1D array
         y position (mm) in tangent coordinates
-    zTangent: scalar or 1D array
+    zTangent: 1D array
         z position (mm) in tangent coordinates
     """
-    b = _verify3Vector(b, "b")
-    iHat = _verify3Vector(iHat, "iHat")
-    jHat = _verify3Vector(jHat, "jHat")
-    kHat = _verify3Vector(kHat, "kHat")
-    # format into list of lists
-    if hasattr(xWok, "__len__"):
-        xyzWok = numpy.array([xWok, yWok, zWok]).T.tolist()
 
-        xyzTangent = libcoordio.wokToTangentArr(
-            xyzWok, list(b), list(iHat), list(jHat), list(kHat),
-            elementHeight, scaleFac, dx, dy, dz)
+    # Convert everything to arrays for wokToTangentArr.
+    b = numpy.atleast_2d(b).tolist()
+    iHat = numpy.atleast_2d(iHat).tolist()
+    jHat = numpy.atleast_2d(jHat).tolist()
+    kHat = numpy.atleast_2d(kHat).tolist()
 
-        xyzTangent = numpy.array(xyzTangent)
-        xTangent = xyzTangent[:, 0]
-        yTangent = xyzTangent[:, 1]
-        zTangent = xyzTangent[:, 2]
-    else:
-        xTangent, yTangent, zTangent = libcoordio.wokToTangent(
-            [xWok, yWok, zWok], list(b), list(iHat), list(jHat), list(kHat),
-            elementHeight, scaleFac, dx, dy, dz
-        )
+    xyzWok = numpy.atleast_2d(numpy.array([xWok, yWok, zWok]).T).tolist()
+    length = len(xyzWok)
+
+    elementHeight = repeat_scalar(elementHeight, length).tolist()
+    scaleFac = repeat_scalar(scaleFac, length).tolist()
+    dx = repeat_scalar(dx, length).tolist()
+    dy = repeat_scalar(dy, length).tolist()
+    dz = repeat_scalar(dz, length).tolist()
+
+    xyzTangent = libcoordio.wokToTangentArr(
+        xyzWok, b, iHat, jHat, kHat,
+        elementHeight, scaleFac, dx, dy, dz
+    )
+
+    xyzTangent = numpy.array(xyzTangent)
+    xTangent = xyzTangent[:, 0]
+    yTangent = xyzTangent[:, 1]
+    zTangent = xyzTangent[:, 2]
+
     return xTangent, yTangent, zTangent
 
 
 def _wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
-                 elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
-                 dx=0, dy=0, dz=0):
+                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
+                  dx=0, dy=0, dz=0):
     """
     Convert from wok coordinates to tangent coordinates.
 
@@ -1445,4 +1459,3 @@ class FVCUW(object):
         xyWok = numpy.array([xWok, yWok]).T
         xypix = self.tform.inverse(xyWok)
         return xypix[:,0], xypix[:,1]
-
