@@ -23,7 +23,8 @@ jobs:
         python-version: [3.7, 3.8, 3.9]
 
     env:
-      FPS_CALIBRATIONS_DIR: "/home/runner/work/coordio/fps_calibrations"
+      FPS_CALIBRATIONS_DIR: "/home/runner/work/coordio/coordio/fps_calibrations"
+      PYTHONPATH: "/home/runner/work/coordio/coordio/fps_calibrations"
 
     steps:
       - uses: actions/checkout@v2
@@ -46,14 +47,6 @@ jobs:
         with:
           repository: sdss/fps_calibrations
           path: fps_calibrations
-
-      - name: LS
-        run: |
-          pwd
-          ls
-
-      - name: LS ..
-        run: ls ../
 
       - name: Install dependencies
         run: |
