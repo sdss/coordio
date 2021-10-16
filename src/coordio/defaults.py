@@ -309,3 +309,9 @@ try:
 
 except KeyError:
     warnings.warn("$FPS_CALIBRTIONS_DIR not set. Most things will fail quickly.")
+
+try:
+    import fps_calibrations
+    fps_calibs_version = fps_calibrations.get_version()
+except ImportError:
+    fps_calibs_version = 'unknown'
