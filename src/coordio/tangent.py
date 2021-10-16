@@ -4,7 +4,7 @@ import numpy
 
 from . import conv, defaults
 from .coordinate import Coordinate, Coordinate3D, verifySite, verifyWavelength
-from .exceptions import CoordIOError
+from .exceptions import CoordIOError, CoordIOUserWarning
 from .telescope import FocalPlane
 from .wok import Wok
 
@@ -40,7 +40,7 @@ def _getRayOrigins(site, holeID, scaleFactor, obsAngle):
         )
         fpXYZ = [[0, 0, b]]  # sphere's center in focal plane coords
         # JSG for Conor: is this right?
-        wavelength = defaults.INST_TO_WAVE[waveCat]
+        wavelength = defaults.INST_TO_WAVE['GFA']
         fpCoords = FocalPlane(fpXYZ, site=site, wavelength=wavelength)
         wokCoords = Wok(fpCoords, site=site, obsAngle=obsAngle)
         tanCoords = TangentNoProj(
@@ -164,7 +164,8 @@ class Tangent(Coordinate3D):
 
         """
         if not numpy.isfinite(numpy.sum(posCoords)):
-            warnings.warn("NaN values propigated from positioner coordinates")
+            warnings.warn("NaN values propigated from positioner coordinates",
+                          CoordIOUserWarning)
         xTangent, yTangent = conv.positionerToTangent(
             posCoords[:, 0],
             posCoords[:, 1],
