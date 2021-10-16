@@ -1,9 +1,16 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy
 
+from . import conv, defaults
 from .coordinate import Coordinate, Coordinate2D, verifySite
 from .exceptions import CoordIOError
-from . import defaults
-from . import conv
+
+
+if TYPE_CHECKING:
+    from .site import Site
 
 
 class PositionerBase(Coordinate2D):
@@ -27,6 +34,11 @@ class PositionerBase(Coordinate2D):
     __extra_params__ = ["site", "holeID"]
     __warn_arrays__ = ["positioner_warn"]
     __fiber_type__ = None  # overridden by subclasses
+
+    # For typing.
+    positioner_warn: numpy.ndarray
+    holeID: str
+    site: Site
 
     def __new__(cls, value, **kwargs):
 
@@ -116,5 +128,3 @@ class PositionerApogee(PositionerBase):
 
 class PositionerMetrology(PositionerBase):
     __fiber_type__ = "Metrology"
-
-

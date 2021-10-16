@@ -6,12 +6,18 @@
 # @Filename: coordinate.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
+from __future__ import annotations
+
+from typing import Type, TypeVar
 import numpy
 import warnings
 
 from .exceptions import CoordinateError, CoordIOError, CoordIOUserWarning
 from .site import Site
 from .defaults import WAVELENGTH, VALID_WAVELENGTHS
+
+
+T = TypeVar('T', bound="Coordinate", covariant=True)
 
 
 def verifySite(kwargs, strict=True):
@@ -164,7 +170,7 @@ class Coordinate(numpy.ndarray):
     __warn_arrays__ = []  # boolean arrays to indicate warnings
     __coord_dim__ = None
 
-    def __new__(cls, value, **kwargs):
+    def __new__(cls: Type[T], value, **kwargs) -> T:
         if value is not None:
             value = value.copy()  # this prevents weirdness
 
