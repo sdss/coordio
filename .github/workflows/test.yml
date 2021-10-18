@@ -23,7 +23,7 @@ jobs:
         python-version: [3.7, 3.8, 3.9]
 
     env:
-      FPS_CALIBRATIONS_DIR: "/home/runner/work/coordio/coordio/fps_calibrations"
+      WOKCALIB_DIR: "/home/runner/work/coordio/coordio/fps_calibrations/apo/wok_calibs/sloanFlatCMM/"
       PYTHONPATH: "/home/runner/work/coordio/coordio/fps_calibrations"
 
     steps:
