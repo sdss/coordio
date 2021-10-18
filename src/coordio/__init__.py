@@ -1,9 +1,12 @@
 # encoding: utf-8
 # isort:skip_file
 
+import os
 import warnings
 
 from sdsstools import get_config, get_logger, get_package_version
+
+from .exceptions import CoordIOError
 
 
 # PYPI package name
@@ -18,6 +21,10 @@ log = get_logger(NAME)
 # Package name should be PYPI package name
 __version__ = get_package_version(path=__file__, package_name=NAME)
 
+
+# Fail if WOKCALIB_DIR is not set.
+if 'WOKCALIB_DIR' not in os.environ:
+    raise CoordIOError('$WOKCALIB_DIR must be set before importing coordio.')
 
 from .exceptions import CoordIOUserWarning
 from .sofa_bindings import SOFA
