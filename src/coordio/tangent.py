@@ -35,9 +35,7 @@ def _getRayOrigins(site, holeID, scaleFactor, obsAngle):
     outList = []
     direction = "focal"  # irrelevant, just getting sphere param
     for waveCat in ["Apogee", "Boss", "GFA"]:
-        R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(
-            site.name, direction, waveCat
-        )
+        R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(direction, waveCat)
         fpXYZ = [[0, 0, b]]  # sphere's center in focal plane coords
         # JSG for Conor: is this right?
         wavelength = defaults.INST_TO_WAVE['GFA']

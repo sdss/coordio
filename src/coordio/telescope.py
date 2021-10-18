@@ -305,7 +305,6 @@ class FocalPlane(Coordinate3D):
         self._fromRaw()
 
     def _fromRaw(self):
-        siteName = self.site.name.upper()
         direction = "focal"  # irrelevant, just grabbing sphere params
 
         for waveCat in ["Boss", "Apogee", "GFA"]:
@@ -317,8 +316,6 @@ class FocalPlane(Coordinate3D):
 
             arg = arg.squeeze()
 
-            R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(
-                siteName, direction, waveCat
-            )
+            R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(direction, waveCat)
             self.b[arg] = b
             self.R[arg] = R

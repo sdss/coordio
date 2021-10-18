@@ -373,19 +373,19 @@ def fieldToFocal(thetaField, phiField, site, waveCat):
     if hasattr(fieldWarn, "__len__"):
         if True in fieldWarn:
             warnings.warn(
-                "Warning! Coordinate far off telescope optical axis "\
+                "Warning! Coordinate far off telescope optical axis " \
                 "conversion may be bogus",
                 CoordIOUserWarning
             )
     elif fieldWarn is True:
         warnings.warn(
-            "Warning! Coordinate far off telescope optical axis, "\
+            "Warning! Coordinate far off telescope optical axis, " \
             "conversion may be bogus",
             CoordIOUserWarning
         )
 
     direction = "focal"
-    R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(site, direction, waveCat)
+    R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(direction, waveCat)
 
     phiFocal = c0 * phiField + c1 * phiField**3 + c2 * phiField**5 \
         + c3 * phiField**7 + c4 * phiField**9
@@ -431,7 +431,7 @@ def focalToField(xFocal, yFocal, zFocal, site, waveCat):
         True if angle off-axis is large enough to be suspicious
     """
     direction = "field"
-    R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(site, direction, waveCat)
+    R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(direction, waveCat)
     # note by definition thetaField==thetaFocal
     thetaField = numpy.degrees(numpy.arctan2(yFocal, xFocal))
 

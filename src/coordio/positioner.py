@@ -77,7 +77,7 @@ class PositionerBase(Coordinate2D):
         return obj
 
     def _loadFiberData(self):
-        fiberData = defaults.getPositionerData(self.site.name, self.holeID)
+        fiberData = defaults.getPositionerData(self.holeID)
 
         if self.__fiber_type__ == "Metrology":
             xFiber = fiberData[1]
