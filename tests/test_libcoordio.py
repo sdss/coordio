@@ -17,10 +17,7 @@ from coordio import libcoordio
 
 
 # get tangent coords at these locations
-holeIDs = [
-    "R0C14", "R0C1", "R+13C1", "R+13C14", "R0C27",
-    "R-13C14", "R+13C7", "R-13C1"
-]
+holeIDs = ["R0C1", "R+13C1", "R+13C14", "R0C27", "R-13C14", "R+13C7", "R-13C1"]
 
 tanCoordList = [
     [22, -4, 0],
@@ -323,8 +320,10 @@ def plot_degenerateSolns():
 def test_wokAndTangent():
 
     for holeID in holeIDs:
-        row = wokCoords[(wokCoords.holeID==holeID) & (wokCoords.wokType == "APO")]
-        b = [round(float(row.x), 5), round(float(row.y), 5), round(float(row.z), 5)]
+        row = wokCoords[wokCoords.holeID==holeID]
+        b = [round(float(row.xWok.values), 5),
+             round(float(row.yWok.values), 5),
+             round(float(row.zWok.values), 5)]
         iHat = [float(row.ix), float(row.iy), float(row.iz)]
         jHat = [float(row.jx), float(row.jy), float(row.jz)]
         kHat = [float(row.kx), float(row.ky), float(row.kz)]

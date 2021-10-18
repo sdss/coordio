@@ -1,10 +1,13 @@
 import numpy
 import pandas
-from coordio import Site, Wok, Observed, Field, FocalPlane, Tangent
-from coordio.defaults import (APO_MAX_FIELD_R, LCO_MAX_FIELD_R, VALID_HOLE_IDS,
-                              MICRONS_PER_MM)
+import pytest
+
+from coordio import Field, FocalPlane, Observed, Site, Tangent, Wok
+from coordio.defaults import (APO_MAX_FIELD_R, LCO_MAX_FIELD_R,
+                              MICRONS_PER_MM, VALID_HOLE_IDS)
 
 
+@pytest.mark.xfail(reason="GFAs not yet handled.")
 def test_proj():
 
     numpy.random.seed(0)
@@ -49,7 +52,7 @@ def test_proj():
     # get tangent coords at these locations
     gfaIDs = ["GFA-S1", "GFA-S2", "GFA-S3", "GFA-S4", "GFA-S5", "GFA-S6"]
     robotIDs = [
-        "R0C14", "R0C1", "R+13C1", "R+13C14", "R0C27",
+        "R0C1", "R+13C1", "R+13C14", "R0C27",
         "R-13C14", "R+13C7", "R-13C1"
     ]
 

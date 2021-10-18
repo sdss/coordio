@@ -1,10 +1,9 @@
 import numpy
-from numpy.testing import assert_array_almost_equal
 import pytest
+from numpy.testing import assert_array_almost_equal
 
-from coordio import defaults
-from coordio import Tangent, Guide, Site
-from coordio import CoordIOError
+from coordio import CoordIOError, Guide, Site, Tangent, defaults
+
 
 numpy.random.seed(0)
 
@@ -96,6 +95,7 @@ def test_guide_warn():
                     assert warn == False
 
 
+@pytest.mark.xfail(reason="GFAs not yet handled.")
 def test_guide_fail():
     wl = defaults.INST_TO_WAVE["Boss"]
 

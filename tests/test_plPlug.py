@@ -206,4 +206,6 @@ def run_field(siteName, plot=False):
 
 def test_utils():
     run_field("APO")
-    run_field("LCO")
+
+    # TODO: run this when we figure out how to switch calibration files.
+    # run_field("LCO")
