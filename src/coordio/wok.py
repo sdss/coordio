@@ -1,9 +1,14 @@
-import numpy
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from . import conv, defaults
 from .coordinate import Coordinate, Coordinate3D, verifySite
 from .exceptions import CoordIOError
-from . import conv
-from . import defaults
+
+
+if TYPE_CHECKING:
+    from .site import Site
 
 
 class Wok(Coordinate3D):
@@ -40,6 +45,9 @@ class Wok(Coordinate3D):
 
     __extra_params__ = ["site", "obsAngle"]
 
+    site: Site
+    obsAngle: float
+
     def __new__(cls, value, **kwargs):
 
         verifySite(kwargs, strict=False)
@@ -57,7 +65,7 @@ class Wok(Coordinate3D):
                 obj._fromTangent(value)
             else:
                 raise CoordIOError(
-                    "Cannot convert to Wok from %s"%value.coordSysName
+                    "Cannot convert to Wok from %s" % value.coordSysName
                 )
 
         return obj
@@ -103,9 +111,3 @@ class Wok(Coordinate3D):
         self[:, 0] = xWok
         self[:, 1] = yWok
         self[:, 2] = zWok
-
-
-
-
-
-

@@ -5,7 +5,7 @@ import pandas as pd
 
 from coordio.exceptions import CoordIOUserWarning
 
-from .coordinate import CoordIOError
+from .exceptions import CoordIOError
 
 
 # default/constant values collected here...for now

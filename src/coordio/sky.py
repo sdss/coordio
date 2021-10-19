@@ -8,16 +8,20 @@
 
 # IAU-defined sky coordinate systems and transformations.
 
+from __future__ import annotations
+
 import ctypes
+from typing import TYPE_CHECKING
 
 import numpy
 
-from . import sofa
+from . import conv, defaults, sofa
 from .coordinate import Coordinate, Coordinate2D, verifySite, verifyWavelength
 from .exceptions import CoordinateError, CoordIOError
 from .time import Time
-from . import defaults
-from . import conv
+
+if TYPE_CHECKING:
+    from .site import Site
 
 
 __all__ = ['ICRS', 'Observed']
@@ -222,6 +226,14 @@ class Observed(Coordinate2D):
     __extra_arrays__ = ['wavelength']
     __extra_params__ = ['site']  # mandatory
     __computed_arrays__ = ['ra', 'dec', 'ha', 'pa']
+
+    ra: numpy.ndarray
+    dec: numpy.ndarray
+    ha: numpy.ndarray
+    pa: numpy.ndarray
+
+    wavelength: numpy.ndarray
+    site: Site
 
     def __new__(cls, value, **kwargs):
         # should we do range checks (eg alt < 90)? probably.

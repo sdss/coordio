@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING
 
 import numpy
 
@@ -7,6 +10,10 @@ from .coordinate import Coordinate, Coordinate3D, verifySite, verifyWavelength
 from .exceptions import CoordIOError, CoordIOUserWarning
 from .telescope import FocalPlane
 from .wok import Wok
+
+
+if TYPE_CHECKING:
+    from .site import Site
 
 
 def _getRayOrigins(site, holeID, scaleFactor, obsAngle):
@@ -100,6 +107,15 @@ class Tangent(Coordinate3D):
     __extra_params__ = ["site", "holeID", "scaleFactor", "obsAngle"]
     __extra_arrays__ = ["wavelength"]
     __computed_arrays__ = ["xProj", "yProj", "distProj"]
+
+    site: Site
+    holeID: str | list[str] | numpy.ndarray
+    scaleFactor: float | numpy.ndarray
+    obsAngle: float | numpy.ndarray
+    wavelength: numpy.ndarray
+    xProj: numpy.ndarray
+    yProj: numpy.ndarray
+    distProj: numpy.ndarray
 
     def __new__(cls, value, **kwargs):
 

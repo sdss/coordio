@@ -8,13 +8,14 @@
 
 from __future__ import annotations
 
-from typing import Type, TypeVar
-import numpy
 import warnings
+from typing import Type, TypeVar
 
+import numpy
+
+from .defaults import VALID_WAVELENGTHS, WAVELENGTH
 from .exceptions import CoordinateError, CoordIOError, CoordIOUserWarning
 from .site import Site
-from .defaults import WAVELENGTH, VALID_WAVELENGTHS
 
 
 T = TypeVar('T', bound="Coordinate", covariant=True)

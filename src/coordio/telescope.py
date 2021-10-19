@@ -1,19 +1,20 @@
-import numpy
-# import pandas as pd
-# import os
-# import warnings
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import numpy
+
+from . import conv, defaults
+from .conv import cart2FieldAngle, sph2Cart
 from .coordinate import (Coordinate, Coordinate2D, Coordinate3D,
                          verifySite, verifyWavelength)
-from .exceptions import CoordIOError, CoordIOUserWarning
-from .conv import sph2Cart, cart2Sph, cart2FieldAngle
-# from .site import Site
-from . import defaults
-from . import conv
-# from .focalPlaneModel import focalPlaneModelDict
+from .exceptions import CoordIOError
 
-# from .sky import Observed, ICRS
-# from .site import Site
+
+if TYPE_CHECKING:
+    from .site import Site
+    from .sky import Observed
+
 
 __all__ = ["Field", "FocalPlane"]
 
@@ -63,6 +64,14 @@ class Field(Coordinate2D):
     # because direction to north or zenith varies across the field due to...
     # spheres.  For now ignore it?
 
+    x: numpy.ndarray
+    y: numpy.ndarray
+    z: numpy.ndarray
+    x_angle: numpy.ndarray
+    y_angle: numpy.ndarray
+    field_warn: numpy.ndarray
+    field_center: Observed
+
     def __new__(cls, value, **kwargs):
 
         field_center = kwargs.get("field_center", None)
@@ -92,7 +101,7 @@ class Field(Coordinate2D):
                 obj._fromFocalPlane(value)
             else:
                 raise CoordIOError(
-                    "Cannot convert to Field from %s"%value.coordSysName
+                    "Cannot convert to Field from %s" % value.coordSysName
                 )
         else:
             obj = super().__new__(cls, value, **kwargs)
@@ -216,6 +225,12 @@ class FocalPlane(Coordinate3D):
     __extra_arrays__ = ["wavelength"]
     __computed_arrays__ = ["b", "R"]
     __warn_arrays__ = ["field_warn"]
+
+    b: numpy.ndarray
+    R: numpy.ndarray
+    field_warn: numpy.ndarray
+    wavelength: numpy.ndarray
+    site: Site
 
     def __new__(cls, value, **kwargs):
 
