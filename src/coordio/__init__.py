@@ -22,10 +22,6 @@ log = get_logger(NAME)
 __version__ = get_package_version(path=__file__, package_name=NAME)
 
 
-# Fail if WOKCALIB_DIR is not set.
-if 'WOKCALIB_DIR' not in os.environ:
-    raise CoordIOError('$WOKCALIB_DIR must be set before importing coordio.')
-
 from .exceptions import CoordIOUserWarning
 from .sofa_bindings import SOFA
 
