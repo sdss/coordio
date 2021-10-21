@@ -271,7 +271,8 @@ if 'WOKCALIB_DIR' not in os.environ:
     warnings.warn('$WOKCALIB_DIR is not set. Coordinate transformations will fail.',
                   CoordIOUserWarning)
 
-    fps_calibs = FP_MODEL = wokOrient = positionerTable = wokCoords = None
+    FP_MODEL = wokOrient = positionerTable = wokCoords = fiducialCoords = None
+    fps_calibs = None
     fps_calibs_version = 'unknown'
 
 else:
@@ -292,6 +293,9 @@ else:
     wokCoords = pd.read_csv(wokCoordFile, comment="#", index_col=0)
     VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
     VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
+
+    fiducialCoords = pd.read_csv(os.path.join(fps_calibs, "fiducialCoords.csv"),
+                                 comment="#", index_col=0)
 
     try:
         import fps_calibrations
