@@ -1146,7 +1146,8 @@ def proj2XYplane(x, y, z, rayOrigin):
 
 
 def tangentToPositioner(
-    xTangent, yTangent, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0
+    xTangent, yTangent, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0,
+    lefthand=False,
 ):
     """
     Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm
@@ -1170,6 +1171,8 @@ def tangentToPositioner(
         alpha zeropoint offset (deg)
     betaOffDeg: scalar
         beta zeropoint offset (deg)
+    lefthand: boolean
+        whether to return a lefthand or righthand parity robot
 
     Returns
     ---------
@@ -1191,7 +1194,7 @@ def tangentToPositioner(
             xyBeta = [[xBeta, yBeta]]*len(xyTangent)
 
         alphaBeta = libcoordio.tangentToPositionerArr(
-            xyTangent, xyBeta, la, alphaOffDeg, betaOffDeg
+            xyTangent, xyBeta, la, alphaOffDeg, betaOffDeg, lefthand
         )
 
         alphaBeta = numpy.array(alphaBeta)
@@ -1200,7 +1203,7 @@ def tangentToPositioner(
     else:
         alpha, beta = libcoordio.tangentToPositioner(
             [xTangent, yTangent], [xBeta, yBeta],
-            la, alphaOffDeg, betaOffDeg
+            la, alphaOffDeg, betaOffDeg, lefthand
         )
 
     isOKAlpha = numpy.isfinite(alpha)
@@ -1221,6 +1224,8 @@ def _tangentToPositioner(
     at xTangent, yTangent.  Python Version.
 
     todo: include hooks for positioner non-linearity
+
+    note, didn't add left hand option here...use C++
 
     Parameters
     -------------

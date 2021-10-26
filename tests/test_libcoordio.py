@@ -14,6 +14,8 @@ from coordio.defaults import MICRONS_PER_MM, positionerTable, wokCoords, POSITIO
 from coordio import conv
 from coordio import libcoordio
 
+# LEFTHAND = True
+
 
 
 # get tangent coords at these locations
@@ -363,8 +365,41 @@ def test_wokAndTangent():
 
         # break
 
+def test_lefthand():
+    npts = 5
+    alphaOff = 0
+    betaOff = 0
+    la = 7.4
+    xBeta = 15
+    yBeta = 0
+
+    alphas = numpy.random.uniform(0, 360, npts)
+    betas = numpy.random.uniform(0, 180, npts)
+
+
+    xt, yt = conv.positionerToTangent(
+        alphas, betas, xBeta, yBeta, la, alphaOff, betaOff
+    )
+
+    # lefthand version
+    _alphaLeft, _betaLeft, isOK = conv.tangentToPositioner(
+        xt, yt, xBeta, yBeta, la, lefthand=True
+    )
+
+    # righthand version
+    # lefthand version
+    _alphaRight, _betaRight, isOK = conv.tangentToPositioner(
+        xt, yt, xBeta, yBeta, la, lefthand=False
+    )
+
+    assert numpy.all(_betaLeft > 180)
+    assert numpy.all(_betaRight < 180)
+    # print(xt, yt)
+
 if __name__ == "__main__":
-    plot_degenerateSolns()
+    # plot_degenerateSolns()
+    test_lefthand()
+
 #     tx,ty,tz = numpy.zeros(1000)+22, numpy.zeros(1000)-4, numpy.zeros(1000)
 
 
