@@ -95,7 +95,6 @@ class IERS:
         if channel == 'finals':
             URL = BASE_URL + 'standard/csv/finals.data.csv'
             warnings.warn(f'Downloading IERS table from {URL}.', CoordIOUserWarning)
-            print(urllib.request.urlopen)
             url = urllib.request.urlopen(URL)
             data = url.read()
 
