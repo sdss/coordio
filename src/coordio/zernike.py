@@ -438,8 +438,3 @@ class ZernFit(object):
         return xFit, yFit
 
 
-
-
-
-
-

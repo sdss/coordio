@@ -91,5 +91,6 @@ std::vector<vec2> tangentToPositionerArr(
     std::vector<vec2> & xyBeta,
     double alphaLen,
     double alphaOffDeg,
-    double betaOffDeg
+    double betaOffDeg,
+    bool leftand=false
 );

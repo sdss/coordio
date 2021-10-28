@@ -339,7 +339,8 @@ std::vector<vec2> tangentToPositionerArr(
     std::vector<vec2> & xyBeta,
     double alphaLen,
     double alphaOffDeg,
-    double betaOffDeg
+    double betaOffDeg,
+    bool lefthand
 ){
     std::vector<vec2> outArr;
     int nCoords = xyTangent.size();
@@ -351,7 +352,8 @@ std::vector<vec2> tangentToPositionerArr(
                 xyBeta[ii],
                 alphaLen,
                 alphaOffDeg,
-                betaOffDeg
+                betaOffDeg,
+                lefthand
             )
         );
     }
@@ -368,8 +370,14 @@ PYBIND11_MODULE(libcoordio, m) {
     m.def("wokToTangentArr", &wokToTangentArr);
     m.def("tangentToWok", &tangentToWok);
     m.def("tangentToWokArr", &tangentToWokArr);
-    m.def("tangentToPositioner", &tangentToPositioner);
-    m.def("tangentToPositionerArr", &tangentToPositionerArr);
+    m.def("tangentToPositioner", &tangentToPositioner,
+        "xyTangent"_a, "xyBeta"_a, "alphaLen"_a, "alphaOffDeg"_a,
+        "betaOffDeg"_a, "leftHand"_a = false
+    );
+    m.def("tangentToPositionerArr", &tangentToPositionerArr,
+        "xyTangent"_a, "xyBeta"_a, "alphaLen"_a, "alphaOffDeg"_a,
+        "betaOffDeg"_a, "leftHand"_a = false
+    );
     m.def("positionerToTangent", &positionerToTangent);
     m.def("positionerToTangentArr", &positionerToTangentArr);
 }
