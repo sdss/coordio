@@ -61,8 +61,7 @@ class IERS:
         path = path or config['iers']['path']
 
         if channel == 'finals':
-            obj.path = os.path.join(os.path.expanduser(path),
-                                    'finals2000A.data.csv')
+            obj.path = os.path.join(os.path.expanduser(path), 'finals2000A.data.csv')
         else:
             raise NotImplementedError('Only finals channels is implemented.')
 
@@ -95,10 +94,10 @@ class IERS:
 
         if channel == 'finals':
             URL = BASE_URL + 'standard/csv/finals.data.csv'
-            warnings.warn(f'Downloading IERS table from {URL}.',
-                          CoordIOUserWarning)
+            warnings.warn(f'Downloading IERS table from {URL}.', CoordIOUserWarning)
             url = urllib.request.urlopen(URL)
             data = url.read()
+
             with open(path, 'wb') as fd:
                 fd.write(data)
             url.close()

@@ -144,22 +144,22 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     # first determine the field center in observed coordinates
     # use the guide wavelength for field center
     # epoch not needed, no propermotions, etc (josé verify?)
-    icrsCen = ICRS([[raCen, decCen]], wavelength=defaults.INST_TO_WAVE["GFA"])
+    icrsCen = ICRS([[raCen, decCen]])
     obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
 
 
     radec = numpy.array([ra, dec]).T
 
     icrs = ICRS(
-        radec, epoch=coordEpoch, pmra=pmra, pmdec=pmdec, parallax=parallax,
-        rvel=radVel, wavelength=wavelength
+        radec, epoch=coordEpoch, pmra=pmra, pmdec=pmdec,
+        parallax=parallax, rvel=radVel
     )
 
     # propogate propermotions, etc
     icrs = icrs.to_epoch(obsTime, site=site)
 
     obs = Observed(icrs, site=site, wavelength=wavelength)
-    field = Field(obs, field_center=obsCen, wavelength=wavelength)
+    field = Field(obs, field_center=obsCen)
     focal = FocalPlane(field, wavelength=wavelength, site=site)
     wok = Wok(focal, site=site, obsAngle=obsAngle)
 
@@ -249,7 +249,7 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
     # first determine the field center in observed coordinates
     # use the guide wavelength for field center
     # epoch not needed, no propermotions, etc (josé verify?)
-    icrsCen = ICRS([[raCen, decCen]], wavelength=defaults.INST_TO_WAVE["GFA"])
+    icrsCen = ICRS([[raCen, decCen]])
     obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
 
     # hack in z wok position of 143 mm
@@ -272,10 +272,8 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
 
     wok = Wok(xyzWok, site=site, obsAngle=obsAngle)
     focal = FocalPlane(wok, wavelength=wavelength, site=site)
-    field = Field(focal, field_center=obsCen, wavelength=wavelength)
+    field = Field(focal, field_center=obsCen)
     obs = Observed(field, site=site, wavelength=wavelength)
-    icrs = ICRS(obs, epoch=obsTime, wavelength=wavelength)
+    icrs = ICRS(obs, epoch=obsTime)
 
     return icrs[:, 0], icrs[:, 1], field.field_warn
-
-

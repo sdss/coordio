@@ -15,8 +15,6 @@ import glob
 import sys
 from distutils.core import Extension
 
-from shutil import copyfile
-import os
 
 LIBSOFA_PATH = 'cextern/sofa'
 LIBCOORDIO_PATH = 'cextern/conv.cpp'
@@ -24,6 +22,7 @@ LIBCOORDIO_PATH = 'cextern/conv.cpp'
 
 extra_compile_args = ['-c', '-pedantic', '-Wall', '-W', '-O']
 extra_link_args = []
+
 
 class getPybindInclude(object):
     """Helper class to determine the pybind11 include path
@@ -44,10 +43,7 @@ class getPybindInclude(object):
 sofa_sources = glob.glob(LIBSOFA_PATH + '/*.c')
 includes = [
     'include',
-    # '/usr/local/include',
-    # '/usr/local/include/eigen3',
-    # '/usr/include/eigen3',
-    # '/usr/include',
+    'src/coordio/include',
     getPybindInclude(),
     getPybindInclude(user=True)
 ]
@@ -55,9 +51,15 @@ includes = [
 
 extra_compile_args2 = ["--std=c++11", "-fPIC", "-v", "-O3"]
 extra_link_args2 = None
+
 if sys.platform == 'darwin':
     extra_compile_args2 += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
     extra_link_args2 = ["-v", '-mmacosx-version-min=10.9']
+
+    from distutils import sysconfig
+    vars = sysconfig.get_config_vars()
+    vars['LDSHARED'] = vars['LDSHARED'].replace('-bundle', '-dynamiclib')
+
 
 ext_modules = [
     Extension(
@@ -75,17 +77,8 @@ ext_modules = [
         sources=[LIBCOORDIO_PATH],
         include_dirs=includes,
         extra_compile_args=extra_compile_args2,
-        extra_link_args=extra_link_args2),
+        extra_link_args=extra_link_args2,
+        optional=False),
 ]
 
 setup(ext_modules=ext_modules)
-
-buildDir = glob.glob("build/lib*")[0]
-soFiles = glob.glob(buildDir + "/coordio/lib*.so")
-for soFile in soFiles:
-    base, filename = os.path.split(soFile)
-    dest = "coordio/%s"%filename
-    copyfile(soFile, dest)
-    mode = os.stat(dest).st_mode
-    mode |= (mode & 0o444) >> 2
-    os.chmod(dest, mode)

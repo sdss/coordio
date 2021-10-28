@@ -60,7 +60,3 @@ def test_get_delta_ut1_utc():
 
     # Jan 15th, 2020
     assert iers.get_delta_ut1_utc(2458863.5) == pytest.approx(-0.1799645)
-
-
-if __name__ == "__main__":
-    test_iers()

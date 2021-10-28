@@ -8,18 +8,20 @@
 
 # IAU-defined sky coordinate systems and transformations.
 
+from __future__ import annotations
+
 import ctypes
+from typing import TYPE_CHECKING
 
 import numpy
 
-from . import sofa
+from . import conv, defaults, sofa
 from .coordinate import Coordinate, Coordinate2D, verifySite, verifyWavelength
 from .exceptions import CoordinateError, CoordIOError
 from .time import Time
-from .site import Site
-# from .telescope import Field
-from . import defaults
-from . import conv
+
+if TYPE_CHECKING:
+    from .site import Site
 
 
 __all__ = ['ICRS', 'Observed']
@@ -47,31 +49,18 @@ class ICRS(Coordinate2D):
         A 1D array with the parallax for the N targets, in milliarcsec.
     rvel : numpy.ndarray
         A 1D array with the radial velocity in km/s, positive when receding.
-    wavelength : numpy.ndarray
-        A 1D array with he observing wavelength, in angstrom.
-        Defaults to the value in `defaults.WAVELENGTH` (GFA, sdss-r)
 
     """
 
-    __extra_arrays__ = ['epoch', 'pmra', 'pmdec', 'parallax', 'rvel', 'wavelength']
+    __extra_arrays__ = ['epoch', 'pmra', 'pmdec', 'parallax', 'rvel']
 
     def __new__(cls, value, **kwargs):
-
-        verifyWavelength(kwargs, len(value), strict=False)
 
         obj = super().__new__(cls, value, **kwargs)
 
         if kwargs.get('epoch', None) is None:
             obj.epoch += defaults.EPOCH
 
-        # if kwargs.get('wavelength', None) is None:
-        #     if hasattr(value, "wavelength"):
-        #         obj.wavelength = value.wavelength
-        #     else:
-        #         obj.wavelength += defaults.wavelength
-
-        # check if a coordinate was passed that we can just
-        # 'cast' into Observed
         if isinstance(value, Coordinate):
 
             if value.coordSysName == 'Observed':
@@ -79,7 +68,7 @@ class ICRS(Coordinate2D):
 
             else:
                 raise CoordIOError(
-                    'Cannot convert to ICRS from %s'%value.coordSysName
+                    'Cannot convert to ICRS from %s' % value.coordSysName
                 )
 
         return obj
@@ -90,19 +79,12 @@ class ICRS(Coordinate2D):
 
         """
 
-        # We need the epoch to be J2000.0 because that's what iauAtco13 likes.
-        # icrs_2000 = icrsCoords.to_epoch(2451545.0, site=self.site)
-
-        # rra = numpy.radians(icrs_2000[:, 0])
-        # rdec = numpy.radians(icrs_2000[:, 1])
-        # rpmra = numpy.radians(icrs_2000.pmra / 1000. / 3600.) / numpy.cos(rdec)
-        # rpmdec = numpy.radians(icrs_2000.pmdec / 1000. / 3600.)
-
         rlong = numpy.radians(obsCoords.site.longitude)
         rlat = numpy.radians(obsCoords.site.latitude)
-        rZD = numpy.radians(90 - obsCoords[:,0])
-        rAz = numpy.radians(obsCoords[:,1])
+        rZD = numpy.radians(90 - obsCoords[:, 0])
+        rAz = numpy.radians(obsCoords[:, 1])
         wavelength = obsCoords.wavelength / 10000.
+
         _type = "A".encode()  # coords are azimuth, zenith dist
 
         time = obsCoords.site.time
@@ -153,6 +135,7 @@ class ICRS(Coordinate2D):
 
         rra = numpy.radians(self[:, 0])
         rdec = numpy.radians(self[:, 1])
+
         rpmra = numpy.radians(self.pmra / 1000. / 3600.) / numpy.cos(rdec)
         rpmdec = numpy.radians(self.pmdec / 1000. / 3600.)
 
@@ -244,38 +227,21 @@ class Observed(Coordinate2D):
     __extra_params__ = ['site']  # mandatory
     __computed_arrays__ = ['ra', 'dec', 'ha', 'pa']
 
+    ra: numpy.ndarray
+    dec: numpy.ndarray
+    ha: numpy.ndarray
+    pa: numpy.ndarray
+
+    wavelength: numpy.ndarray
+    site: Site
+
     def __new__(cls, value, **kwargs):
         # should we do range checks (eg alt < 90)? probably.
 
         verifySite(kwargs)
-
-        # if kwargs.get('site', None) is None:
-        #     raise CoordIOError('Site must be passed to Observed')
-
-        # else:
-        #     site = kwargs.get('site')
-        #     if not isinstance(site, Site):
-        #         raise CoordIOError('Must pass Site to Observed')
-        #     if site.time is None:
-        #         raise CoordIOError(
-        #             "Time of observation must be specified on Site"
-        #         )
-
-        # should we prefer wavelength passed, or wavelength
-        # existing on value (if it does exist).  Here preferring passed
-        # if kwargs.get('wavelength', None) is None:
-        #     if hasattr(value, "wavelength"):
-        #         kwargs["wavelength"] = value.wavelength
-        verifyWavelength(
-            kwargs, len(value), strict=False
-        )
+        verifyWavelength(kwargs, len(value), strict=False)
 
         obj = super().__new__(cls, value, **kwargs)
-
-        # if kwargs.get('wavelength', None) is None:
-        #     obj.wavelength += defaults.wavelength
-
-
 
         # check if a coordinate was passed that we can just
         # 'cast' into Observed
@@ -289,7 +255,7 @@ class Observed(Coordinate2D):
 
             else:
                 raise CoordIOError(
-                    'Cannot convert to Observed from %s'%value.coordSysName
+                    'Cannot convert to Observed from %s' % value.coordSysName
                 )
 
         else:
@@ -375,7 +341,7 @@ class Observed(Coordinate2D):
                 utc1, utc2, dut1,
                 rlong, rlat, self.site.altitude, 0.0, 0.0,
                 self.site.pressure, self.site.temperature,
-                self.site.rh, icrs_2000.wavelength[ii] / 10000.,
+                self.site.rh, self.wavelength[ii] / 10000.,
                 az_obs, zen_obs, ha_obs, dec_obs, ra_obs, eo_obs
             )
 
@@ -416,8 +382,8 @@ class Observed(Coordinate2D):
             altCenter, azCenter, pa
         )
 
-        self[:,0] = alt
-        self[:,1] = az
+        self[:, 0] = alt
+        self[:, 1] = az
 
         self._fromRaw()
 
@@ -454,5 +420,3 @@ class Observed(Coordinate2D):
             _ra = _ra % 360  # wrap ra
 
             self.ra[ii] = _ra
-
-

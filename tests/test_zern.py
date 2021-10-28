@@ -49,6 +49,3 @@ def test_grad():
 def test_fit():
     zf = ZernFit(goodX, goodY, badX, badY, orders=20, method="ortho")
     xFit, yFit = zf.apply(goodX, goodY)
-
-if __name__ == "__main__":
-    test_fit()

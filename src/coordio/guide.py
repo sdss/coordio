@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import numpy
 
+from . import defaults
 from .coordinate import Coordinate, Coordinate2D
 from .exceptions import CoordIOError
-from . import defaults
 
 
 class Guide(Coordinate2D):
@@ -31,6 +33,10 @@ class Guide(Coordinate2D):
 
     __extra_params__ = ["xBin", "yBin"]
     __warn_arrays__ = ["guide_warn"]
+
+    xBin: int
+    yBin: int
+    guide_warn: numpy.ndarray
 
     def __new__(cls, value, **kwargs):
 
@@ -120,4 +126,3 @@ class Guide(Coordinate2D):
 
         arg = arg.squeeze()
         self.guide_warn[arg] = True
-

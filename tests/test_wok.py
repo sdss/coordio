@@ -1,44 +1,51 @@
 import numpy
-import time
-from coordio import Site, Wok, Observed, Field, FocalPlane, Tangent
+import pytest
+
+from coordio import Field, FocalPlane, Observed, Site, Tangent, Wok
 from coordio.defaults import APO_MAX_FIELD_R, LCO_MAX_FIELD_R, VALID_HOLE_IDS
 
-numpy.random.seed(0)
 
-# from sdssconv.fieldCoords import parallacticAngle
-apoSite = Site("APO")
-lcoSite = Site("LCO")
+@pytest.fixture
+def prepare_test():
+    numpy.random.seed(0)
 
-# set time (not used but required for Observed coords)
-apoSite.set_time(2458863, scale='TAI')
-lcoSite.set_time(2458863, scale='TAI')
+    # from sdssconv.fieldCoords import parallacticAngle
+    apoSite = Site("APO")
+    lcoSite = Site("LCO")
 
-# start with some field coords and propagate them
-nCoords = 2000
-fcAPO = Observed([[80, 120]], site=apoSite)
-fcLCO = Observed([[80, 120]], site=lcoSite)
-thetaField = numpy.random.uniform(0, 360, size=nCoords)
-phiFieldLCO = numpy.random.uniform(0, LCO_MAX_FIELD_R, size=nCoords)
-phiFieldAPO = numpy.random.uniform(0, APO_MAX_FIELD_R, size=nCoords)
+    # set time (not used but required for Observed coords)
+    apoSite.set_time(2458863, scale='TAI')
+    lcoSite.set_time(2458863, scale='TAI')
 
-fieldAPO = Field(
-    numpy.array([thetaField, phiFieldAPO]).T,
-    field_center=fcAPO,
-    site=apoSite)
+    # start with some field coords and propagate them
+    nCoords = 2000
+    fcAPO = Observed([[80, 120]], site=apoSite)
+    fcLCO = Observed([[80, 120]], site=lcoSite)
+    thetaField = numpy.random.uniform(0, 360, size=nCoords)
+    phiFieldLCO = numpy.random.uniform(0, LCO_MAX_FIELD_R, size=nCoords)
+    phiFieldAPO = numpy.random.uniform(0, APO_MAX_FIELD_R, size=nCoords)
 
-fieldLCO = Field(
-    numpy.array([thetaField, phiFieldLCO]).T,
-    field_center=fcLCO,
-    site=lcoSite
-)
+    fieldAPO = Field(
+        numpy.array([thetaField, phiFieldAPO]).T,
+        field_center=fcAPO
+    )
 
-focalAPO = FocalPlane(fieldAPO, site=apoSite)
-focalLCO = FocalPlane(fieldLCO, site=lcoSite)
+    fieldLCO = Field(
+        numpy.array([thetaField, phiFieldLCO]).T,
+        field_center=fcLCO
+    )
+
+    focalAPO = FocalPlane(fieldAPO, site=apoSite)
+    focalLCO = FocalPlane(fieldLCO, site=lcoSite)
+
+    yield (apoSite, lcoSite, focalAPO, focalLCO)
 
 
-def test_focal_wok_cycle():
+def test_focal_wok_cycle(prepare_test):
+    apoSite, lcoSite, focalAPO, focalLCO = prepare_test
+
     for site, focalCoords in zip([lcoSite, apoSite], [focalLCO, focalAPO]):
-        obsAngle = numpy.random.uniform(0,360)
+        obsAngle = numpy.random.uniform(0, 360)
         wokCoords = Wok(focalCoords, site=site, obsAngle=obsAngle)
         _focalCoords = FocalPlane(wokCoords, site=site)
         numpy.testing.assert_array_almost_equal(
@@ -46,9 +53,11 @@ def test_focal_wok_cycle():
         )
 
 
-def test_wok_tangent_cycle():
+def test_wok_tangent_cycle(prepare_test):
+    apoSite, lcoSite, focalAPO, focalLCO = prepare_test
+
     for site, focalCoords in zip([lcoSite, apoSite], [focalLCO, focalAPO]):
-        obsAngle = numpy.random.uniform(0,360)
+        obsAngle = numpy.random.uniform(0, 360)
         wokCoords = Wok(focalCoords, site=site, obsAngle=obsAngle)
         for holeID in VALID_HOLE_IDS:
             scaleFactor = numpy.random.uniform(.97, 1.03)
@@ -60,6 +69,3 @@ def test_wok_tangent_cycle():
             numpy.testing.assert_array_almost_equal(
                 wokCoords, _wokCoords, decimal=10
             )
-
-if __name__ == "__main__":
-    test_wok_tangent_cycle()

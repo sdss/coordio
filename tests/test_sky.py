@@ -20,8 +20,7 @@ wavelength = 7000
 icrs = ICRS([[100, 10], [101., 11]],
             pmra=[100, 0.1], pmdec=[-15, -0.5],
             parallax=[10., 10.], rvel=[100, 1000],
-            epoch=[2451545, 2451545], wavelength=wavelength)
-
+            epoch=[2451545, 2451545])
 
 
 astropy_icrs = SkyCoord(ra=[100, 101] * u.deg, dec=[10, 11] * u.deg,
@@ -80,7 +79,7 @@ def test_to_observed():
     with pytest.raises(CoordIOError):
         observed = Observed(icrs)
 
-    observed = Observed(icrs, site=site)
+    observed = Observed(icrs, site=site, wavelength=wavelength)
 
     new_obstime = astropy.time.Time(2458863, format='jd', scale='tai')
     new_astropy_icrs = astropy_icrs.apply_space_motion(new_obstime=new_obstime)
@@ -106,10 +105,10 @@ def test_to_observed():
     obsArr = numpy.array(observed)
     observed2 = Observed(obsArr, site=site)
 
-    numpy.testing.assert_allclose(observed[:,0], observed2[:,0],
+    numpy.testing.assert_allclose(observed[:, 0], observed2[:, 0],
                                   atol=3e-7, rtol=0)
 
-    numpy.testing.assert_allclose(observed[:,1], observed2[:,1],
+    numpy.testing.assert_allclose(observed[:, 1], observed2[:, 1],
                                   atol=3e-7, rtol=0)
 
     numpy.testing.assert_allclose(observed.ra, observed2.ra,
@@ -127,22 +126,16 @@ def test_to_observed():
     # _icrs = ICRS(observed, wavelength=wavelength)
     # numpy.testing.assert_array_almost_equal(icrs, _icrs, decimal=5)
 
+
 def test_icrs_obs_cycle():
     time = 2451545
-    icrs = ICRS([[100, 10], [101., 11], [180., 30]],
-                epoch=time, wavelength=wavelength)
+    icrs = ICRS([[100, 10], [101., 11], [180., 30]], epoch=time)
 
     site.set_time(time, scale='TAI')
     observed = Observed(icrs, site=site)
-    _icrs = ICRS(observed, wavelength=wavelength)
+    _icrs = ICRS(observed)
 
-    a1 = SkyCoord(ra=icrs[:,0] * u.deg, dec=icrs[:,1] * u.deg)
-    a2 = SkyCoord(ra=_icrs[:,0] * u.deg, dec=_icrs[:,1] * u.deg)
+    a1 = SkyCoord(ra=icrs[:, 0] * u.deg, dec=icrs[:, 1] * u.deg)
+    a2 = SkyCoord(ra=_icrs[:, 0] * u.deg, dec=_icrs[:, 1] * u.deg)
     sep = a1.separation(a2)
-    assert numpy.max(numpy.array(sep)*3600) < 0.5
-
-if __name__ == "__main__":
-    test_icrs_obs_cycle()
-
-
-
+    assert numpy.max(numpy.array(sep) * 3600) < 0.5

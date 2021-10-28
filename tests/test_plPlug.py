@@ -206,17 +206,6 @@ def run_field(siteName, plot=False):
 
 def test_utils():
     run_field("APO")
-    run_field("LCO")
 
-
-if __name__ == "__main__":
-    print("APO")
-    print("-----------")
-    run_field("APO", plot=True)
-    print("\n\n")
-
-    print("LCO")
-    print("-----------")
-    run_field("LCO", plot=True)
-    plt.show()
-    # print("\n\n")
+    # TODO: run this when we figure out how to switch calibration files.
+    # run_field("LCO")

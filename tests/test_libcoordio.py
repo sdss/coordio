@@ -19,10 +19,7 @@ from coordio import libcoordio
 
 
 # get tangent coords at these locations
-holeIDs = [
-    "R0C14", "R0C1", "R+13C1", "R+13C14", "R0C27",
-    "R-13C14", "R+13C7", "R-13C1"
-]
+holeIDs = ["R0C1", "R+13C1", "R+13C14", "R0C27", "R-13C14", "R+13C7", "R-13C1"]
 
 tanCoordList = [
     [22, -4, 0],
@@ -92,6 +89,7 @@ def test_tangentAndPositionerLib():
 
     tx, ty = libcoordio.positionerToTangent([alpha,beta], [xb,yb], alphaLen, alphaOff, betaOff)
     assert ty > 1
+
 
 def test_tangentAndPositionerSafeSingle():
 
@@ -321,8 +319,10 @@ def plot_degenerateSolns():
 def test_wokAndTangent():
 
     for holeID in holeIDs:
-        row = wokCoords[(wokCoords.holeID==holeID) & (wokCoords.wokType == "APO")]
-        b = [round(float(row.x), 5), round(float(row.y), 5), round(float(row.z), 5)]
+        row = wokCoords[wokCoords.holeID==holeID]
+        b = [round(float(row.xWok.values), 5),
+             round(float(row.yWok.values), 5),
+             round(float(row.zWok.values), 5)]
         iHat = [float(row.ix), float(row.iy), float(row.iz)]
         jHat = [float(row.jx), float(row.jy), float(row.jz)]
         kHat = [float(row.kx), float(row.ky), float(row.kz)]
@@ -343,14 +343,18 @@ def test_wokAndTangent():
                 wx2,wy2,wz2 = conv._tangentToWok(_tx, _ty, _tz, b, iHat, jHat, kHat,
                     scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
 
-
-
                 assert wx1 == pytest.approx(wx2)
                 assert wy1 == pytest.approx(wy2)
                 assert wz1 == pytest.approx(wz2)
 
+                nrepeats = 1 if numpy.isscalar(_tx) else len(_tx)
+                bArr = numpy.repeat(numpy.atleast_2d(b), nrepeats, axis=0)
+                iHatArr = numpy.repeat(numpy.atleast_2d(iHat), nrepeats, axis=0)
+                jHatArr = numpy.repeat(numpy.atleast_2d(jHat), nrepeats, axis=0)
+                kHatArr = numpy.repeat(numpy.atleast_2d(kHat), nrepeats, axis=0)
 
-                tx1,ty1,tz1 = conv.wokToTangent(wx1, wy1, wz1, b, iHat, jHat, kHat,
+                tx1,ty1,tz1 = conv.wokToTangent(
+                    wx1, wy1, wz1, bArr, iHatArr, jHatArr, kHatArr,
                     scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
                 tx2,ty2,tz2 = conv._wokToTangent(wx1, wy1, wz1, b, iHat, jHat, kHat,
                     scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
@@ -419,9 +423,3 @@ if __name__ == "__main__":
 
 
 # import pdb; pdb.set_trace()
-
-
-
-
-
-

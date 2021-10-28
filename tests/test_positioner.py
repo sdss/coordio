@@ -155,7 +155,7 @@ def test_specific():
 
     tcList = []
     for pc in pcList:
-        tc = Tangent(pc, site=apoSite, holeID=holeID, wl=wl)
+        tc = Tangent(pc, site=apoSite, holeID=holeID, wavelength=wl)
         print("tc", tc)
         tcList.append(tc)
 
@@ -167,7 +167,3 @@ def test_specific():
         _pc = Pos(ab, site=apoSite, holeID=holeID)
         print(pc, _pc)
         _pcList.append(_pc)
-
-
-if __name__ == "__main__":
-    test_specific()

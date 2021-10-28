@@ -1,9 +1,12 @@
 # encoding: utf-8
 # isort:skip_file
 
+import os
 import warnings
 
 from sdsstools import get_config, get_logger, get_package_version
+
+from .exceptions import CoordIOError
 
 
 # PYPI package name

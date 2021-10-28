@@ -6,12 +6,19 @@
 # @Filename: coordinate.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
-import numpy
-import warnings
+from __future__ import annotations
 
+import warnings
+from typing import Type, TypeVar
+
+import numpy
+
+from .defaults import VALID_WAVELENGTHS, WAVELENGTH
 from .exceptions import CoordinateError, CoordIOError, CoordIOUserWarning
 from .site import Site
-from .defaults import WAVELENGTH, VALID_WAVELENGTHS
+
+
+T = TypeVar('T', bound="Coordinate", covariant=True)
 
 
 def verifySite(kwargs, strict=True):
@@ -62,7 +69,7 @@ def verifyWavelength(kwargs, lenArray, strict=True):
         # create an array of correct length default to gfa wavelength
         wls = numpy.zeros(lenArray) + WAVELENGTH
         warnings.warn(
-            "Warning! Wavelengths not supplied, defaulting to %i angstrom"%WAVELENGTH,
+            "Warning! Wavelengths not supplied, defaulting to %i angstrom" % WAVELENGTH,
             CoordIOUserWarning
         )
     else:
@@ -76,7 +83,7 @@ def verifyWavelength(kwargs, lenArray, strict=True):
         if strict and not wlSet.issubset(VALID_WAVELENGTHS):
             raise CoordIOError(
                 "Invalid wavelength passed to FocalPlane \
-                valid wavelengths are %s"%(str(VALID_WAVELENGTHS))
+                valid wavelengths are %s" % (str(VALID_WAVELENGTHS))
             )
 
     # modify
@@ -164,7 +171,7 @@ class Coordinate(numpy.ndarray):
     __warn_arrays__ = []  # boolean arrays to indicate warnings
     __coord_dim__ = None
 
-    def __new__(cls, value, **kwargs):
+    def __new__(cls: Type[T], value, **kwargs) -> T:
         if value is not None:
             value = value.copy()  # this prevents weirdness
 
@@ -180,6 +187,10 @@ class Coordinate(numpy.ndarray):
             raise CoordinateError(
                 'The input array must be Nx%i.' % obj.__coord_dim__
             )
+
+        for kwarg in kwargs:
+            if kwarg not in obj.__extra_arrays__ and kwarg not in obj.__extra_params__:
+                raise CoordinateError(f'Invalid input argument {kwarg!r}.')
 
         for param in obj.__extra_params__:
             setattr(obj, param, kwargs.get(param, None))
@@ -205,20 +216,18 @@ class Coordinate(numpy.ndarray):
 
         # initialize computed arrays to zeros
         for param in obj.__computed_arrays__:
-            # array = kwargs.get(param, None)
             array = numpy.zeros(obj.shape[0], dtype=numpy.float64)
             setattr(obj, param, array)
 
         # initialize warning arrays to false
         for param in obj.__warn_arrays__:
-            # array = kwargs.get(param, None)
-            array = numpy.array([False]*obj.shape[0])
+            array = numpy.array([False] * obj.shape[0])
             setattr(obj, param, array)
+
         return obj
 
     def __array_finalize__(self, obj):
         # self is the new array, obj is the old array
-        # print("array finalize called", obj, "ist the obj")
         if obj is None or not isinstance(obj, numpy.ndarray):
             return obj
 
@@ -246,12 +255,9 @@ class Coordinate(numpy.ndarray):
         # https://scipy-cookbook.readthedocs.io/items/ViewsVsCopies.html
         # is helpful
         sliced = super().__getitem__(sl)
-        # print("slice", sl, type(sl))
 
-        # print("sltype", sl, type(sl), sliced, type(sliced))
         if (not isinstance(sliced, numpy.ndarray) or
                 sliced.ndim != 2 or sliced.shape[1] != self.shape[1]):
-            # print("were here")
             return sliced.view(numpy.ndarray)
 
         arrays2slice = []
@@ -260,14 +266,11 @@ class Coordinate(numpy.ndarray):
         arrays2slice += self.__warn_arrays__
 
         for param in arrays2slice:
-            # print(param, getattr(sliced, param))
             if isinstance(sl, tuple):
                 # index looks something like arr[2:4,:]
                 setattr(sliced, param, getattr(sliced, param)[sl[0]])
             else:
                 # index looks something like arr[arr<4]
-                # x = getattr(sliced, param)
-                # print("x", x)
                 setattr(sliced, param, getattr(sliced, param)[sl])
 
         return sliced
@@ -289,6 +292,3 @@ class Coordinate3D(Coordinate):
     """
 
     __coord_dim__ = 3
-
-
-
