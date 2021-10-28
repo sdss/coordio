@@ -51,9 +51,14 @@ includes = [
 
 extra_compile_args2 = ["--std=c++11", "-fPIC", "-v", "-O3"]
 extra_link_args2 = None
+
 if sys.platform == 'darwin':
     extra_compile_args2 += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
     extra_link_args2 = ["-v", '-mmacosx-version-min=10.9']
+
+    from distutils import sysconfig
+    vars = sysconfig.get_config_vars()
+    vars['LDSHARED'] = vars['LDSHARED'].replace('-bundle', '-dynamiclib')
 
 
 ext_modules = [
