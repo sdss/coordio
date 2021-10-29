@@ -276,32 +276,36 @@ if 'WOKCALIB_DIR' not in os.environ:
     fps_calibs_version = 'unknown'
 
 else:
-    fps_calibs = os.path.abspath(os.environ["WOKCALIB_DIR"])
-
-    fpModelFile = os.path.join(fps_calibs, "focalPlaneModel.csv")
-    FP_MODEL = pd.read_csv(fpModelFile, comment="#")
-
-    # read in the wok orientation model file
-    wokOrientFile = os.path.join(fps_calibs, "wokOrientation.csv")
-    wokOrient = pd.read_csv(wokOrientFile, comment="#")
-
-    # read in positioner table
-    positionerTableFile = os.path.join(fps_calibs, "positionerTable.csv")
-    positionerTable = pd.read_csv(positionerTableFile, comment="#", index_col=0)
-
-    wokCoordFile = os.path.join(fps_calibs, "wokCoords.csv")
-    wokCoords = pd.read_csv(wokCoordFile, comment="#", index_col=0)
-    VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
-    VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
-
-    fiducialCoords = pd.read_csv(os.path.join(fps_calibs, "fiducialCoords.csv"),
-                                 comment="#", index_col=0)
-
     try:
-        import fps_calibrations
-        fps_calibs_version = fps_calibrations.get_version()
-    except ImportError:
-        warnings.warn('Cannot retrieve the version of the wok calibrations. Consider '
-                      'adding the root of fps_calibrations to PYTHONPATH.',
-                      CoordIOUserWarning)
-        fps_calibs_version = 'unknown'
+        fps_calibs = os.path.abspath(os.environ["WOKCALIB_DIR"])
+
+        fpModelFile = os.path.join(fps_calibs, "focalPlaneModel.csv")
+        FP_MODEL = pd.read_csv(fpModelFile, comment="#")
+
+        # read in the wok orientation model file
+        wokOrientFile = os.path.join(fps_calibs, "wokOrientation.csv")
+        wokOrient = pd.read_csv(wokOrientFile, comment="#")
+
+        # read in positioner table
+        positionerTableFile = os.path.join(fps_calibs, "positionerTable.csv")
+        positionerTable = pd.read_csv(positionerTableFile, comment="#", index_col=0)
+
+        wokCoordFile = os.path.join(fps_calibs, "wokCoords.csv")
+        wokCoords = pd.read_csv(wokCoordFile, comment="#", index_col=0)
+        VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
+        VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
+
+        fiducialCoords = pd.read_csv(os.path.join(fps_calibs, "fiducialCoords.csv"),
+                                     comment="#", index_col=0)
+
+        try:
+            import fps_calibrations
+            fps_calibs_version = fps_calibrations.get_version()
+        except ImportError:
+            warnings.warn('Cannot retrieve the version of the wok calibrations. '
+                          'Consider adding the root of fps_calibrations to PYTHONPATH.',
+                          CoordIOUserWarning)
+            fps_calibs_version = 'unknown'
+
+    except Exception as err:
+        warnings.warn(f'Failed loading configuration files: {err}', CoordIOUserWarning)
