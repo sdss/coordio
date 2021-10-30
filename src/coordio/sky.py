@@ -11,14 +11,16 @@
 from __future__ import annotations
 
 import ctypes
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy
 
 from . import conv, defaults, sofa
 from .coordinate import Coordinate, Coordinate2D, verifySite, verifyWavelength
-from .exceptions import CoordinateError, CoordIOError
+from .exceptions import CoordIOError, CoordIOUserWarning
 from .time import Time
+
 
 if TYPE_CHECKING:
     from .site import Site
@@ -173,8 +175,8 @@ class ICRS(Coordinate2D):
                                  ra2, dec2, pmra2, pmdec2, parallax2, rvel2)
 
             if res > 1 or res < 0:
-                raise CoordinateError(f'iauPmsafe return with '
-                                      f'error code {res}.')
+                warnings.warn(f'iauPmsafe return with error code {res}.',
+                              CoordIOUserWarning)
 
             new_icrs[ii, :] = numpy.rad2deg([ra2.value, dec2.value])
             new_icrs.pmra[ii] = numpy.rad2deg(pmra2.value) * 3600. * 1000.

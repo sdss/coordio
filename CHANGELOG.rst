@@ -9,6 +9,7 @@ Change Log
 ----------------
 
 * Use measured alpha and beta offsets when transforming from tangent to positioner.
+* Replace error in ``iauPmsafe`` with warning.
 
 
 1.1.1 (2021-10-28)
