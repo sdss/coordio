@@ -186,6 +186,8 @@ class Tangent(Coordinate3D):
             posCoords.xFiber,
             posCoords.yFiber,
             posCoords.alphaArmLength,
+            posCoords.alphaOffset,
+            posCoords.betaOffset
         )
         self[:, 0] = xTangent
         self[:, 1] = yTangent
