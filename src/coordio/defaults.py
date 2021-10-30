@@ -196,6 +196,10 @@ def getPositionerData(holeID):
         boss fiber y (mm), in beta arm coordinates
     bossY : float
         boss fiber x (mm), in beta arm coordinates
+    alphaOffset : float
+        alpha arm offset at (0, 0), in degrees
+    betaOffset : float
+        beta arm offset at (0, 0), in degrees
 
     """
 
@@ -211,8 +215,10 @@ def getPositionerData(holeID):
     apY = float(row.apY)
     bossX = float(row.bossX)
     bossY = float(row.bossY)
+    alphaOffset = float(row.alphaOffset)
+    betaOffset = float(row.betaOffset)
 
-    return aal, metX, metY, apX, apY, bossX, bossY
+    return aal, metX, metY, apX, apY, bossX, bossY, alphaOffset, betaOffset
 
 
 def parseDesignRef():

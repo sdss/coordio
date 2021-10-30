@@ -97,6 +97,9 @@ class PositionerBase(Coordinate2D):
         self.xFiber = xFiber
         self.yFiber = yFiber
 
+        self.alphaOffset = fiberData[7]
+        self.betaOffset = fiberData[8]
+
     def _fromTangent(self, tangentCoords):
         """Convert from tangent coords to alpha betas
         """
@@ -105,7 +108,13 @@ class PositionerBase(Coordinate2D):
 
         # this will always return a right hand orientation
         alphaDeg, betaDeg, isOK = conv.tangentToPositioner(
-            xTangent, yTangent, self.xFiber, self.yFiber, self.alphaArmLength
+            xTangent,
+            yTangent,
+            self.xFiber,
+            self.yFiber,
+            self.alphaArmLength,
+            self.alphaOffset,
+            self.betaOffset
         )
 
         self[:, 0] = alphaDeg
