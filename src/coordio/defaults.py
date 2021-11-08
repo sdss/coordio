@@ -200,6 +200,12 @@ def getPositionerData(holeID):
         alpha arm offset at (0, 0), in degrees
     betaOffset : float
         beta arm offset at (0, 0), in degrees
+    dx: float
+        y offset (mm), calibration to capture small displacements of
+        tangent y
+    dy: float
+        z offset (mm), calibration to capture small displacements of
+        tangent x
 
     """
 
@@ -217,8 +223,10 @@ def getPositionerData(holeID):
     bossY = float(row.bossY)
     alphaOffset = float(row.alphaOffset)
     betaOffset = float(row.betaOffset)
+    dx = float(row.dx)
+    dy = float(row.dy)
 
-    return aal, metX, metY, apX, apY, bossX, bossY, alphaOffset, betaOffset
+    return aal, metX, metY, apX, apY, bossX, bossY, alphaOffset, betaOffset, dx, dy
 
 
 def parseDesignRef():
