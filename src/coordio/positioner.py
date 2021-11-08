@@ -124,6 +124,7 @@ class PositionerBase(Coordinate2D):
 
     def _fromRaw(self):
 
+        # TODO: maybe not do this?
         self = self % 360
 
 
