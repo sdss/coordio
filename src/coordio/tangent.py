@@ -79,7 +79,7 @@ class Tangent(Coordinate3D):
         Or `.Guide`.
     site : `.Site`
         Site name determines which wok parameters to use.  Mandatory parameter.
-    holeID : str or list of str
+    holeID : str
         Calid identifier(s), one of defaults.VALID_HOLE_IDS
     scaleFactor : float
         Multiplicative factor to apply, modeling thermal expansion/contraction
@@ -109,7 +109,7 @@ class Tangent(Coordinate3D):
     __computed_arrays__ = ["xProj", "yProj", "distProj"]
 
     site: Site
-    holeID: str | list[str] | numpy.ndarray
+    holeID: str
     scaleFactor: float | numpy.ndarray
     obsAngle: float | numpy.ndarray
     wavelength: numpy.ndarray
@@ -252,10 +252,6 @@ class Tangent(Coordinate3D):
         holeID = holeID or self.holeID
         if holeID is None:
             raise CoordIOError("Must be valid holeID for Tangent Coords")
-        if isinstance(holeID, str):
-            holeID = [holeID] * wokCoords.shape[0]
-            # No need to do an additional check here; getHoleOrient already
-            # checks that the holeIDs are valid.
 
         xWok = wokCoords[:, 0]
         yWok = wokCoords[:, 1]
