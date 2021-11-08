@@ -258,9 +258,13 @@ class Tangent(Coordinate3D):
         zWok = wokCoords[:, 2]
 
         b, iHat, jHat, kHat = defaults.getHoleOrient(self.site.name, holeID)
+        positioner_data = defaults.getPositionerData(holeID)
 
         tx, ty, tz = conv.wokToTangent(
-            xWok, yWok, zWok, b, iHat, jHat, kHat, scaleFac=self.scaleFactor
+            xWok, yWok, zWok, b, iHat, jHat, kHat,
+            scaleFac=self.scaleFactor,
+            dx=positioner_data[9],
+            dy=positioner_data[10]
         )
 
         self[:, 0] = tx
