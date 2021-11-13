@@ -319,10 +319,10 @@ def plot_degenerateSolns():
 def test_wokAndTangent():
 
     for holeID in holeIDs:
-        row = wokCoords[wokCoords.holeID==holeID]
-        b = [round(float(row.xWok.values), 5),
-             round(float(row.yWok.values), 5),
-             round(float(row.zWok.values), 5)]
+        row = wokCoords.loc[holeID]
+        b = [round(row.xWok, 5),
+             round(row.yWok, 5),
+             round(row.zWok, 5)]
         iHat = [float(row.ix), float(row.iy), float(row.iz)]
         jHat = [float(row.jx), float(row.jy), float(row.jz)]
         kHat = [float(row.kx), float(row.ky), float(row.kz)]

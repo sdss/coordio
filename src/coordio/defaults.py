@@ -91,7 +91,7 @@ def getFPModelParams(direction, waveCat):
             "waveCat must be one of Apogee Boss or GFA, got %s" % waveCat
         )
 
-    row = FP_MODEL[(FP_MODEL.direction == direction) & (FP_MODEL.waveCat == waveCat)]
+    row = FP_MODEL.loc[(direction, waveCat)]
 
     R = float(row.R)
     b = float(row.b)
@@ -152,27 +152,12 @@ def getHoleOrient(site, holeID):
         [x,y,z] unit vector, direction of z Tangent in wok coords
     """
 
-    if isinstance(holeID, str):
-        holeID = [holeID]
+    wokCoordsH = wokCoords.loc[holeID]
 
-    wokCoordsH = wokCoords.set_index('holeID')
-
-    mismatched = set(holeID) - set(wokCoordsH.index)
-    if len(mismatched) > 0:
-        raise CoordIOError(f"{mismatched} are not valid hole IDs")
-
-    wokCoordsH = wokCoordsH.loc[holeID]
-
-    b = wokCoordsH.loc[:, ['xWok', 'yWok', 'zWok']].to_numpy()
-    iHat = wokCoordsH.loc[:, ['ix', 'iy', 'iz']].to_numpy()
-    jHat = wokCoordsH.loc[:, ['jx', 'jy', 'jz']].to_numpy()
-    kHat = wokCoordsH.loc[:, ['kx', 'ky', 'kz']].to_numpy()
-
-    if len(holeID) == 1:
-        b = b[0]
-        iHat = iHat[0]
-        jHat = jHat[0]
-        kHat = kHat[0]
+    b = wokCoordsH.loc[['xWok', 'yWok', 'zWok']].to_numpy()
+    iHat = wokCoordsH.loc[['ix', 'iy', 'iz']].to_numpy()
+    jHat = wokCoordsH.loc[['jx', 'jy', 'jz']].to_numpy()
+    kHat = wokCoordsH.loc[['kx', 'ky', 'kz']].to_numpy()
 
     return b, iHat, jHat, kHat
 
@@ -295,6 +280,7 @@ else:
 
         fpModelFile = os.path.join(fps_calibs, "focalPlaneModel.csv")
         FP_MODEL = pd.read_csv(fpModelFile, comment="#")
+        FP_MODEL.set_index(['direction', 'waveCat'], inplace=True)
 
         # read in the wok orientation model file
         wokOrientFile = os.path.join(fps_calibs, "wokOrientation.csv")
@@ -306,7 +292,8 @@ else:
 
         wokCoordFile = os.path.join(fps_calibs, "wokCoords.csv")
         wokCoords = pd.read_csv(wokCoordFile, comment="#", index_col=0)
-        VALID_HOLE_IDS = list(set(wokCoords["holeID"]))
+        wokCoords.set_index('holeID', inplace=True)
+        VALID_HOLE_IDS = set(wokCoords.index.tolist())
         VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
 
         fiducialCoords = pd.read_csv(os.path.join(fps_calibs, "fiducialCoords.csv"),
