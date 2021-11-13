@@ -766,20 +766,12 @@ def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
         z position (mm) in tangent coordinates
     """
 
-    # Convert everything to arrays for wokToTangentArr.
-    b = numpy.atleast_2d(b).tolist()
-    iHat = numpy.atleast_2d(iHat).tolist()
-    jHat = numpy.atleast_2d(jHat).tolist()
-    kHat = numpy.atleast_2d(kHat).tolist()
+    b = _verify3Vector(b, 'b').tolist()
+    iHat = _verify3Vector(iHat, 'iHat').tolist()
+    jHat = _verify3Vector(jHat, 'jHat').tolist()
+    kHat = _verify3Vector(kHat, 'kHat').tolist()
 
     xyzWok = numpy.atleast_2d(numpy.array([xWok, yWok, zWok]).T).tolist()
-    length = len(xyzWok)
-
-    elementHeight = repeat_scalar(elementHeight, length).tolist()
-    scaleFac = repeat_scalar(scaleFac, length).tolist()
-    dx = repeat_scalar(dx, length).tolist()
-    dy = repeat_scalar(dy, length).tolist()
-    dz = repeat_scalar(dz, length).tolist()
 
     xyzTangent = libcoordio.wokToTangentArr(
         xyzWok, b, iHat, jHat, kHat,
