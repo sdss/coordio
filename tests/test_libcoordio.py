@@ -319,10 +319,10 @@ def plot_degenerateSolns():
 def test_wokAndTangent():
 
     for holeID in holeIDs:
-        row = wokCoords[wokCoords.holeID==holeID]
-        b = [round(float(row.xWok.values), 5),
-             round(float(row.yWok.values), 5),
-             round(float(row.zWok.values), 5)]
+        row = wokCoords.loc[holeID]
+        b = [round(row.xWok, 5),
+             round(row.yWok, 5),
+             round(row.zWok, 5)]
         iHat = [float(row.ix), float(row.iy), float(row.iz)]
         jHat = [float(row.jx), float(row.jy), float(row.jz)]
         kHat = [float(row.kx), float(row.ky), float(row.kz)]
@@ -347,14 +347,8 @@ def test_wokAndTangent():
                 assert wy1 == pytest.approx(wy2)
                 assert wz1 == pytest.approx(wz2)
 
-                nrepeats = 1 if numpy.isscalar(_tx) else len(_tx)
-                bArr = numpy.repeat(numpy.atleast_2d(b), nrepeats, axis=0)
-                iHatArr = numpy.repeat(numpy.atleast_2d(iHat), nrepeats, axis=0)
-                jHatArr = numpy.repeat(numpy.atleast_2d(jHat), nrepeats, axis=0)
-                kHatArr = numpy.repeat(numpy.atleast_2d(kHat), nrepeats, axis=0)
-
                 tx1,ty1,tz1 = conv.wokToTangent(
-                    wx1, wy1, wz1, bArr, iHatArr, jHatArr, kHatArr,
+                    wx1, wy1, wz1, b, iHat, jHat, kHat,
                     scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)
                 tx2,ty2,tz2 = conv._wokToTangent(wx1, wy1, wz1, b, iHat, jHat, kHat,
                     scaleFac=scaleFac, dx=dx, dy=dy, dz=dz)

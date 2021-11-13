@@ -147,9 +147,9 @@ class Field(Coordinate2D):
 
             arg = arg.squeeze()
 
-            xFP = fpCoords[arg, 0].squeeze()
-            yFP = fpCoords[arg, 1].squeeze()
-            zFP = fpCoords[arg, 2].squeeze()
+            xFP = numpy.atleast_1d(fpCoords[arg, 0].squeeze())
+            yFP = numpy.atleast_1d(fpCoords[arg, 1].squeeze())
+            zFP = numpy.atleast_1d(fpCoords[arg, 2].squeeze())
 
             if hasattr(xFP, "__len__") and len(xFP) == 0:
                 continue
@@ -282,8 +282,8 @@ class FocalPlane(Coordinate3D):
 
             arg = arg.squeeze()
 
-            thetaField = fieldCoord[arg, 0].squeeze()
-            phiField = fieldCoord[arg, 1].squeeze()
+            thetaField = numpy.atleast_1d(fieldCoord[arg, 0].squeeze())
+            phiField = numpy.atleast_1d(fieldCoord[arg, 1].squeeze())
 
             xFP, yFP, zFP, R, b, fieldWarn = conv.fieldToFocal(
                 thetaField,

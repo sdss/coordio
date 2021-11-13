@@ -157,15 +157,15 @@ vec3 tangentToWok(
 
 std::vector<vec3> wokToTangentArr(
     std::vector<std::array<double,3>> & wokXYZ,
-    std::vector<vec3> & basePos,
-    std::vector<vec3> & iHat,
-    std::vector<vec3> & jHat,
-    std::vector<vec3> & kHat,
-    std::vector<double> & elementHeight,
-    std::vector<double> & scaleFac,
-    std::vector<double> & dx,
-    std::vector<double> & dy,
-    std::vector<double> & dz
+    vec3 & basePos,
+    vec3 & iHat,
+    vec3 & jHat,
+    vec3 & kHat,
+    double elementHeight,
+    double scaleFac,
+    double dx,
+    double dy,
+    double dz
 ){
     std::vector<std::array<double,3>> outArr;
     int nCoords = wokXYZ.size();
@@ -174,15 +174,15 @@ std::vector<vec3> wokToTangentArr(
         outArr.push_back(
             wokToTangent(
                 wokXYZ[ii],
-                basePos[ii],
-                iHat[ii],
-                jHat[ii],
-                kHat[ii],
-                elementHeight[ii],
-                scaleFac[ii],
-                dx[ii],
-                dy[ii],
-                dz[ii]
+                basePos,
+                iHat,
+                jHat,
+                kHat,
+                elementHeight,
+                scaleFac,
+                dx,
+                dy,
+                dz
             )
         );
     }

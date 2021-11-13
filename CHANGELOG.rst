@@ -10,6 +10,8 @@ Change Log
 
 * Use measured alpha and beta offsets when transforming from tangent to positioner.
 * Replace error in ``iauPmsafe`` with warning.
+* Add ``RoughTransform`` and ``ZhaoBurgeTransform``.
+* Undo changes to ``wokToTangentArr``. Reverted to only supporting one holeID per array.
 
 
 1.1.1 (2021-10-28)
