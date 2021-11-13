@@ -197,7 +197,7 @@ def getPositionerData(holeID):
     if holeID not in VALID_HOLE_IDS:
         raise CoordIOError("%s is not a valid hole ID" % holeID)
 
-    row = positionerTable[positionerTable.holeID == holeID]
+    row = positionerTable.loc[positionerTable.holeID == holeID]
 
     aal = float(row.alphaArmLen)
     metX = float(row.metX)
