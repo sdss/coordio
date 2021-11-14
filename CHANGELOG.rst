@@ -5,7 +5,7 @@ Change Log
 ==========
 
 
-1.1.2 (untagged)
+1.1.2 (2021-11-14)
 ----------------
 
 * Use measured alpha and beta offsets when transforming from tangent to positioner.
