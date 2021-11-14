@@ -49,6 +49,8 @@ class Calibration:
         self.VALID_HOLE_IDS: set[str] = set([])
         self.VALID_GUIDE_IDS: list[str] = []
 
+        self.sites: list[str] = []
+
         self.fps_calibs_version = 'unknown'
 
         for path in self.paths:
@@ -98,6 +100,7 @@ class Calibration:
         # Positioner data
         self._add_calibration(path, positionerTableFile, 'positionerTable',
                               indices=['site', 'holeID'], index_col=0)
+        self.sites = list(set(self.positionerTable.index.get_level_values(0)))
 
         # Fiducials
         self._add_calibration(path, fiducialCoordsFile, 'fiducialCoords',
