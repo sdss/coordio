@@ -46,7 +46,6 @@ jobs:
         uses: actions/checkout@master
         with:
           repository: sdss/fps_calibrations
-          ref: albireox/add-site
           path: fps_calibrations
 
       - name: Install dependencies
