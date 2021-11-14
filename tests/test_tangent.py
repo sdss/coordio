@@ -4,7 +4,7 @@ import pytest
 
 from coordio import Field, FocalPlane, Observed, Site, Tangent, Wok
 from coordio.defaults import (APO_MAX_FIELD_R, LCO_MAX_FIELD_R,
-                              MICRONS_PER_MM, VALID_HOLE_IDS)
+                              MICRONS_PER_MM, calibration)
 
 
 @pytest.mark.xfail(reason="GFAs not yet handled.")
@@ -56,7 +56,7 @@ def test_proj():
         "R-13C14", "R+13C7", "R-13C1"
     ]
 
-    randomIDs = list(numpy.random.choice(VALID_HOLE_IDS, size=10))
+    randomIDs = list(numpy.random.choice(calibration.VALID_HOLE_IDS, size=10))
 
     allIDs = list(set(gfaIDs + robotIDs + randomIDs))
 

@@ -331,6 +331,8 @@ class FocalPlane(Coordinate3D):
 
             arg = arg.squeeze()
 
-            R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(direction, waveCat)
+            R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(self.site.name,
+                                                                 direction,
+                                                                 waveCat)
             self.b[arg] = b
             self.R[arg] = R

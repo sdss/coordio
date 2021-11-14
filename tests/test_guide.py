@@ -2,7 +2,7 @@ import numpy
 import pytest
 from numpy.testing import assert_array_almost_equal
 
-from coordio import CoordIOError, Guide, Site, Tangent, defaults
+from coordio import CoordIOError, Guide, Site, Tangent, calibration, defaults
 
 
 numpy.random.seed(0)
@@ -32,7 +32,7 @@ def test_guide_cycle():
     tangXYZ = numpy.array([tangX, tangY, tangZ]).T
 
     for site in [apoSite, lcoSite]:
-        for holeID in defaults.VALID_GUIDE_IDS:
+        for holeID in calibration.VALID_GUIDE_IDS:
             scaleFactor = numpy.random.uniform(.99, 1.01)
             binX = numpy.random.choice([1,2])
             binY = numpy.random.choice([1,2])
@@ -76,7 +76,7 @@ def test_guide_warn():
     tangXYZ = numpy.array([tangX, tangY, tangZ]).T
 
     for site in [apoSite, lcoSite]:
-        for holeID in defaults.VALID_GUIDE_IDS:
+        for holeID in calibration.VALID_GUIDE_IDS:
             scaleFactor = numpy.random.uniform(.99, 1.01)
             binX = numpy.random.choice([1,2])
             binY = numpy.random.choice([1,2])

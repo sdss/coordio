@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import numpy
 
-from . import conv, defaults
+from . import calibration, conv, defaults
 from .coordinate import Coordinate, Coordinate3D, verifySite, verifyWavelength
 from .exceptions import CoordIOError, CoordIOUserWarning
 from .telescope import FocalPlane
@@ -42,7 +42,9 @@ def _getRayOrigins(site, holeID, scaleFactor, obsAngle):
     outList = []
     direction = "focal"  # irrelevant, just getting sphere param
     for waveCat in ["Apogee", "Boss", "GFA"]:
-        R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(direction, waveCat)
+        R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(site.name,
+                                                             direction,
+                                                             waveCat)
         fpXYZ = [[0, 0, b]]  # sphere's center in focal plane coords
         # JSG for Conor: is this right?
         wavelength = defaults.INST_TO_WAVE['GFA']
@@ -80,7 +82,7 @@ class Tangent(Coordinate3D):
     site : `.Site`
         Site name determines which wok parameters to use.  Mandatory parameter.
     holeID : str
-        Calid identifier(s), one of defaults.VALID_HOLE_IDS
+        Calid identifier(s), one of calibration.VALID_HOLE_IDS
     scaleFactor : float
         Multiplicative factor to apply, modeling thermal expansion/contraction
         of wok holes with respect to each other.  Defaults to 1
@@ -133,7 +135,7 @@ class Tangent(Coordinate3D):
 
         if isinstance(value, Coordinate):
             if "Positioner" in value.coordSysName:
-                if holeID not in defaults.VALID_HOLE_IDS:
+                if holeID not in calibration.VALID_HOLE_IDS:
                     raise CoordIOError("Must be valid holeID for Tangent Coords")
                 if holeID.startswith("GFA"):
                     raise CoordIOError("Guide holeID supplied for Positioner coord")
@@ -145,7 +147,7 @@ class Tangent(Coordinate3D):
             elif value.coordSysName == "Guide":
                 # going from 2D to 3D coordsys
                 # initialize array
-                if holeID not in defaults.VALID_HOLE_IDS:
+                if holeID not in calibration.VALID_HOLE_IDS:
                     raise CoordIOError("Must be valid holeID for Tangent Coords")
                 if not holeID.startswith("GFA"):
                     raise CoordIOError(
@@ -203,7 +205,7 @@ class Tangent(Coordinate3D):
         guideCoords : `.Guide`
         """
         # print("from guide", self.wavelength)
-        if self.holeID not in defaults.VALID_GUIDE_IDS:
+        if self.holeID not in calibration.VALID_GUIDE_IDS:
             raise CoordIOError(
                 "Cannot convert from Guide to (non-guide) wok hole %s" % self.holeID
             )
@@ -258,7 +260,7 @@ class Tangent(Coordinate3D):
         zWok = wokCoords[:, 2]
 
         b, iHat, jHat, kHat = defaults.getHoleOrient(self.site.name, holeID)
-        positioner_data = defaults.getPositionerData(holeID)
+        positioner_data = defaults.getPositionerData(self.site.name, holeID)
 
         tx, ty, tz = conv.wokToTangent(
             xWok, yWok, zWok, b, iHat, jHat, kHat,

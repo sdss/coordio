@@ -1,9 +1,8 @@
 import os
-import warnings
 
 import pandas as pd
 
-from coordio.exceptions import CoordIOUserWarning
+from coordio.calibration import Calibration
 
 from .exceptions import CoordIOError
 
@@ -54,14 +53,16 @@ JHAT = [1, 0, 0]
 KHAT = [0, 0, 1]
 
 
-def getFPModelParams(direction, waveCat):
+def getFPModelParams(site, direction, waveCat):
     """Find the right focal plane model to use given direction and waveCat.
 
     Parameters
     ----------
-    direction: str
+    site : str
+        The site string.
+    direction : str
         "focal" or "field" for the direction of the conversion
-    waveCat: str
+    waveCat : str
         "Apogee", "Boss", or "GFA" for the wavelength
 
     Returns
@@ -81,6 +82,7 @@ def getFPModelParams(direction, waveCat):
     c4: float
         9th order coeff
     """
+
     # filter for correct row in the model dataframe
     if direction not in ["focal", "field"]:
         raise CoordIOError(
@@ -91,7 +93,7 @@ def getFPModelParams(direction, waveCat):
             "waveCat must be one of Apogee Boss or GFA, got %s" % waveCat
         )
 
-    row = FP_MODEL.loc[(direction, waveCat)]
+    row = calibration.FP_MODEL.loc[(site, direction, waveCat)]
 
     R = float(row.R)
     b = float(row.b)
@@ -120,7 +122,7 @@ def getWokOrient(site):
         tilt of wok coord sys about focal plane y axis deg
     """
 
-    row = wokOrient
+    row = calibration.wokOrient.loc[site]
     x = float(row.x)
     y = float(row.y)
     z = float(row.z)
@@ -135,6 +137,8 @@ def getHoleOrient(site, holeID):
 
     Parameters
     ----------
+    site : str
+        The site string.
     holeID : str or list of str
         Either a string with a valid holeID (e.g. R+13C1) or a list of
         valid holeIDs. In the latter case, the returned arrays are
@@ -152,7 +156,7 @@ def getHoleOrient(site, holeID):
         [x,y,z] unit vector, direction of z Tangent in wok coords
     """
 
-    wokCoordsH = wokCoords.loc[holeID]
+    wokCoordsH = calibration.wokCoords.loc[(site, holeID)]
 
     b = wokCoordsH.loc[['xWok', 'yWok', 'zWok']].to_numpy()
     iHat = wokCoordsH.loc[['ix', 'iy', 'iz']].to_numpy()
@@ -162,7 +166,7 @@ def getHoleOrient(site, holeID):
     return b, iHat, jHat, kHat
 
 
-def getPositionerData(holeID):
+def getPositionerData(site, holeID):
     """Return data specific to a positioner.
 
     Returns:
@@ -194,10 +198,10 @@ def getPositionerData(holeID):
 
     """
 
-    if holeID not in VALID_HOLE_IDS:
+    if holeID not in calibration.VALID_HOLE_IDS:
         raise CoordIOError("%s is not a valid hole ID" % holeID)
 
-    row = positionerTable.loc[positionerTable.holeID == holeID]
+    row = calibration.positionerTable.loc[(site, holeID)]
 
     aal = float(row.alphaArmLen)
     metX = float(row.metX)
@@ -215,7 +219,7 @@ def getPositionerData(holeID):
 
 
 def parseDesignRef():
-    designRefFile = os.path.join(fps_calibs, "fps_DesignReference.txt")
+    designRefFile = os.path.join(calibration.paths[0], "fps_DesignReference.txt")
     _row = []
     _col = []
     _xWok = []
@@ -266,47 +270,4 @@ def parseDesignRef():
     return df
 
 
-if 'WOKCALIB_DIR' not in os.environ:
-    warnings.warn('$WOKCALIB_DIR is not set. Coordinate transformations will fail.',
-                  CoordIOUserWarning)
-
-    FP_MODEL = wokOrient = positionerTable = wokCoords = fiducialCoords = None
-    fps_calibs = None
-    fps_calibs_version = 'unknown'
-
-else:
-    try:
-        fps_calibs = os.path.abspath(os.environ["WOKCALIB_DIR"])
-
-        fpModelFile = os.path.join(fps_calibs, "focalPlaneModel.csv")
-        FP_MODEL = pd.read_csv(fpModelFile, comment="#")
-        FP_MODEL.set_index(['direction', 'waveCat'], inplace=True)
-
-        # read in the wok orientation model file
-        wokOrientFile = os.path.join(fps_calibs, "wokOrientation.csv")
-        wokOrient = pd.read_csv(wokOrientFile, comment="#")
-
-        # read in positioner table
-        positionerTableFile = os.path.join(fps_calibs, "positionerTable.csv")
-        positionerTable = pd.read_csv(positionerTableFile, comment="#", index_col=0)
-
-        wokCoordFile = os.path.join(fps_calibs, "wokCoords.csv")
-        wokCoords = pd.read_csv(wokCoordFile, comment="#", index_col=0)
-        wokCoords.set_index('holeID', inplace=True)
-        VALID_HOLE_IDS = set(wokCoords.index.tolist())
-        VALID_GUIDE_IDS = [ID for ID in VALID_HOLE_IDS if ID.startswith("GFA")]
-
-        fiducialCoords = pd.read_csv(os.path.join(fps_calibs, "fiducialCoords.csv"),
-                                     comment="#", index_col=0)
-
-        try:
-            import fps_calibrations
-            fps_calibs_version = fps_calibrations.get_version()
-        except ImportError:
-            warnings.warn('Cannot retrieve the version of the wok calibrations. '
-                          'Consider adding the root of fps_calibrations to PYTHONPATH.',
-                          CoordIOUserWarning)
-            fps_calibs_version = 'unknown'
-
-    except Exception as err:
-        warnings.warn(f'Failed loading configuration files: {err}', CoordIOUserWarning)
+calibration = Calibration()
