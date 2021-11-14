@@ -2,12 +2,7 @@ import numpy
 import pytest
 
 from coordio import Field, FocalPlane, Observed, Site, Tangent, Wok
-from coordio.defaults import (
-    APO_MAX_FIELD_R,
-    LCO_MAX_FIELD_R,
-    VALID_HOLE_IDS,
-    positionerTable
-)
+from coordio.defaults import APO_MAX_FIELD_R, LCO_MAX_FIELD_R, calibration
 
 
 @pytest.fixture
@@ -64,8 +59,9 @@ def test_wok_tangent_cycle(prepare_test):
     for site, focalCoords in zip([lcoSite, apoSite], [focalLCO, focalAPO]):
         obsAngle = numpy.random.uniform(0, 360)
         wokCoords = Wok(focalCoords, site=site, obsAngle=obsAngle)
-        for holeID in VALID_HOLE_IDS:
-            if holeID not in positionerTable.holeID:
+        site_hole_ids = calibration.positionerTable.loc[site.name].index.tolist()
+        for holeID in calibration.VALID_HOLE_IDS:
+            if holeID not in site_hole_ids:
                 continue
             scaleFactor = numpy.random.uniform(.97, 1.03)
             tangentCoords = Tangent(

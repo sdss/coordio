@@ -1,11 +1,11 @@
-import numpy
-from numpy.testing import assert_array_almost_equal
-import pytest
-
-from coordio import (Tangent, PositionerBoss, PositionerApogee,
-                    PositionerMetrology, Site, defaults, CoordIOUserWarning)
-
 import matplotlib.pyplot as plt
+import numpy
+import pytest
+from numpy.testing import assert_array_almost_equal
+
+from coordio import (CoordIOUserWarning, PositionerApogee, PositionerBoss,
+                     PositionerMetrology, Site, Tangent, defaults)
+
 
 numpy.random.seed(0)
 

@@ -1,18 +1,22 @@
-import pytest
 import numpy
+import pytest
+
+
 numpy.random.seed(7)
 import time
+
+import matplotlib.pyplot as plt
 import pandas
 import seaborn as sns
-import matplotlib.pyplot as plt
 
+from coordio import conv, libcoordio
 # from coordio import Site, Wok, Observed, Field, FocalPlane, Tangent
-from coordio.defaults import MICRONS_PER_MM, positionerTable, wokCoords, POSITIONER_HEIGHT
+from coordio.defaults import MICRONS_PER_MM, POSITIONER_HEIGHT, calibration
+
+
 # import matplotlib.pyplot as plt
 # import seaborn as sns
 
-from coordio import conv
-from coordio import libcoordio
 
 # LEFTHAND = True
 
@@ -319,7 +323,7 @@ def plot_degenerateSolns():
 def test_wokAndTangent():
 
     for holeID in holeIDs:
-        row = wokCoords.loc[holeID]
+        row = calibration.wokCoords.loc[('APO', holeID)]
         b = [round(row.xWok, 5),
              round(row.yWok, 5),
              round(row.zWok, 5)]

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy
 
-from . import conv, defaults
+from . import calibration, conv, defaults
 from .coordinate import Coordinate, Coordinate2D, verifySite
 from .exceptions import CoordIOError
 
@@ -27,7 +27,7 @@ class PositionerBase(Coordinate2D):
     site : `.Site`
         mandatory parameter
     holeID : str
-        valid identifier, one of defaults.VALID_HOLE_IDS
+        valid identifier, one of calibration.VALID_HOLE_IDS
 
     """
 
@@ -47,7 +47,7 @@ class PositionerBase(Coordinate2D):
         holeID = kwargs.get("holeID", None)
         if holeID is None:
             raise CoordIOError("Must specify holeID for Positioner Coords")
-        if holeID not in defaults.VALID_HOLE_IDS:
+        if holeID not in calibration.VALID_HOLE_IDS:
             raise CoordIOError("Must be valid holeID for Positioner Coords")
 
         if isinstance(value, Coordinate):
@@ -77,7 +77,7 @@ class PositionerBase(Coordinate2D):
         return obj
 
     def _loadFiberData(self):
-        fiberData = defaults.getPositionerData(self.holeID)
+        fiberData = defaults.getPositionerData(self.site.name, self.holeID)
 
         if self.__fiber_type__ == "Metrology":
             xFiber = fiberData[1]

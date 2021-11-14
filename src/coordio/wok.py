@@ -103,7 +103,8 @@ class Wok(Coordinate3D):
         b, iHat, jHat, kHat = defaults.getHoleOrient(
             tangentCoords.site.name, tangentCoords.holeID
         )
-        positioner_data = defaults.getPositionerData(tangentCoords.holeID)
+        positioner_data = defaults.getPositionerData(self.site.name,
+                                                     tangentCoords.holeID)
 
         xWok, yWok, zWok = conv.tangentToWok(
             tx, ty, tz, b, iHat, jHat, kHat,

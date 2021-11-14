@@ -1,11 +1,12 @@
-import numpy
 import warnings
-from skimage.transform import AffineTransform, EuclideanTransform, SimilarityTransform
 
-from . import defaults
+import numpy
+from skimage.transform import (AffineTransform, EuclideanTransform,
+                               SimilarityTransform)
+
+from . import defaults, libcoordio
 from .exceptions import CoordIOUserWarning
 
-from . import libcoordio
 
 # low level, functional conversions
 
@@ -385,7 +386,7 @@ def fieldToFocal(thetaField, phiField, site, waveCat):
         )
 
     direction = "focal"
-    R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(direction, waveCat)
+    R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(site, direction, waveCat)
 
     phiFocal = c0 * phiField + c1 * phiField**3 + c2 * phiField**5 \
         + c3 * phiField**7 + c4 * phiField**9
@@ -431,7 +432,7 @@ def focalToField(xFocal, yFocal, zFocal, site, waveCat):
         True if angle off-axis is large enough to be suspicious
     """
     direction = "field"
-    R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(direction, waveCat)
+    R, b, c0, c1, c2, c3, c4 = defaults.getFPModelParams(site, direction, waveCat)
     # note by definition thetaField==thetaFocal
     thetaField = numpy.degrees(numpy.arctan2(yFocal, xFocal))
 

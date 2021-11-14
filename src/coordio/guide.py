@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy
 
-from . import defaults
+from . import calibration, defaults
 from .coordinate import Coordinate, Coordinate2D
 from .exceptions import CoordIOError
 
@@ -69,7 +69,7 @@ class Guide(Coordinate2D):
         """Convert from tangent coordinates to guide coordinates
 
         """
-        if tangentCoords.holeID not in defaults.VALID_GUIDE_IDS:
+        if tangentCoords.holeID not in calibration.VALID_GUIDE_IDS:
             raise CoordIOError(
                 "Cannot convert from wok hole %s to Guide" %
                 tangentCoords.holeID
