@@ -23,7 +23,7 @@ jobs:
         python-version: [3.7, 3.8, 3.9]
 
     env:
-      WOKCALIB_DIR: "/home/runner/work/coordio/coordio/fps_calibrations/apo/wok_calibs/sloanFlatCMM/"
+      WOKCALIB_DIR: "/home/runner/work/coordio/coordio/fps_calibrations/apo/wok_calibs/sloanBase:/home/runner/work/coordio/coordio/fps_calibrations/lco/wok_calibs/duPontBase"
       PYTHONPATH: "/home/runner/work/coordio/coordio/fps_calibrations"
 
     steps:
@@ -46,6 +46,7 @@ jobs:
         uses: actions/checkout@master
         with:
           repository: sdss/fps_calibrations
+          ref: albireox/add-site
           path: fps_calibrations
 
       - name: Install dependencies
