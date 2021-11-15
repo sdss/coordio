@@ -4,6 +4,11 @@
 Change Log
 ==========
 
+1.1.3 (2021-11-14)
+----------------
+
+* When ``Calibration`` does not have any files, the data frames are set to empty instead of ``None``.
+
 
 1.1.2 (2021-11-14)
 ----------------
