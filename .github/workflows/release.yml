@@ -37,7 +37,6 @@ jobs:
       - name: Build package
         run: |
           python setup.py sdist
-          twine upload dist/*
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@master
