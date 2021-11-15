@@ -40,11 +40,11 @@ class Calibration:
             paths = os.environ.get('WOKCALIB_DIR', '').split(':')
         self.paths = paths
 
-        self.FP_MODEL: pandas.DataFrame | None = None
-        self.wokOrient: pandas.DataFrame | None = None
-        self.positionerTable: pandas.DataFrame | None = None
-        self.wokCoords: pandas.DataFrame | None = None
-        self.fiducialCoords: pandas.DataFrame | None = None
+        self.FP_MODEL = pandas.DataFrame()
+        self.wokOrient = pandas.DataFrame()
+        self.positionerTable = pandas.DataFrame()
+        self.wokCoords = pandas.DataFrame()
+        self.fiducialCoords = pandas.DataFrame()
 
         self.VALID_HOLE_IDS: set[str] = set([])
         self.VALID_GUIDE_IDS: list[str] = []
@@ -125,7 +125,7 @@ class Calibration:
             new_sites = set(new.site.tolist())
 
         current = getattr(self, variable)
-        if current is not None:
+        if len(current) > 0:
             sites = set(current.reset_index().site.tolist())
             if len(sites & new_sites) > 0:
                 print(variable, path, sites, new_sites)
