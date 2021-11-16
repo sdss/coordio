@@ -731,15 +731,15 @@ def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
     zWok: 1D array
         z position of object in wok space mm
         (+z aligned boresight and increases from the telescope to the sky)
-    b: 2D array of 3D vectors
+    b: 3-element 1D vector
         x,y,z position (mm) of each hole element on wok surface measured in wok coords
-    iHat: 2D array of 3D vectors
+    iHat: 3-element 1D vector
         x,y,z unit vector in wok coords that indicate the direction
         of the tangent coordinate x axis for each hole.
-    jHat: 2D array of 3D vectors
+    jHat: 3-element 1D vector
         x,y,z unit vector in wok coords that indicate the direction
         of the tangent coordinate y axis for each hole.
-    kHat: 2D array of 3D vectors
+    kHat: 3-element 1D vector
         x,y,z unit vector in wok coords that indicate the direction
         of the tangent coordinate z axis for each hole.
     elementHeight: 1D array
@@ -905,7 +905,7 @@ def tangentToWok(xTangent, yTangent, zTangent, b, iHat, jHat, kHat,
     """
     Convert from tangent coordinates at b to wok coordinates.
 
-    xyz Wok coords are mm with orgin at wok vertex. +z points from wok toward M2.
+    xyz Wok coords are mm with origin at wok vertex. +z points from wok toward M2.
     -x points toward the boss slithead
 
     In the tangent coordinate frame the xy plane is tangent to the wok
