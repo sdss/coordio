@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+Next version
+------------
+
+* Add ``fiberAssignment`` to ``Calibration``.
+
+
 1.1.3 (2021-11-14)
 ----------------
 
