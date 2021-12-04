@@ -45,6 +45,7 @@ class Calibration:
         self.positionerTable = pandas.DataFrame()
         self.wokCoords = pandas.DataFrame()
         self.fiducialCoords = pandas.DataFrame()
+        self.fiberAssignments = pandas.DataFrame()
 
         self.VALID_HOLE_IDS: set[str] = set([])
         self.VALID_GUIDE_IDS: list[str] = []
@@ -76,7 +77,8 @@ class Calibration:
                         wokOrientFile='wokOrientation.csv',
                         positionerTableFile='positionerTable.csv',
                         wokCoordsFile='wokCoords.csv',
-                        fiducialCoordsFile='fiducialCoords.csv'):
+                        fiducialCoordsFile='fiducialCoords.csv',
+                        fiberAssignmentsFile='fiberAssignments.csv'):
         """Add calibration files from a ``path``."""
 
         path = str(path)
@@ -106,9 +108,16 @@ class Calibration:
         self._add_calibration(path, fiducialCoordsFile, 'fiducialCoords',
                               indices=['site', 'holeID'], index_col=0)
 
+        # Fibre assignments
+        self._add_calibration(path, fiberAssignmentsFile, 'fiberAssignments',
+                              indices=['site', 'holeID'], index_col=0)
+
     def _add_calibration(self, path: str, file: str, variable: str,
                          indices: str | list | None = None, index_col=None):
         """Loads and concatenates one file."""
+
+        # Sets the file name.
+        setattr(self, variable + 'File', path)
 
         path = os.path.join(path, file)
         if not os.path.exists(path):
