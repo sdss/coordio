@@ -116,12 +116,13 @@ class Calibration:
                          indices: str | list | None = None, index_col=None):
         """Loads and concatenates one file."""
 
-        # Sets the file name.
-        setattr(self, variable + 'File', path)
-
         path = os.path.join(path, file)
         if not os.path.exists(path):
-            raise FileExistsError(f'Cannot find file {path}.')
+            warnings.warn(f'Cannot find file {path}.', CoordIOUserWarning)
+            return
+
+        # Sets the file name.
+        setattr(self, variable + 'File', path)
 
         new = pandas.read_csv(path, comment="#", index_col=index_col)
         if len(new) == 0:
@@ -129,7 +130,8 @@ class Calibration:
 
         # Check that we don't have already loaded a calibration for this site.
         if 'site' not in new:
-            raise ValueError(f'Column site not found in {path}')
+            warnings.warn(f'Column site not found in {path}', CoordIOUserWarning)
+            return
         else:
             new_sites = set(new.site.tolist())
 
@@ -137,7 +139,6 @@ class Calibration:
         if len(current) > 0:
             sites = set(current.reset_index().site.tolist())
             if len(sites & new_sites) > 0:
-                print(variable, path, sites, new_sites)
                 raise ValueError('Some new sites already exist in calibration.')
 
         if indices:
