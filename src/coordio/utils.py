@@ -1,4 +1,5 @@
 import numpy
+import pandas
 
 from .sky import ICRS, Observed
 from .telescope import Field, FocalPlane
@@ -145,7 +146,9 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     # use the guide wavelength for field center
     # epoch not needed, no propermotions, etc (josé verify?)
     icrsCen = ICRS([[raCen, decCen]])
-    obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
+    # hack to work with FSC
+    # obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
+    obsCen = Observed(icrsCen, site=site, wavelength=4500)
 
 
     radec = numpy.array([ra, dec]).T
@@ -277,3 +280,10 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
     icrs = ICRS(obs, epoch=obsTime)
 
     return icrs[:, 0], icrs[:, 1], field.field_warn
+
+
+def fitsTableToPandas(recarray):
+    d = {}
+    for name in recarray.names:
+        d[name] = recarray[name].byteswap().newbyteorder()
+    return pandas.DataFrame(d)

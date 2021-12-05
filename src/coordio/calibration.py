@@ -46,6 +46,7 @@ class Calibration:
         self.wokCoords = pandas.DataFrame()
         self.fiducialCoords = pandas.DataFrame()
         self.fiberAssignments = pandas.DataFrame()
+        self.gfaCoords = pandas.DataFrame()
 
         self.VALID_HOLE_IDS: set[str] = set([])
         self.VALID_GUIDE_IDS: list[str] = []
@@ -78,7 +79,8 @@ class Calibration:
                         positionerTableFile='positionerTable.csv',
                         wokCoordsFile='wokCoords.csv',
                         fiducialCoordsFile='fiducialCoords.csv',
-                        fiberAssignmentsFile='fiberAssignments.csv'):
+                        fiberAssignmentsFile='fiberAssignments.csv',
+                        gfaCoordsFile="gfaCoords.csv"):
         """Add calibration files from a ``path``."""
 
         path = str(path)
@@ -111,6 +113,10 @@ class Calibration:
         # Fibre assignments
         self._add_calibration(path, fiberAssignmentsFile, 'fiberAssignments',
                               indices=['site', 'holeID'], index_col=0)
+
+        # Fibre assignments
+        self._add_calibration(path, gfaCoordsFile, 'gfaCoords',
+                              indices=['site', 'id'], index_col=0)
 
     def _add_calibration(self, path: str, file: str, variable: str,
                          indices: str | list | None = None, index_col=None):

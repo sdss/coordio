@@ -1427,33 +1427,33 @@ def _positionerToTangent(
     return xTangent, yTangent
 
 
-class FVCUW(object):
-    # right now this is for UWs test bench, fix image scale and use
-    # euclidean transforms
-    defaultScale = 0.026926930620282834
-    defaultRotation = -0.005353542811111436
-    defaultTranslation = numpy.array([-75.69606047, -48.68561274])
-    # transform from CCD pixels to mm
-    def __init__(self):
+# class FVCUW(object):
+#     # right now this is for UWs test bench, fix image scale and use
+#     # euclidean transforms
+#     defaultScale = 0.026926930620282834
+#     defaultRotation = -0.005353542811111436
+#     defaultTranslation = numpy.array([-75.69606047, -48.68561274])
+#     # transform from CCD pixels to mm
+#     def __init__(self):
 
-        self.tform = SimilarityTransform(
-            scale=self.defaultScale,
-            rotation=self.defaultRotation,
-            translation=self.defaultTranslation
-         )
+#         self.tform = SimilarityTransform(
+#             scale=self.defaultScale,
+#             rotation=self.defaultRotation,
+#             translation=self.defaultTranslation
+#          )
 
-    def fit(self, xpix, ypix, xWok, yWok):
-        xypixels = numpy.array([xpix, ypix]).T
-        xyWok = numpy.array([xWok,yWok]).T
-        self.tform.estimate(xypixels, xyWok)
+#     def fit(self, xpix, ypix, xWok, yWok):
+#         xypixels = numpy.array([xpix, ypix]).T
+#         xyWok = numpy.array([xWok,yWok]).T
+#         self.tform.estimate(xypixels, xyWok)
 
 
-    def fvcToWok(self, xpix, ypix):
-        xypixels = numpy.array([xpix, ypix]).T
-        xyWok = self.tform(xypixels)
-        return xyWok[:,0], xyWok[:,1]
+#     def fvcToWok(self, xpix, ypix):
+#         xypixels = numpy.array([xpix, ypix]).T
+#         xyWok = self.tform(xypixels)
+#         return xyWok[:,0], xyWok[:,1]
 
-    def wokToFVC(self, xWok, yWok):
-        xyWok = numpy.array([xWok, yWok]).T
-        xypix = self.tform.inverse(xyWok)
-        return xypix[:,0], xypix[:,1]
+#     def wokToFVC(self, xWok, yWok):
+#         xyWok = numpy.array([xWok, yWok]).T
+#         xypix = self.tform.inverse(xyWok)
+#         return xypix[:,0], xypix[:,1]
