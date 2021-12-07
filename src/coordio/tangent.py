@@ -217,6 +217,8 @@ class Tangent(Coordinate3D):
                 "Cannont convert from Guide coords with non-guide wavelength"
             )
 
+        # note, moved this calculation into
+        # conv.guideToTangent, may want to just use that one
         xPix = guideCoords[:, 0]
         yPix = guideCoords[:, 1]
         xBin = guideCoords.xBin

@@ -1427,6 +1427,37 @@ def _positionerToTangent(
     return xTangent, yTangent
 
 
+def tangentToGuide(xTangent, yTangent, xBin=1, yBin=1):
+
+    xPix = (1 / xBin) * (
+        defaults.MICRONS_PER_MM / defaults.GFA_PIXEL_SIZE * xTangent + \
+        defaults.GFA_CHIP_CENTER
+    )
+
+    yPix = (1 / yBin) * (
+        defaults.MICRONS_PER_MM / defaults.GFA_PIXEL_SIZE * yTangent + \
+        defaults.GFA_CHIP_CENTER
+    )
+
+    return xPix, yPix
+
+
+def guideToTangent(xPix, yPix, xBin=1, yBin=1):
+    xTangent = (
+        (xPix * xBin - defaults.GFA_CHIP_CENTER)
+        * defaults.GFA_PIXEL_SIZE
+        / defaults.MICRONS_PER_MM
+    )
+
+    yTangent = (
+        (yPix * yBin - defaults.GFA_CHIP_CENTER)
+        * defaults.GFA_PIXEL_SIZE
+        / defaults.MICRONS_PER_MM
+    )
+
+    return xTangent, yTangent
+
+
 # class FVCUW(object):
 #     # right now this is for UWs test bench, fix image scale and use
 #     # euclidean transforms

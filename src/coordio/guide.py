@@ -88,6 +88,9 @@ class Guide(Coordinate2D):
         # could almost equivalently use tangentCoords[:,0:2]
         # and we may want to ditch the projection eventually if its
         # unnecessary
+
+        # note, moved this calculation into
+        # conv.tangentToGuide, may want to just use that one
         xT = tangentCoords.xProj
         yT = tangentCoords.yProj
 

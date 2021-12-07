@@ -147,8 +147,8 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     # epoch not needed, no propermotions, etc (josé verify?)
     icrsCen = ICRS([[raCen, decCen]])
     # hack to work with FSC
-    # obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
-    obsCen = Observed(icrsCen, site=site, wavelength=4500)
+    obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
+    # obsCen = Observed(icrsCen, site=site, wavelength=4500)
 
 
     radec = numpy.array([ra, dec]).T
