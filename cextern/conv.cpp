@@ -360,6 +360,108 @@ std::vector<vec2> tangentToPositionerArr(
     return outArr;
 }
 
+double wrap2pi(double angle){
+    // wrap an angle in radians
+    // between 0 and 2 pi
+    angle = fmod(angle, 2*M_PI);
+    if (angle < 0.0){
+        angle += 2*M_PI;
+    }
+    return angle;
+}
+
+double rad2deg(double radians){
+    // convert from radians to degrees
+    return radians * 180.0 / M_PI;
+}
+
+std::array<double, 5> tangentToPositioner2(
+    vec2 xyTangent,
+    vec2 xyBeta,
+    double alphaLen,
+    double alphaOffDeg,
+    double betaOffDeg
+){
+    // new implementation
+    // http://motion.pratt.duke.edu/RoboticSystems/InverseKinematics.html
+    double alphaAngleRight, alphaAngleLeft, betaAngleRight, betaAngleLeft;
+    double err;
+    std::array<double, 5> output;
+
+    double radDistT2 = xyTangent[0]*xyTangent[0] + xyTangent[1]*xyTangent[1];
+    double radDistT = hypot(xyTangent[0], xyTangent[1]);
+    double thetaT = atan2(xyTangent[1], xyTangent[0]);
+    thetaT = wrap2pi(thetaT);
+
+    double la2 = alphaLen*alphaLen;
+    double la = alphaLen;
+    double lb2 = xyBeta[0]*xyBeta[0] + xyBeta[1]*xyBeta[1];
+    double lb = hypot(xyBeta[0], xyBeta[1]);
+    if (radDistT >= la + lb){
+        // outside donut
+        betaAngleRight = 0;
+        betaAngleLeft = 0;
+        alphaAngleRight = thetaT;
+        alphaAngleLeft = thetaT;
+        err = radDistT - (la + lb);
+    }
+    else if (radDistT <= lb - la){
+        // inside donut
+        betaAngleRight = M_PI;
+        betaAngleLeft = M_PI;
+        alphaAngleRight = thetaT + M_PI;
+        alphaAngleRight = wrap2pi(alphaAngleRight);
+        alphaAngleLeft = alphaAngleRight;
+        err = (lb-la) - radDistT;
+    }
+    else {
+        // inside workspace, both left and right hand solutions exist
+        double c_2 = (radDistT2 - la2 - lb2)/(2*la*lb);
+        betaAngleRight = acos(c_2);
+        betaAngleLeft = -1*betaAngleRight;
+
+        alphaAngleRight = thetaT - atan2(
+            lb*sin(betaAngleRight),
+            la + lb*cos(betaAngleRight)
+        );
+
+        alphaAngleLeft = thetaT - atan2(
+            lb*sin(betaAngleLeft),
+            la + lb*cos(betaAngleLeft)
+        );
+
+        // wrap alpha beta angles to 0-360 degrees
+        betaAngleRight = wrap2pi(betaAngleRight);
+        betaAngleLeft = wrap2pi(betaAngleLeft);
+        alphaAngleRight = wrap2pi(alphaAngleRight);
+        alphaAngleLeft = wrap2pi(alphaAngleLeft);
+        err = 0;
+    }
+
+    // account for offsets here
+    // and slight angle off the robot arm (xyBeta)
+    // fiber angular offset is the angle the fiber makes
+    // with the "centerline" of the robot
+    // alpha/beta should be reported with respect to the centerline
+    // not the line connecting the beta axis and the fiber
+    // eg fiberAngOff == 0 for a perfectly centered metrology fiber
+    // no more wrapping!
+
+    double fiberAngOff = rad2deg(atan2(xyBeta[1], xyBeta[0]));
+
+    betaAngleRight = rad2deg(betaAngleRight) - betaOffDeg - fiberAngOff;
+    betaAngleLeft = rad2deg(betaAngleLeft) - betaOffDeg - fiberAngOff;
+    alphaAngleRight = rad2deg(alphaAngleRight) - alphaOffDeg;
+    alphaAngleLeft = rad2deg(alphaAngleLeft) - alphaOffDeg;
+
+    output[0] = alphaAngleRight;
+    output[1] = betaAngleRight;
+    output[2] = alphaAngleLeft;
+    output[3] = betaAngleLeft;
+    output[4] = err;
+
+    return output;
+}
 
 
 namespace py = pybind11;
@@ -377,6 +479,10 @@ PYBIND11_MODULE(libcoordio, m) {
     m.def("tangentToPositionerArr", &tangentToPositionerArr,
         "xyTangent"_a, "xyBeta"_a, "alphaLen"_a, "alphaOffDeg"_a,
         "betaOffDeg"_a, "leftHand"_a = false
+    );
+    m.def("tangentToPositioner2", &tangentToPositioner2,
+        "xyTangent"_a, "xyBeta"_a, "alphaLen"_a, "alphaOffDeg"_a,
+        "betaOffDeg"_a
     );
     m.def("positionerToTangent", &positionerToTangent);
     m.def("positionerToTangentArr", &positionerToTangentArr);

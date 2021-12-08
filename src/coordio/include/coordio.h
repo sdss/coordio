@@ -94,3 +94,11 @@ std::vector<vec2> tangentToPositionerArr(
     double betaOffDeg,
     bool leftand=false
 );
+
+std::array<double, 5> tangentToPositioner2(
+    vec2 xyTangent,
+    vec2 xyBeta,
+    double alphaLen,
+    double alphaOffDeg,
+    double betaOffDeg
+);
