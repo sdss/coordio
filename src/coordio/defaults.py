@@ -29,6 +29,11 @@ INST_TO_WAVE = {
     "Apogee": 16600.0
 }
 
+PLATE_SCALE = {
+    "APO": 217.7358,  # mm/deg
+    "LCO": 330.275
+}
+
 POSITIONER_HEIGHT = 143.1  # mm, distance from wok surface to fiber
 ALPHA_LEN = 7.4  # mm, length of the alpha arm (distance between alpha and beta axes)
 BETA_LEN = 16.2  # mm, distance from beta axis to top flat edge of the robot
