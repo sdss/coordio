@@ -8,6 +8,9 @@ Next version
 ------------
 
 * Add ``fiberAssignment`` to ``Calibration``.
+* Add new implementation of ``tangentToPositioner``.
+* Add GFA coordinates to calibrations.
+* Add plate scale defaults for APO and LCO.
 
 
 1.1.3 (2021-11-14)
