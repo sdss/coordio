@@ -4,8 +4,8 @@
 Change Log
 ==========
 
-Next version
-------------
+1.2.0 (2022-01-04)
+------------------
 
 * Add ``fiberAssignment`` to ``Calibration``.
 * Add new implementation of ``tangentToPositioner``.
