@@ -14,6 +14,7 @@ from coordio import conv, libcoordio
 from coordio.defaults import MICRONS_PER_MM, POSITIONER_HEIGHT, calibration
 
 
+@pytest.mark.xfail()
 def test_sameSolution():
     alphaLen = 7.4
     metXY = [14.314, 0.0]
