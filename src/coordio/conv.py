@@ -584,6 +584,10 @@ def focalToWok(
         # single set of xyz coords fed in
         xWok, yWok, zWok = coords - transXYZ
 
+    # scale xyWok from dither analysis results
+    xWok = xWok * 0.99988613
+    yWok = yWok * 0.99988613
+
     return xWok, yWok, zWok
 
 
@@ -643,6 +647,11 @@ def wokToFocal(
         z position of object in focal coord sys mm
         (+z aligned boresight and increases from the telescope to the sky)
     """
+
+    # scale xyWok from dither analysis results
+    xWok = numpy.array(xWok) / 0.99988613
+    yWok = numpy.array(yWok) / 0.99988613
+
     # this routine is a reversal of the steps
     # in the function focalToWok, with rotational
     # angles inverted and translations applied in reverse

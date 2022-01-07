@@ -366,7 +366,7 @@ def transformFromMetData(centroids, fullTable, fiducialCoords, figPrefix="", pol
     # centroids = fitsTableToPandas(ff[7].data)
     # centroids = centroids[centroids.npix > 400]
 
-    print(len(centroids))
+    # print(len(centroids))
 
     xyCCD = centroids[["x", "y"]].to_numpy()
 
