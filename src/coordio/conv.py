@@ -474,7 +474,8 @@ def focalToField(xFocal, yFocal, zFocal, site, waveCat):
 
 def focalToWok(
     xFocal, yFocal, zFocal, positionAngle=0,
-    xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0
+    xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0,
+    fpScale=0.99886
 ):
     """Convert xyz focal coordinates in mm to xyz wok coordinates in mm.
 
@@ -517,6 +518,8 @@ def focalToWok(
     tiltY: scalar
         tilt (deg) of wok about focal y axis at PA=0
         calibrated
+    fpScale: scalar
+        radial scale multiplier
 
     Returns
     ---------
@@ -585,15 +588,16 @@ def focalToWok(
         xWok, yWok, zWok = coords - transXYZ
 
     # scale xyWok from dither analysis results
-    xWok = xWok * 0.99988613
-    yWok = yWok * 0.99988613
+    xWok = xWok / fpScale # from gfa: 0.9998899
+    yWok = yWok / fpScale # from gfa: 0.9998899
 
     return xWok, yWok, zWok
 
 
 def wokToFocal(
     xWok, yWok, zWok, positionAngle=0,
-    xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0
+    xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0,
+    fpScale=0.99886,
 ):
     """Convert xyz wok coordinates in mm to xyz focal coordinates in mm.
 
@@ -634,6 +638,8 @@ def wokToFocal(
     tiltY: scalar
         tilt (deg) of wok about focal y axis at PA=0
         calibrated
+    fpScale: scalar
+        radial scale multiplier
 
     Returns
     ---------
@@ -649,8 +655,8 @@ def wokToFocal(
     """
 
     # scale xyWok from dither analysis results
-    xWok = numpy.array(xWok) / 0.99988613
-    yWok = numpy.array(yWok) / 0.99988613
+    xWok = numpy.array(xWok) * fpScale # from gfa: 0.9998899
+    yWok = numpy.array(yWok) * fpScale # from gfa: 0.9998899
 
     # this routine is a reversal of the steps
     # in the function focalToWok, with rotational
