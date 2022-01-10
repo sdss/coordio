@@ -1,6 +1,5 @@
 import numpy
 import pytest
-import matplotlib.pyplot as plt
 
 from coordio import Field, FocalPlane, Observed, Site, Tangent, Wok
 from coordio.defaults import APO_MAX_FIELD_R, LCO_MAX_FIELD_R, calibration
@@ -21,13 +20,11 @@ def test_fpScaleAPO():
 
     focalAPOInit = FocalPlane(fieldAPO, site=apoSite, fpScale=1)
 
-    plt.figure()
     wokRadii = []
     for sf in [0.999882, 1, 1.000118]:
         focalAPO = FocalPlane(fieldAPO, site=apoSite, fpScale=sf)
         wokAPO = Wok(focalAPO, site=apoSite, obsAngle=0)
         rad = numpy.linalg.norm(wokAPO[:,:2], axis=1)
-        plt.plot(rad, numpy.zeros(len(rad)), '.', label="%s"%str(sf))
         wokRadii.append(rad)
         _focalAPO = FocalPlane(wokAPO, site=apoSite, fpScale=sf)
 
