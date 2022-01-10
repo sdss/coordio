@@ -208,6 +208,10 @@ class FocalPlane(Coordinate3D):
         to BOSS, Apogee, and sdss-r band (GFA).  Defaults to GFA wavelength.
     site : `.Site`
         Used to pick the focal plane model to use which is telescope dependent
+    fpScale : float
+        Multiplicative scale factor to apply between wok and focal
+        coords.  An adjustment to the focal plane model.  Defaults to
+        0.999882.
 
     Attributes
     -----------
@@ -221,7 +225,7 @@ class FocalPlane(Coordinate3D):
         boolean array indicating suspect conversions from large field angles
     """
 
-    __extra_params__ = ["site"]   # mandatory argument
+    __extra_params__ = ["site", "fpScale"]
     __extra_arrays__ = ["wavelength"]
     __computed_arrays__ = ["b", "R"]
     __warn_arrays__ = ["field_warn"]
@@ -231,6 +235,7 @@ class FocalPlane(Coordinate3D):
     field_warn: numpy.ndarray
     wavelength: numpy.ndarray
     site: Site
+    fpScale: float
 
     def __new__(cls, value, **kwargs):
 
@@ -239,6 +244,10 @@ class FocalPlane(Coordinate3D):
         verifyWavelength(
             kwargs, len(value), strict=True
         )
+
+        fpScale = kwargs.get("fpScale", None)
+        if fpScale is None:
+            kwargs["fpScale"] = 0.999882
 
         if isinstance(value, Coordinate):
             if value.coordSysName == "Field":
@@ -310,7 +319,7 @@ class FocalPlane(Coordinate3D):
         xOff, yOff, zOff, tiltX, tiltY = defaults.getWokOrient(siteName)
         xWok, yWok, zWok = wokCoord[:, 0], wokCoord[:, 1], wokCoord[:, 2]
         xF, yF, zF = conv.wokToFocal(
-            xWok, yWok, zWok, pa, xOff, yOff, zOff, tiltX, tiltY
+            xWok, yWok, zWok, pa, xOff, yOff, zOff, tiltX, tiltY, self.fpScale
         )
 
         self[:, 0] = xF

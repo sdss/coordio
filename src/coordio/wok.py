@@ -40,7 +40,6 @@ class Wok(Coordinate3D):
         Position angle of observation. Angle measured from (image) North
         through East to wok +y. So obsAngle of 45 deg, wok +y points NE.
         Defaults to zero.
-
     """
 
     __extra_params__ = ["site", "obsAngle"]
@@ -81,7 +80,7 @@ class Wok(Coordinate3D):
         xOff, yOff, zOff, tiltX, tiltY = defaults.getWokOrient(self.site.name)
         xWok, yWok, zWok = conv.focalToWok(
             fpCoords[:, 0], fpCoords[:, 1], fpCoords[:, 2],
-            self.obsAngle, xOff, yOff, zOff, tiltX, tiltY
+            self.obsAngle, xOff, yOff, zOff, tiltX, tiltY, fpCoords.fpScale
         )
 
         self[:, 0] = xWok
