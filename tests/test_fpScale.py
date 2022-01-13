@@ -37,3 +37,6 @@ def test_fpScaleAPO():
     wokRadii = numpy.array(wokRadii)
     dwokRadii = numpy.diff(wokRadii, axis=0)
     assert numpy.max(dwokRadii) < 0
+
+if __name__ == "__main__":
+    test_fpScaleAPO()
