@@ -47,7 +47,7 @@ def wokCurveLCO(r):
 def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, pmra=None, pmdec=None, parallax=None,
                 radVel=None, pressure=None, relativeHumidity=0.5,
-                temperature=10, returnFullStack=False):
+                temperature=10):
     r"""
     Convert from ra, dec ICRS coords to a flat-wok XY in mm.  At obsAngle=0
     wok +y is a aligned with +dec, and wok +x is aligned with +ra
@@ -173,7 +173,7 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 
 def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, pressure=None, relativeHumidity=0.5,
-                temperature=10, returnFullStack=False):
+                temperature=10):
     r"""
     Convert from flat-wok XY (mm) to ra, dec ICRS coords (deg)
 
