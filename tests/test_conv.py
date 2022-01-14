@@ -202,7 +202,8 @@ def test_focalToWok():
     xFocal, yFocal, zFocal = 0, 0, 0
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
 
     assert xWok == 0
@@ -215,7 +216,8 @@ def test_focalToWok():
 
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
     assert yWok == xFocal
     assert numpy.abs(xWok) < SMALL_NUM
@@ -224,7 +226,8 @@ def test_focalToWok():
 
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
 
     assert yWok == -1*xFocal
@@ -236,7 +239,8 @@ def test_focalToWok():
     positionAngle = 0
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
 
     assert xWok == -1*xOff
@@ -245,7 +249,8 @@ def test_focalToWok():
     yOff = 10
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
 
     assert xWok == -1*xOff
@@ -256,7 +261,8 @@ def test_focalToWok():
     xFocal, yFocal, zFocal = 0,0,0
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
     assert xWok == yWok
     assert xWok < 0
@@ -266,7 +272,8 @@ def test_focalToWok():
     xFocal, yFocal, zFocal = 0,0,0
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
     assert xWok == -1*yWok
     assert xWok > 0
@@ -280,7 +287,8 @@ def test_focalToWok():
 
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
     assert numpy.abs(xWok + a) < SMALL_NUM
     assert numpy.abs(yWok) < SMALL_NUM
@@ -293,7 +301,8 @@ def test_focalToWok():
     yTilt = 0
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
     assert xWok == xFocal
     assert yWok == yFocal
@@ -306,7 +315,8 @@ def test_focalToWok():
     yTilt = 0
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
 
     assert xWok == 0
@@ -321,7 +331,8 @@ def test_focalToWok():
     yTilt = 4
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
 
     assert xWok > 0
@@ -338,7 +349,8 @@ def test_focalToWok():
     yTilt = -1
     xWok, yWok, zWok = focalToWok(
         xFocal, yFocal, zFocal, positionAngle,
-        xOff, yOff, zOff, xTilt, yTilt
+        xOff, yOff, zOff, xTilt, yTilt,
+        fpScale=1, projectFlat=False
     )
 
     assert xWok > 0

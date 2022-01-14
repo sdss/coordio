@@ -5,7 +5,7 @@ from skimage.transform import (AffineTransform, EuclideanTransform,
                                SimilarityTransform)
 
 from . import defaults, libcoordio
-from .exceptions import CoordIOUserWarning
+from .exceptions import CoordIOUserWarning, CoordIOError
 
 
 # low level, functional conversions
@@ -475,7 +475,7 @@ def focalToField(xFocal, yFocal, zFocal, site, waveCat):
 def focalToWok(
     xFocal, yFocal, zFocal, positionAngle=0,
     xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0,
-    fpScale=0.999882
+    fpScale=defaults.FOCAL_SCALE, projectFlat=True
 ):
     """Convert xyz focal coordinates in mm to xyz wok coordinates in mm.
 
@@ -485,6 +485,8 @@ def focalToWok(
     toward the boss slithead.  +z points from telescope to sky.
 
     Tilt is applied about x axis then y axis.
+
+    Note: currently zFocal irrelevant using a flat wok model.
 
 
     Parameters
@@ -520,6 +522,8 @@ def focalToWok(
         calibrated
     fpScale: scalar
         radial scale multiplier
+    projectFlat: bool
+        if true, assume flat wok model
 
     Returns
     ---------
@@ -591,13 +595,25 @@ def focalToWok(
     xWok = xWok / fpScale # from gfa: 0.9998899
     yWok = yWok / fpScale # from gfa: 0.9998899
 
+    if projectFlat:
+        # force all z coords to be positioner height
+        # necessary for a flat wok model
+        # and this should be removed if we go
+        # to curved wok
+        # !!!!!!!!!!!!!!!!!
+        if hasattr(xFocal, "__len__"):
+            zWok = numpy.array([defaults.POSITIONER_HEIGHT]*len(xFocal)).T
+        else:
+            zWok = defaults.POSITIONER_HEIGHT
+
     return xWok, yWok, zWok
 
 
 def wokToFocal(
     xWok, yWok, zWok, positionAngle=0,
     xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0,
-    fpScale=0.999882,
+    fpScale=defaults.FOCAL_SCALE,
+    b=None, R=None
 ):
     """Convert xyz wok coordinates in mm to xyz focal coordinates in mm.
 
@@ -607,6 +623,8 @@ def wokToFocal(
     toward the boss slithead.  +z points from telescope to sky.
 
     Tilt is applied first about x axis then y axis.
+
+    Note: currently zWok is irrelevant using a flat wok model.
 
 
     Parameters
@@ -640,6 +658,11 @@ def wokToFocal(
         calibrated
     fpScale: scalar
         radial scale multiplier
+    b: float
+        z location of the center of curvature, dist from M1 vertex (mm)
+    R: float
+        radius of curvature (mm)
+
 
     Returns
     ---------
@@ -699,6 +722,20 @@ def wokToFocal(
     coords = rotMatZ.dot(coords)
     coords = rotMatY.dot(coords)
     xFocal, yFocal, zFocal = rotMatX.dot(coords)
+
+    if b is not None or R is not None:
+        # calculate z coords based on xy
+        # basically force the point to land on the focal
+        # surface for a given wavelength
+        # necessary for a flat wok model
+        # and this should be removed if we go
+        # to curved wok
+        # !!!!!!!!!!!!!!!!!
+        if R is None or b is None:
+            raise CoordIOError("Must specify both b and R if they are not None")
+        rFocal = numpy.sqrt(xFocal**2+yFocal**2)
+        zFocal = -1*numpy.sqrt(R**2-rFocal**2) + b
+
     return xFocal, yFocal, zFocal
 
 

@@ -6,8 +6,11 @@ from coordio.calibration import Calibration
 
 from .exceptions import CoordIOError
 
-
 # default/constant values collected here...for now
+
+# a scale factor between xy focal and xy wok
+FOCAL_SCALE = 0.9998
+
 MICRONS_PER_MM = 1000
 GFA_PIXEL_SIZE = 13.5  # micron
 GFA_CHIP_CENTER = 1024  # unbinned pixels

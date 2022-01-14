@@ -211,7 +211,7 @@ class FocalPlane(Coordinate3D):
     fpScale : float
         Multiplicative scale factor to apply between wok and focal
         coords.  An adjustment to the focal plane model.  Defaults to
-        0.999882.
+        coordio.defaults.FOCAL_SCALE.
 
     Attributes
     -----------
@@ -247,7 +247,7 @@ class FocalPlane(Coordinate3D):
 
         fpScale = kwargs.get("fpScale", None)
         if fpScale is None:
-            kwargs["fpScale"] = 0.999882
+            kwargs["fpScale"] = defaults.FOCAL_SCALE
 
         if isinstance(value, Coordinate):
             if value.coordSysName == "Field":
@@ -314,19 +314,22 @@ class FocalPlane(Coordinate3D):
         -----------
         wokCoord : `.Wok`
         """
+        self._fromRaw()   # for grabbing fp params, b and R
+
         pa = wokCoord.obsAngle
         siteName = self.site.name.upper()
         xOff, yOff, zOff, tiltX, tiltY = defaults.getWokOrient(siteName)
         xWok, yWok, zWok = wokCoord[:, 0], wokCoord[:, 1], wokCoord[:, 2]
         xF, yF, zF = conv.wokToFocal(
-            xWok, yWok, zWok, pa, xOff, yOff, zOff, tiltX, tiltY, self.fpScale
+            xWok, yWok, zWok, pa, xOff,
+            yOff, zOff, tiltX, tiltY,
+            b=self.b, R=self.R # set b and R to None if NOT using flat wok model
         )
 
         self[:, 0] = xF
         self[:, 1] = yF
         self[:, 2] = zF
 
-        self._fromRaw()
 
     def _fromRaw(self):
         direction = "focal"  # irrelevant, just grabbing sphere params

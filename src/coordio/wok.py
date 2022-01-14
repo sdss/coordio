@@ -80,7 +80,8 @@ class Wok(Coordinate3D):
         xOff, yOff, zOff, tiltX, tiltY = defaults.getWokOrient(self.site.name)
         xWok, yWok, zWok = conv.focalToWok(
             fpCoords[:, 0], fpCoords[:, 1], fpCoords[:, 2],
-            self.obsAngle, xOff, yOff, zOff, tiltX, tiltY, fpCoords.fpScale
+            self.obsAngle, xOff, yOff, zOff, tiltX, tiltY, fpCoords.fpScale,
+            projectFlat=True  # project flat when using a flat wok model
         )
 
         self[:, 0] = xWok
