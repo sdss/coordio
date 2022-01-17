@@ -9,7 +9,7 @@ from .exceptions import CoordIOError
 # default/constant values collected here...for now
 
 # a scale factor between xy focal and xy wok
-FOCAL_SCALE = 0.9998
+FOCAL_SCALE = 0.999882
 
 MICRONS_PER_MM = 1000
 GFA_PIXEL_SIZE = 13.5  # micron
