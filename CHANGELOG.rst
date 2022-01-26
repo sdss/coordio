@@ -4,6 +4,13 @@
 Change Log
 ==========
 
+1.2.1 (2022-01-26)
+------------------
+
+* Add ``fpScale`` parameter to adjust the scale of the focal plane. Default value is 0.9998.
+* Modify default behavior between focal plane and wok to assume a flat wok.
+
+
 1.2.0 (2022-01-04)
 ------------------
 
