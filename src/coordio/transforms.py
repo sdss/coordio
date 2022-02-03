@@ -7,32 +7,60 @@ from skimage.transform import SimilarityTransform
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as PathEffects
 import sep
+import scipy
 
 from .zhaoburge import fitZhaoBurge, getZhaoBurgeXY
 from .conv import positionerToTangent, tangentToWok
-from .defaults import calibrations, POSITIONER_HEIGHT
-from .exceptions import CoordinateError, CoordIOError, CoordIOUserWarning
+from .defaults import calibration, POSITIONER_HEIGHT
+from .exceptions import CoordIOError
 
 
-__all__ = ["RoughTransform", "ZhaoBurgeTransform", "FVCTransformAPO"]
+# __all__ = ["RoughTransform", "ZhaoBurgeTransform", "FVCTransformAPO"]
 
 
-def artNeareestNeighbor(xyA, xyB):
-    """loop over xy list A, find nearest neighbor in list B
-    return the indices in list b that best match A, also
-    return the distances for each match
+def arg_nearest_neighbor(
+    xyA: numpy.ndarray,
+    xyB: numpy.ndarray,
+    atol: float | None = None,
+):
+    """Finds the nearest neighbour in list B for each target in list A.
+
+    If the distance between the item in A and the closest element in B is greater
+    than ``atol``, a match is not returned.
+
+    Parameters
+    ----------
+    xyA
+        The list we want to match.
+    xyB
+        The reference table.
+    atol
+        The maximum allowed distance. `None` to not do any distance checking.
+
+    Returns
+    -------
+    result
+        A tuple with the indices in ``A`` that have been matched, the matching index
+        in ``B`` for each matched element in ``A``, and the distance from each
+        element in ``A`` to the nearest neighbour in ``B`` (regardless of whether
+        that distance is greater than ``atol``).
+
     """
+
     xyA = numpy.array(xyA)
     xyB = numpy.array(xyB)
-    out = []
-    distance = []
-    for x, y in xyA:
-        dist = numpy.sqrt((x - xyB[:, 0])**2 + (y - xyB[:, 1])**2)
-        amin = numpy.argmin(dist)
-        distance.append(dist[amin])
-        out.append(amin)
 
-    return numpy.array(out), numpy.array(distance)
+    distances = scipy.spatial.distance.cdist(xyA, xyB)
+
+    min_distances = numpy.array([numpy.min(d) for d in distances])
+    indexB = numpy.array([numpy.argmin(d) for d in distances])
+
+    if atol is not None:
+        good_matches = numpy.where(min_distances < atol)[0]
+    else:
+        good_matches = numpy.arange(len(indexB))
+
+    return good_matches, indexB[good_matches], min_distances
 
 
 def positionerToWok(
@@ -258,7 +286,7 @@ class RoughTransform(object):
 
     def __init__(self, xyCCD, xyWok):
         """
-        xyCCD nor xyWok need to be a mapping, nor even the same size
+        xyCCD and xyWok do not need to be a mapping, nor even the same length
 
         Parameters
         -----------
@@ -428,8 +456,8 @@ class ZhaoBurgeTransform(object):
         xyCCD : numpy.ndarray
             Nx2 array of xy ccd coordinates (pixels)
         zb : bool
-            If False, apply only a similarity transform
-            (no Zhao-Burge component)
+            If False, only apply the similarity transform
+            (no Zhao-Burge higher order components)
 
 
         Returns
@@ -465,7 +493,7 @@ def xyWokFiberFromPositioner(
     Parameters
     ------------
     fullTable : pandas.DataFrame
-        A merge on positionerID of positionerTable and wokCoords DataFrames,
+        A merge on holeID of positionerTable and wokCoords DataFrames,
         with additional columns names specified by alphaColumn and betaColumn
         indicating the robot's arm coords.
     alphaColumn : str
@@ -482,12 +510,14 @@ def xyWokFiberFromPositioner(
         "BOSS"]
     """
 
-    # probably can vectorize this whole thing
-    fiberAttrMap = zip(
+    # probably can vectorize this whole thing, or at least
+    # partially
+
+    fiberNameMap = zip(
         ["Metrology", "APOGEE", "BOSS"],
         ["met", "ap", "boss"]
     )
-    for fiberType, colName in fiberAttrMap:
+    for fiberType, colName in fiberNameMap:
         fiberX = "%sX"%colName
         fiberY = "%sY"%colName
         xWok = []
@@ -535,9 +565,9 @@ class FVCTransformAPO(object):
         plotPathPrefix,
         alphaColumn="alphaReport",
         betaColumn="betaReport",
-        positionerTable=calibrations.positionerTable,
-        wokCoords=calibrations.wokCoords,
-        fiducialCoords=calibrations.fiducialCoords,
+        positionerTable=calibration.positionerTable,
+        wokCoords=calibration.wokCoords,
+        fiducialCoords=calibration.fiducialCoords,
         telRotAngRef=135.4,
         polids=None
     ):
@@ -553,8 +583,8 @@ class FVCTransformAPO(object):
             telescope rotator angle in mount coordinate degrees (IPA in sdss
             headers)
         plotPathPrefix : str
-            base path for plot output.  Plots will append a suffix to the
-            prefix supplied.
+            base path for plot output.  Plot routines will append a
+            ".<plotname>.pdf" suffix to the prefix supplied.
         alphaColumn : str
             column name in positionerCoords that should be used as alpha
             coordinates.  Default is "alphaReport"
@@ -590,12 +620,6 @@ class FVCTransformAPO(object):
         if polids is not None:
             self.polids = polids
 
-        # to be popluated
-        self.centroids = None
-        self.fullTable = None
-
-        # first construct the base fullTable to be incrementally
-        # updated
         ft = positionerTable.merge(wokCoords, on="holeID").reset_index()
         ft = ft.merge(positionerCoords, on="positionerID")
         self._fullTable = xyWokFiberFromPositioner(
@@ -604,8 +628,8 @@ class FVCTransformAPO(object):
             betaColumn=betaColumn
         )
 
-        # construct a rotation matrix here for rotating centroids
-        # before fitting
+        # construct a matrix for rotating centroids based on telescope
+        # rotator angle
         self.ccd2WokRot = telRotAng - telRotAngRef
         sinRot = numpy.sin(numpy.radians(self.ccd2WokRot))
         cosRot = numpy.cos(numpy.radians(self.ccd2WokRot))
@@ -614,10 +638,52 @@ class FVCTransformAPO(object):
             [sinRot, cosRot]
         ])
 
-    @property
-    def metadata(self):
-        """A list of data that can be easily stuffed in a fits
-        header
+        self.nCentroid_expect = len(positionerTable) + len(fiducialCoords)
+        self.nPositioner_expect = len(positionerTable)
+        self.maxCounts = numpy.max(self.fvcImgData)
+
+        ########### populated by self.extractCentroids() #######
+        self.centroids = None  # pandas.DataFrame
+
+        self.centroidMinNpix = None
+        self.backgroundSigma = None
+        self.winposSigma = None
+        self.winposBoxSize = None
+        self.ccdRotCenXY = None
+        self.nCentroidFound = None
+
+        ############## populated by self.fit() ####################
+        # pandas.DataFrame join w/ centroids
+        self.positionerTableMeas = None
+        # pandas.DataFrame join w/ centroids
+        self.fiducialCoordsMeas = None
+        # pandas.DataFrame subset of self._fullTable
+        self.positionerTableMiss = None
+        # pandas.DataFrame subset of self.fiducialCoords
+        self.fiducialCoordsMiss = None
+        # panas.DataFrame subset of self.centroids without
+        # matches to a robot or fiducial
+        self.unmatchedCentroids = None
+
+        self.roughTransform = None
+        self.similarityTransform = None
+        self.fullTransform = None
+
+        self.useWinpos = None
+        self.maxRoughDist = None
+        self.maxMidDist = None
+        self.maxFinalDist = None
+        self.nOuterFIF_expect = None
+        self.nOuterFIF_found = None
+        self.nFIF_expect = None
+        self.nFIF_found = None
+        self.nPositioner_found = None
+        self.fiducialRMS = None
+        self.positionerRMS = None
+
+    def getMetadata(self):
+        """Get a list of data that can be easily stuffed in a fits
+        header?
 
         rot
         rms's
@@ -634,8 +700,7 @@ class FVCTransformAPO(object):
         backgroundSigma=3.5,
         winposSigma=0.7,
         winposBoxSize=3,
-        ccdRotCenXY=numpy.array([4115, 3092])
-
+        ccdRotCenXY=numpy.array([4115, 3092]),
     ):
         """
         Find centroids in the fvc image, stores result in
@@ -659,6 +724,11 @@ class FVCTransformAPO(object):
             [x,y] location of the pixel centered on the rotator.  This
             need only be a rough estimate.
         """
+        self.centroidMinNpix = centroidMinNpix
+        self.backgroundSigma = backgroundSigma
+        self.winposSigma = winposSigma
+        self.winposBoxSize = winposBoxSize
+        self.ccdRotCenXY = ccdRotCenXY
 
         if winposBoxSize % 2 == 0 or winposBoxSize <= 0:
             raise CoordIOError("winposBoxSize must be a positive odd integer")
@@ -684,7 +754,7 @@ class FVCTransformAPO(object):
         # create mask and re-extract using winpos algorithm
         maskArr = numpy.ones(data_sub.shape, dtype=bool)
         boxRad = numpy.floor(winposBoxSize/2)
-        boxSteps = numpy.arange(-boxRad, boxRad+1)
+        boxSteps = numpy.arange(-boxRad, boxRad+1, dtype=int)
 
         for ii in range(len(objects)):
             _xm = objects["xcpeak"][ii]
@@ -714,20 +784,28 @@ class FVCTransformAPO(object):
         xy = objects[["x", "y"]].to_numpy()
         xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
 
-        objects["xRot"] = xyRot[:,0]
-        objects["yRot"] = xyRot[:,1]
+        objects["xRot"] = xyRot[:, 0]
+        objects["yRot"] = xyRot[:, 1]
 
         # rotate winpos centroids by rotator angle
         xy = objects[["xWinpos", "yWinpos"]].to_numpy()
         xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
 
-        objects["xWinposRot"] = xyRot[:,0]
-        objects["yWinposRot"] = xyRot[:,1]
+        objects["xWinposRot"] = xyRot[:, 0]
+        objects["yWinposRot"] = xyRot[:, 1]
+
+        objects["centroidID"] = list(range(len(objects)))
 
         self.centroids = objects
+        self.nCentroids = len(objects)
 
-
-    def fit(self, useWinpos=True):
+    def fit(
+        self,
+        useWinpos=True,
+        maxRoughDist=10,
+        maxMidDist=4,
+        maxFinalDist=0.5
+    ):
         """
         Calculate xy wok positions of centroids.  Store results
         in self.fullTable (a pandas.DataFrame)
@@ -737,21 +815,28 @@ class FVCTransformAPO(object):
         useWinpos : bool
             If True, use sep.winpos centroids, else use raw sep.extract
             centroids
+        maxRoughDist : float
+            Max distance for an outer fiducial match (rough mm)
+        maxMidDist : float
+            Max distance for all fiducial matches after similarity
+            transform based on outer fiducials (~ mm)
+        maxFinalDist : float
+            Max distance for positioner and fiducial matches
+            after the full similarity + ZB transform (mm)
         """
+        self.useWinpos = useWinpos
+        self.maxRoughDist = maxRoughDist
+        self.maxMidDist = maxMidDist
+        self.maxFinalDist = maxFinalDist
+
         if self.centroids is None:
             raise CoordIOError("Must run extractCentroids before fit")
 
-
         xyMetFiber = self._fullTable[
             ["xWokExpectMetrology", "yWokExpectMetrology"]
-            ].to_numpy()
+        ].to_numpy()
 
         xyWokFIF = self.fiducialCoords[["xWok", "yWok"]].to_numpy()
-
-        # centroids = fitsTableToPandas(ff[7].data)
-        # centroids = centroids[centroids.npix > 400]
-
-        # print(len(centroids))
 
         if useWinpos:
             xyCCD = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
@@ -759,89 +844,162 @@ class FVCTransformAPO(object):
             xyCCD = self.centroids[["xRot", "yRot"]].to_numpy()
 
         # first do a rough transform
-        self.roughTransform = RoughTransform(xyCCD, xyMetFiber)
+        self.roughTransform = RoughTransform(
+            xyCCD,
+            numpy.vstack((xyMetFiber, xyWokFIF))
+        )
         xyWokRough = self.roughTransform.apply(xyCCD)
 
-        # just grab outer fiducials for first pass
+        # just grab outer fiducials for first pass, they're easier to identify
+        # centroids lying at radii > 310 must be outer ring fiducials
         rWokFIF = numpy.linalg.norm(xyWokFIF, axis=1)
         xyWokOuterFIF = xyWokFIF[rWokFIF > 310]
 
         # associate the centroids to the outer wok FIDs
-        argFound, roughDist = artNeareestNeighbor(xyWokOuterFIF, xyWokRough)
-        assoc_found = [xyWokOuterFIF, xyWokRough[argFound]]
+        xyWokOuterFIF_idx, xyWokRough_idx, distances = arg_nearest_neighbor(
+            xyWokOuterFIF,
+            xyWokRough,
+            maxRoughDist,
+        )
+
+
+        self.nOuterFIF_expect = len(xyWokOuterFIF)
+        xyWokOuterFIF = xyWokOuterFIF[xyWokOuterFIF_idx]
+        self.nOuterFIF_found = len(xyWokOuterFIF)
+
+        assoc_found = [xyWokOuterFIF, xyWokRough[xyWokRough_idx]]
+
 
         # plot the rough transform
         plotFVCResults(
-            self.plotPathPrefix + "roughTransform.pdf",
+            self.plotPathPrefix + ".roughTransform.pdf",
             xyFitCentroids=xyWokRough,
             xyMetFiber=xyMetFiber,
             xyFIF=xyWokFIF,
             assoc_used=assoc_found,
-            title="rough scale assoc"
+            title="Rough Transform and Outer Fiducial Associations\n" + \
+                    "missing %i fiducials"%(
+                        self.nOuterFIF_expect - self.nOuterFIF_found
+                    )
         )
 
         # use associations from rough transform to fit a full
         # transform using only outer fiducial ring
         # pass zb = false to just fit translation rotation and scale
 
-        xyCCDOuterFIF = xyCCD[argFound]
+        xyCCDOuterFIF = xyCCD[xyWokRough_idx]
 
-        self.assocTransform = ZhaoBurgeTransform(
-            xyCCDOuterFIF,
-            xyWokOuterFIF,
-            polids=self.polids,
-        )
-
-        # just apply a similarity transform, no zb polys
-        xyWokMeas = self.assocTransform.apply(xyCCD, zb=False)
+        self.similarityTransform = SimilarityTransform()
+        self.similarityTransform.estimate(xyCCDOuterFIF, xyWokOuterFIF)
+        xyWokMeas = self.similarityTransform(xyCCD)
 
         # associate centroids with all fiducials in grid, now that we're closer
-        argFound, roughDist = artNeareestNeighbor(xyWokFIF, xyWokMeas)
-        assoc_found = [xyWokFIF, xyWokMeas[argFound]]
+
+        xyWokFIF_idx, xyWokMeas_idx, distances = arg_nearest_neighbor(
+            xyWokFIF,
+            xyWokMeas,
+            maxMidDist,
+        )
+
+        self.nFIF_expect = len(xyWokFIF)
+        _xyWokFIF = xyWokFIF[xyWokFIF_idx]
+        self.nFIF_found = len(_xyWokFIF)
+
+        assoc_found = [_xyWokFIF, xyWokMeas[xyWokMeas_idx]]
 
         plotFVCResults(
-            self.plotPathPrefix + "similarityTransform.pdf",
+            self.plotPathPrefix + ".similarityTransform.pdf",
             xyFitCentroids=xyWokMeas,
             xyMetFiber=xyMetFiber,
             xyFIF=xyWokFIF,
             assoc_used=assoc_found,
-            title="similarity transform assoc"
+            title="Similarity Transform and Full Fiducial Associations\n" + \
+                    "missing %i fiducials"%(
+                        self.nFIF_expect - self.nFIF_found
+                    )
         )
 
         # finally, do the full ZB transform based on all found FIF locations
-        xyCCDFIF = xyCCD[argFound]
+        xyCCDFIF = xyCCD[xyWokMeas_idx]
         self.fullTransform = ZhaoBurgeTransform(
             xyCCDFIF,
-            xyWokFIF,
+            _xyWokFIF,
             polids=self.polids
         )
 
-        xyWokMeas = self.fullTransform.apply(xyCCD, zb=True)
-        positionerIDs = list(self._fullTable.positionerID)
+        xyWokMeas = self.fullTransform.apply(xyCCD)
+
+        # update the final measurements for positioners
+        # and fiducials based on the fullTransform
+
+        xyWokFIF_idx, xyWokMeas_idx, distances = arg_nearest_neighbor(
+            xyWokFIF,
+            xyWokMeas,
+            maxFinalDist,
+        )
+
+        fiducialMeas = self.fiducialCoords.iloc[xyWokFIF_idx].reset_index()
+        centroidMatched = self.centroids.iloc[xyWokMeas_idx].reset_index()
+
+        fiducialMeas = pandas.concat(
+            [fiducialMeas, centroidMatched], axis=1
+        )
+
+        fiducialMeas["xWokMeas"] = xyWokMeas[xyWokMeas_idx, 0]
+        fiducialMeas["yWokMeas"] = xyWokMeas[xyWokMeas_idx, 1]
+        self.fiducialCoordsMeas = fiducialMeas
+
+        dx = self.fiducialCoordsMeas.xWokMeas - self.fiducialCoordsMeas.xWok
+        dy = self.fiducialCoordsMeas.yWokMeas - self.fiducialCoordsMeas.yWok
+        self.fiducialRMS = numpy.sqrt(numpy.mean(dx**2 + dy**2))
+
+        xyWokMet_idx, xyWokMeas_idx, distances = arg_nearest_neighbor(
+            xyMetFiber,
+            xyWokMeas,
+            maxFinalDist,
+        )
+
+        positionerMeas = self._fullTable.iloc[xyWokMet_idx].reset_index()
+        centroidMatched = self.centroids.iloc[xyWokMeas_idx].reset_index()
+        positionerMeas = pandas.concat(
+            [positionerMeas, centroidMatched], axis=1
+        )
+
+        positionerMeas["xWokMeasMetrology"] = xyWokMeas[xyWokMeas_idx, 0]
+        positionerMeas["yWokMeasMetrology"] = xyWokMeas[xyWokMeas_idx, 1]
+        self.positionerTableMeas = positionerMeas
+
+        dx = self.positionerTableMeas.xWokMeasMetrology - \
+             self.positionerTableMeas.xWokExpectMetrology
+        dy = self.positionerTableMeas.yWokMeasMetrology - \
+             self.positionerTableMeas.yWokExpectMetrology
+        self.positionerRMS = numpy.sqrt(numpy.mean(dx**2 + dy**2))
+        self.nPositioner_found = len(positionerMeas)
 
         plotFVCResults(
-            self.plotPathPrefix + "zhaoBurgeTransform.pdf",
+            self.plotPathPrefix + ".zhaoBurgeTransform.pdf",
             xyFitCentroids=xyWokMeas,
             xyMetFiber=xyMetFiber,
             xyFIF=xyWokFIF,
-            positionerIDs=positionerIDs,
-            title="Zhao-Burge Transform"
+            positionerIDs=list(self._fullTable.positionerID),
+            title="Zhao-Burge Transform of all Detections"
         )
 
         # now associate measured xy locations of fiber
         # for each robot, and measured angles for each robot
-        fullTable = self._fullTable.copy()
+        # fullTable = self._fullTable.copy()
 
-        argFound, roughDist = artNeareestNeighbor(xyMetFiber, xyWokMeas)
-        xyWokFiberMeas = xyWokMeas[argFound, :]
-        fullTable["xWokMetMeas"] = xyWokFiberMeas[:, 0]
-        fullTable["yWokMetMeas"] = xyWokFiberMeas[:, 1]
+        # argFound, roughDist = argNearestNeighbor(xyMetFiber, xyWokMeas)
+        # xyWokFiberMeas = xyWokMeas[argFound, :]
+        # fullTable["xWokMetMeas"] = xyWokFiberMeas[:, 0]
+        # fullTable["yWokMetMeas"] = xyWokFiberMeas[:, 1]
 
-        # associate the original centroid info with the fullTable
-        centroidMatched = self.centroids.iloc[argFound].reset_index()
-        fullTable = pandas.concat([fullTable, centroidMatched], axis=1)
+        # # associate the original centroid info with the fullTable
+        # # to have everything in one place
+        # centroidMatched = self.centroids.iloc[argFound].reset_index()
+        # fullTable = pandas.concat([fullTable, centroidMatched], axis=1)
 
-        self.fullTable = fullTable
+        # self.fullTable = fullTable
 
 
 
