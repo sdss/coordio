@@ -858,23 +858,16 @@ class FVCTransformAPO(object):
 
     def getMetadata(self):
         """Get a list of data that can be easily stuffed in a fits
-        header?
-
-        rot
-        rms's
-        zb coeffs
-        centroid counts
-        n found
-
+        header.
         """
         metaDataList = [
             ("FVC_NWRN", self.nPositionerWarn, "number of robots out of measurement spec"),
-            ("FVC_MAXD", self.maxFinalDist, "distance beyond to consider robot out of spec (mm)")
+            ("FVC_MAXD", self.maxFinalDist, "distance beyond to consider robot out of spec (mm)"),
             ("FVC_WNPO", self.useWinpos, "winpos centroiding used"),
             ("FVC_BSIG", self.backgroundSigma, "above background sigma for centroid detection"),
-            ("FVC_MNPX", self.centroidMinPix, "minimum number of pixels for a valid centroid"),
+            ("FVC_MNPX", self.centroidMinNpix, "minimum number of pixels for a valid centroid"),
             ("FVC_WSIG", self.winposSigma, "sigma for winpos centroid algorithm"),
-            ("FVC_WBSZ", self.winposBosSize, "box size for winpos centroid algorithm (pix)"),
+            ("FVC_WBSZ", self.winposBoxSize, "box size for winpos centroid algorithm (pix)"),
             ("FVC_RMS", self.positionerRMS, "robot rms (mm)"),
             ("FVC_FRMS", self.fiducialRMS, "fiducial rms (mm)"),
             ("FVC_CRMS", self.positionerRMS_clipped, "in-spec (outlier-clipped) robot rms (mm)"),
@@ -1235,51 +1228,6 @@ class FVCTransformAPO(object):
         self.positionerTableMeas = xyWokFiberFromPositioner(
             self.positionerTableMeas, angleType="Meas", doMetrology=False
             )
-
-
-        # plt.figure()
-        # plt.hist(self.positionerTableMeas.alphaReport-self.positionerTableMeas.alphaMeas, bins=100, label="alpha", alpha=0.5)
-        # plt.hist(self.positionerTableMeas.betaReport-self.positionerTableMeas.betaMeas, bins=100, label="beta", alpha=0.5)
-        # plt.legend()
-
-        # plt.figure()
-
-        # dxb = self.positionerTableMeas.xWokReportBOSS - self.positionerTableMeas.xWokMeasBOSS
-        # dyb = self.positionerTableMeas.yWokReportBOSS - self.positionerTableMeas.yWokMeasBOSS
-        # berr = numpy.sqrt(dxb**2+dyb**2)
-        # plt.hist(berr, bins=100, label="boss", alpha=0.5)
-
-        # dxb = self.positionerTableMeas.xWokReportMetrology - self.positionerTableMeas.xWokMeasMetrology
-        # dyb = self.positionerTableMeas.yWokReportMetrology - self.positionerTableMeas.yWokMeasMetrology
-        # berr = numpy.sqrt(dxb**2+dyb**2)
-        # plt.hist(berr, bins=100, label="met", alpha=0.5)
-
-
-        # dxb = self.positionerTableMeas.xWokReportAPOGEE - self.positionerTableMeas.xWokMeasAPOGEE
-        # dyb = self.positionerTableMeas.yWokReportAPOGEE - self.positionerTableMeas.yWokMeasAPOGEE
-        # berr = numpy.sqrt(dxb**2+dyb**2)
-        # plt.hist(berr, bins=100, label="apogee", alpha=0.5)
-        # plt.legend()
-
-        # plt.show()
-
-        # import pdb; pdb.set_trace()
-        # import pdb; pdb.set_trace()
-        # now associate measured xy locations of fiber
-        # for each robot, and measured angles for each robot
-        # fullTable = self._fullTable.copy()
-
-        # argFound, roughDist = argNearestNeighbor(xyMetFiber, xyWokMeas)
-        # xyWokFiberMeas = xyWokMeas[argFound, :]
-        # fullTable["xWokMetMeas"] = xyWokFiberMeas[:, 0]
-        # fullTable["yWokMetMeas"] = xyWokFiberMeas[:, 1]
-
-        # # associate the original centroid info with the fullTable
-        # # to have everything in one place
-        # centroidMatched = self.centroids.iloc[argFound].reset_index()
-        # fullTable = pandas.concat([fullTable, centroidMatched], axis=1)
-
-        # self.fullTable = fullTable
 
 
 
