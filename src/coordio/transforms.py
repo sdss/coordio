@@ -10,7 +10,8 @@ import sep
 import scipy
 
 from .zhaoburge import fitZhaoBurge, getZhaoBurgeXY
-from .conv import positionerToTangent, tangentToWok
+from .conv import positionerToTangent, tangentToWok, wokToTangent
+from .libcoordio import tangentToPositioner, tangentToPositioner2
 from .defaults import calibration, POSITIONER_HEIGHT
 from .exceptions import CoordIOError
 
@@ -61,6 +62,85 @@ def arg_nearest_neighbor(
         good_matches = numpy.arange(len(indexB))
 
     return good_matches, indexB[good_matches], min_distances
+
+
+def wokToPositioner(
+    xWok, yWok,
+    xBeta, yBeta, la,
+    alphaOffDeg, betaOffDeg,
+    dx, dy, b, iHat, jHat, kHat,
+    newInvKin=True
+):
+    """
+    Find alpha beta coords of a robot given xyWok coords of a robot's fiber
+
+    note: vectorized option not here yet.  Only right hand solutions
+    for now.
+
+    Parameters
+    ------------
+    xWok : float
+        x location of fiber in wok coordinates (mm)
+    yWok : float
+        y location of fiber in wok coordinates (mm)
+    xBeta : float
+        x location of fiber in beta coords (mm)
+    yBeta : numpy.array or float
+        y location of fiber in beta coords (mm)
+    la : numpy.array or float
+        alpha arm length in mm
+    alphaOffDeg : numpy.narray or float
+        calibrated alpha arm offset in deg
+    betaOffDeg : float
+        calibrated beta arm offset in deg
+    dx : float
+        calibrated robot body x offset in wok coords (mm)
+    dy : float
+        calibrated robot body y offset in wok coords (mm)
+    b: numpy.ndarray
+        3-element 1D vector
+        x,y,z position (mm) of each hole element on wok
+        surface measured in wok coords
+    iHat: numpy.ndarray
+        3-element 1D vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate x axis for each hole.
+    jHat: numpy.ndarray
+        3-element 1D vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate y axis for each hole.
+    kHat: numpy.ndarray
+        3-element 1D vector
+        x,y,z unit vector in wok coords that indicate the direction
+        of the tangent coordinate z axis for each hole.
+    newInvKin : bool
+        Use new style inverse kinematics solver
+
+
+    Returns
+    ---------
+    alpha
+        alpha angle of robot in degrees
+    beta
+        beta angle of robot in degrees
+
+    """
+    xt,yt,zt = wokToTangent(
+        xWok, yWok, POSITIONER_HEIGHT, b, iHat, jHat, kHat,
+        elementHeight=POSITIONER_HEIGHT, scaleFac=1,
+        dx=dx, dy=dy, dz=0
+    )
+
+    if newInvKin:
+        alpha, beta, alphaLH, betaLH, dist = tangentToPositioner2(
+            [xt, yt], [xBeta, yBeta], la, alphaOffDeg, betaOffDeg
+        )
+    else:
+        lefthand = False
+        alpha, beta, isOK = tangentToPositioner(
+            [xt, yt], [xBeta, yBeta], la, alphaOffDeg, betaOffDeg, lefthand
+        )
+    return alpha, beta
 
 
 def positionerToWok(
@@ -151,6 +231,8 @@ def plotFVCResults(
     xyFIF=None,
     positionerIDs=None,
     assoc_used=None,
+    xyFitCentroidsUnmatched=None,
+    xyFiberWarn=None,
     title=None
 ):
     """
@@ -175,6 +257,10 @@ def plotFVCResults(
     assoc_used : list or None
         [mx2 array, mx2 array] two sets of xy coords to plot lines between
         for seeing who matched to who (usually fiducials)
+    xyFitCentroidsUnmatched : numpy.ndarray or None
+        centroids detected but not associated with any robot or fiducial
+    xyFiberWarn : numpy.ndarray or None
+        fibers with abnormally large errors
     title : str or None
         title for the plot
 
@@ -250,6 +336,32 @@ def plotFVCResults(
                 strID = "P" + ("%i"%pid).zfill(4)
                 plt.text(x, y, strID, textProps)
 
+    if xyFitCentroidsUnmatched is not None:
+        plt.plot(
+            xyFitCentroidsUnmatched[:, 0],
+            xyFitCentroidsUnmatched[:, 1],
+            "^",
+            color="tab:orange",
+            alpha=1,
+            markerfacecolor="None",
+            markeredgewidth=1,
+            ms=7,
+            label="Unmatched Centroid",
+        )
+
+    if xyFiberWarn is not None:
+        plt.plot(
+            xyFiberWarn[:, 0],
+            xyFiberWarn[:, 1],
+            "v",
+            color="tab:cyan",
+            alpha=1,
+            markerfacecolor="None",
+            markeredgewidth=1,
+            ms=7,
+            label="Fiber Warning",
+        )
+
     # Overplot fiducials
     if xyFIF is not None:
         plt.plot(
@@ -268,7 +380,7 @@ def plotFVCResults(
             plt.plot([xy1[0], xy2[0]], [xy1[1], xy2[1]], "-k")
 
     plt.axis("equal")
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.1, 1.05))
     plt.xlim([-350, 350])
     plt.ylim([-350, 350])
     plt.xlabel("Wok x (mm)")
@@ -485,8 +597,12 @@ class ZhaoBurgeTransform(object):
 
 
 def xyWokFiberFromPositioner(
-    fullTable, alphaColumn="alphaReport", betaColumn="betaReport"
-):
+        fullTable,
+        angleType="Report",
+        doMetrology=True,
+        doApogee=True,
+        doBoss=True
+    ):
     """
     Determine xy wok position for a each fiber for each robot.
 
@@ -496,35 +612,41 @@ def xyWokFiberFromPositioner(
         A merge on holeID of positionerTable and wokCoords DataFrames,
         with additional columns names specified by alphaColumn and betaColumn
         indicating the robot's arm coords.
-    alphaColumn : str
-        column name in fullTable that should be used as alpha coordinates
-    betaColumn : str
-        column name in fullTable that should be used as beta coordinates
-
+    angleType : str
+        look for columns alphaXXX betaXXX where XXX=column type
+    doMetrology : bool
+        if True, compute metrology fiber location
+    doApogee : bool
+        if True, compute apogee fiber location
+    doBoss : bool
+        if True, compute boss fiber location
 
     Returns
     --------
     fullTable : pandas.DataFrame
         the input fullTable with new columns appended
-        xWokExpectXXX, yWokExpectXXX where XXX in ["Metrology", "APOGEE",
-        "BOSS"]
+        xWokxxxXXX, yWokxxxXXX where xxx=angleType and
+        XXX is one of ["Metrology", "APOGEE","BOSS"]
     """
 
     # probably can vectorize this whole thing, or at least
     # partially
 
     fiberNameMap = zip(
+        [doMetrology, doApogee, doBoss],
         ["Metrology", "APOGEE", "BOSS"],
         ["met", "ap", "boss"]
     )
-    for fiberType, colName in fiberNameMap:
+    for doFiber, fiberType, colName in fiberNameMap:
+        if not doFiber:
+            continue
         fiberX = "%sX"%colName
         fiberY = "%sY"%colName
         xWok = []
         yWok = []
         for ii, posRow in fullTable.iterrows():
-            alpha = float(posRow[alphaColumn])
-            beta = float(posRow[betaColumn])
+            alpha = float(posRow["alpha" + angleType])
+            beta = float(posRow["beta" + angleType])
 
             b = numpy.array([posRow.xWok, posRow.yWok, posRow.zWok])
             iHat = numpy.array([posRow.ix, posRow.iy, posRow.iz])
@@ -548,8 +670,67 @@ def xyWokFiberFromPositioner(
             xWok.append(xw)
             yWok.append(yw)
 
-        fullTable["xWokExpect%s" % fiberType] = xWok
-        fullTable["yWokExpect%s" % fiberType] = yWok
+        fullTable["xWok%s%s" % (angleType, fiberType)] = xWok
+        fullTable["yWok%s%s" % (angleType, fiberType)] = yWok
+
+    return fullTable
+
+
+def alphaBetaFromMetMeas(fullTable, newInvKin=True):
+    """
+    Determine alpha beta angles from metrology fiber measurement.
+
+    Parameters
+    ------------
+    fullTable : pandas.DataFrame
+        A merge on holeID of positionerTable and wokCoords DataFrames,
+        with additional columns names xyWokMeasMetrology.
+    newInvKin : bool
+        If True, use new inverse kinematic calculation
+        which will never return NaN's
+
+    Returns
+    --------
+    fullTable : pandas.DataFrame
+        the input fullTable with new columns appended
+        alphaMeas and betaMeas.
+    """
+
+    alpha = []
+    beta = []
+    for ii, posRow in fullTable.iterrows():
+
+        xWok = float(posRow.xWokMeasMetrology)
+        yWok = float(posRow.yWokMeasMetrology)
+
+        xBeta = float(posRow.metX)
+        yBeta = float(posRow.metY)
+
+        b = numpy.array([posRow.xWok, posRow.yWok, posRow.zWok])
+        iHat = numpy.array([posRow.ix, posRow.iy, posRow.iz])
+        jHat = numpy.array([posRow.jx, posRow.jy, posRow.jz])
+        kHat = numpy.array([posRow.kx, posRow.ky, posRow.kz])
+        la = float(posRow.alphaArmLen)
+        alphaOffDeg = float(posRow.alphaOffset)
+        betaOffDeg = float(posRow.betaOffset)
+        dx = float(posRow.dx)
+        dy = float(posRow.dy)
+
+        xBeta = float(posRow.metX)
+        yBeta = float(posRow.metY)
+
+        _alpha, _beta = wokToPositioner(
+            xWok, yWok, xBeta, yBeta, la,
+            alphaOffDeg, betaOffDeg,
+            dx, dy, b, iHat, jHat, kHat,
+            newInvKin=newInvKin
+        )
+
+        alpha.append(_alpha)
+        beta.append(_beta)
+
+    fullTable["alphaMeas"] = alpha
+    fullTable["betaMeas"] = beta
 
     return fullTable
 
@@ -562,9 +743,7 @@ class FVCTransformAPO(object):
         fvcImgData,
         positionerCoords,
         telRotAng,
-        plotPathPrefix,
-        alphaColumn="alphaReport",
-        betaColumn="betaReport",
+        plotPathPrefix=None,
         positionerTable=calibration.positionerTable,
         wokCoords=calibration.wokCoords,
         fiducialCoords=calibration.fiducialCoords,
@@ -577,20 +756,16 @@ class FVCTransformAPO(object):
         fvcImgData : numpy.ndarray
             raw image data from the fvc
         positionerCoords : pandas.DataFrame
-            DataFrame containing alpha/beta coordinate columns and a
-            positionerID column for each robot in the FVC image
+            DataFrame containing alphaReported and betaReported
+            coordinate columns and a positionerID column for each robot
+            in the FVC image
         telRotAng : float
             telescope rotator angle in mount coordinate degrees (IPA in sdss
             headers)
         plotPathPrefix : str
             base path for plot output.  Plot routines will append a
-            ".<plotname>.pdf" suffix to the prefix supplied.
-        alphaColumn : str
-            column name in positionerCoords that should be used as alpha
-            coordinates.  Default is "alphaReport"
-        betaColumn : str
-            column name in positionerCoords that should be used as beta
-            coordinates Default is "betaReport"
+            ".<plotname>.pdf" suffix to the prefix supplied.  If None,
+            plots will not be generated.
         positionerTable : pandas.DataFrame
             positioner calibration table for robots in the FVC image.
             Default is coordio.defaults.calibrations.positionerTable
@@ -624,8 +799,7 @@ class FVCTransformAPO(object):
         ft = ft.merge(positionerCoords, on="positionerID")
         self._fullTable = xyWokFiberFromPositioner(
             ft,
-            alphaColumn=alphaColumn,
-            betaColumn=betaColumn
+            angleType="Report"
         )
 
         # construct a matrix for rotating centroids based on telescope
@@ -653,14 +827,12 @@ class FVCTransformAPO(object):
         self.nCentroidFound = None
 
         ############## populated by self.fit() ####################
-        # pandas.DataFrame join w/ centroids
+        # pandas.DataFrame join w/ centroids every positioner
+        # gets closest match (no clipping), but warnings present
         self.positionerTableMeas = None
         # pandas.DataFrame join w/ centroids
+        # gets closest match (no clipping), but warnings present
         self.fiducialCoordsMeas = None
-        # pandas.DataFrame subset of self._fullTable
-        self.positionerTableMiss = None
-        # pandas.DataFrame subset of self.fiducialCoords
-        self.fiducialCoordsMiss = None
         # panas.DataFrame subset of self.centroids without
         # matches to a robot or fiducial
         self.unmatchedCentroids = None
@@ -677,9 +849,12 @@ class FVCTransformAPO(object):
         self.nOuterFIF_found = None
         self.nFIF_expect = None
         self.nFIF_found = None
-        self.nPositioner_found = None
         self.fiducialRMS = None
+        self.nFiducialWarn = None
         self.positionerRMS = None
+        self.positionerRMS_clipped = None
+        self.nPositionerWarn = None
+        self.positionerWarnList = None
 
     def getMetadata(self):
         """Get a list of data that can be easily stuffed in a fits
@@ -692,7 +867,30 @@ class FVCTransformAPO(object):
         n found
 
         """
-        pass
+        metaDataList = [
+            ("FVC_NWRN", self.nPositionerWarn, "number of robots out of measurement spec"),
+            ("FVC_MAXD", self.maxFinalDist, "distance beyond to consider robot out of spec (mm)")
+            ("FVC_WNPO", self.useWinpos, "winpos centroiding used"),
+            ("FVC_BSIG", self.backgroundSigma, "above background sigma for centroid detection"),
+            ("FVC_MNPX", self.centroidMinPix, "minimum number of pixels for a valid centroid"),
+            ("FVC_WSIG", self.winposSigma, "sigma for winpos centroid algorithm"),
+            ("FVC_WBSZ", self.winposBosSize, "box size for winpos centroid algorithm (pix)"),
+            ("FVC_RMS", self.positionerRMS, "robot rms (mm)"),
+            ("FVC_FRMS", self.fiducialRMS, "fiducial rms (mm)"),
+            ("FVC_CRMS", self.positionerRMS_clipped, "in-spec (outlier-clipped) robot rms (mm)"),
+            ("FVC_SCL", self.fullTransform.simTrans.scale, "FVC model fit scale"),
+            ("FVC_TRAX", self.fullTransform.simTrans.translation[0], "FVC model fit X translation"),
+            ("FVC_TRAY", self.fullTransform.simTrans.translation[1], "FVC model fit Y translation"),
+            ("FVC_ROT", numpy.degrees(self.fullTransform.simTrans.rotation), "FVC model fit rotation (deg)")
+        ]
+
+        # add in ZB coeffs
+        for polid, coeff in zip(self.polids, self.fullTransform.coeffs):
+            metaDataList.append(
+                ("FVC_ZB%i"%polid, coeff, "zhao-burge transform coeff for polid %i"%polid)
+            )
+
+        return metaDataList
 
     def extractCentroids(
         self,
@@ -713,7 +911,7 @@ class FVCTransformAPO(object):
         backgoundSigma : float
             sigma above background that belong to a bona fide detection
         winposSigma : float
-            used by sep.winpos.  Gaussian sigma sued for weighting pixels.
+            used by sep.winpos.  Gaussian sigma used for weighting pixels.
             Pixels within a circular aperture of radius 4*winposSigma are
             included.
         winposBoxSize : int
@@ -776,10 +974,6 @@ class FVCTransformAPO(object):
         objects["xWinpos"] = xNew
         objects["yWinpos"] = yNew
 
-
-        objects["x"] = xNew
-        objects["y"] = yNew
-
         # rotate raw centroids by rotator angle
         xy = objects[["x", "y"]].to_numpy()
         xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
@@ -804,7 +998,8 @@ class FVCTransformAPO(object):
         useWinpos=True,
         maxRoughDist=10,
         maxMidDist=4,
-        maxFinalDist=0.5
+        maxFinalDist=0.5,
+        newInvKin=True
     ):
         """
         Calculate xy wok positions of centroids.  Store results
@@ -823,17 +1018,20 @@ class FVCTransformAPO(object):
         maxFinalDist : float
             Max distance for positioner and fiducial matches
             after the full similarity + ZB transform (mm)
+        newInvKin : bool
+            If True use new inverse kinematics
         """
         self.useWinpos = useWinpos
         self.maxRoughDist = maxRoughDist
         self.maxMidDist = maxMidDist
         self.maxFinalDist = maxFinalDist
+        self.newInvKin = newInvKin
 
         if self.centroids is None:
             raise CoordIOError("Must run extractCentroids before fit")
 
         xyMetFiber = self._fullTable[
-            ["xWokExpectMetrology", "yWokExpectMetrology"]
+            ["xWokReportMetrology", "yWokReportMetrology"]
         ].to_numpy()
 
         xyWokFIF = self.fiducialCoords[["xWok", "yWok"]].to_numpy()
@@ -867,21 +1065,21 @@ class FVCTransformAPO(object):
         xyWokOuterFIF = xyWokOuterFIF[xyWokOuterFIF_idx]
         self.nOuterFIF_found = len(xyWokOuterFIF)
 
-        assoc_found = [xyWokOuterFIF, xyWokRough[xyWokRough_idx]]
-
 
         # plot the rough transform
-        plotFVCResults(
-            self.plotPathPrefix + ".roughTransform.pdf",
-            xyFitCentroids=xyWokRough,
-            xyMetFiber=xyMetFiber,
-            xyFIF=xyWokFIF,
-            assoc_used=assoc_found,
-            title="Rough Transform and Outer Fiducial Associations\n" + \
-                    "missing %i fiducials"%(
-                        self.nOuterFIF_expect - self.nOuterFIF_found
-                    )
-        )
+        if self.plotPathPrefix is not None:
+            assoc_found = [xyWokOuterFIF, xyWokRough[xyWokRough_idx]]
+            plotFVCResults(
+                self.plotPathPrefix + ".roughTransform.pdf",
+                xyFitCentroids=xyWokRough,
+                xyMetFiber=xyMetFiber,
+                xyFIF=xyWokFIF,
+                assoc_used=assoc_found,
+                title="Rough Transform and Outer Fiducial Associations\n" + \
+                        "missing %i fiducials"%(
+                            self.nOuterFIF_expect - self.nOuterFIF_found
+                        )
+            )
 
         # use associations from rough transform to fit a full
         # transform using only outer fiducial ring
@@ -905,19 +1103,20 @@ class FVCTransformAPO(object):
         _xyWokFIF = xyWokFIF[xyWokFIF_idx]
         self.nFIF_found = len(_xyWokFIF)
 
-        assoc_found = [_xyWokFIF, xyWokMeas[xyWokMeas_idx]]
 
-        plotFVCResults(
-            self.plotPathPrefix + ".similarityTransform.pdf",
-            xyFitCentroids=xyWokMeas,
-            xyMetFiber=xyMetFiber,
-            xyFIF=xyWokFIF,
-            assoc_used=assoc_found,
-            title="Similarity Transform and Full Fiducial Associations\n" + \
-                    "missing %i fiducials"%(
-                        self.nFIF_expect - self.nFIF_found
-                    )
-        )
+        if self.plotPathPrefix is not None:
+            assoc_found = [_xyWokFIF, xyWokMeas[xyWokMeas_idx]]
+            plotFVCResults(
+                self.plotPathPrefix + ".similarityTransform.pdf",
+                xyFitCentroids=xyWokMeas,
+                xyMetFiber=xyMetFiber,
+                xyFIF=xyWokFIF,
+                assoc_used=assoc_found,
+                title="Similarity Transform and Full Fiducial Associations\n" + \
+                        "missing %i fiducials"%(
+                            self.nFIF_expect - self.nFIF_found
+                        )
+            )
 
         # finally, do the full ZB transform based on all found FIF locations
         xyCCDFIF = xyCCD[xyWokMeas_idx]
@@ -931,11 +1130,11 @@ class FVCTransformAPO(object):
 
         # update the final measurements for positioners
         # and fiducials based on the fullTransform
-
+        # dont enforce any minimum distance
         xyWokFIF_idx, xyWokMeas_idx, distances = arg_nearest_neighbor(
             xyWokFIF,
             xyWokMeas,
-            maxFinalDist,
+            atol=None,  # no min distance
         )
 
         fiducialMeas = self.fiducialCoords.iloc[xyWokFIF_idx].reset_index()
@@ -947,16 +1146,21 @@ class FVCTransformAPO(object):
 
         fiducialMeas["xWokMeas"] = xyWokMeas[xyWokMeas_idx, 0]
         fiducialMeas["yWokMeas"] = xyWokMeas[xyWokMeas_idx, 1]
+        # add distances in match
+        fiducialMeas["wokErr"] = distances
+        fiducialMeas["wokErrWarn"] = distances > maxFinalDist
+
         self.fiducialCoordsMeas = fiducialMeas
 
         dx = self.fiducialCoordsMeas.xWokMeas - self.fiducialCoordsMeas.xWok
         dy = self.fiducialCoordsMeas.yWokMeas - self.fiducialCoordsMeas.yWok
         self.fiducialRMS = numpy.sqrt(numpy.mean(dx**2 + dy**2))
+        self.nFiducialWarn = sum(fiducialMeas.wokErrWarn)
 
         xyWokMet_idx, xyWokMeas_idx, distances = arg_nearest_neighbor(
             xyMetFiber,
             xyWokMeas,
-            maxFinalDist,
+            atol=None, # no min distance
         )
 
         positionerMeas = self._fullTable.iloc[xyWokMet_idx].reset_index()
@@ -967,24 +1171,100 @@ class FVCTransformAPO(object):
 
         positionerMeas["xWokMeasMetrology"] = xyWokMeas[xyWokMeas_idx, 0]
         positionerMeas["yWokMeasMetrology"] = xyWokMeas[xyWokMeas_idx, 1]
+        positionerMeas["wokErr"] = distances
+        positionerMeas["wokErrWarn"] = distances > maxFinalDist
+
         self.positionerTableMeas = positionerMeas
 
         dx = self.positionerTableMeas.xWokMeasMetrology - \
-             self.positionerTableMeas.xWokExpectMetrology
+             self.positionerTableMeas.xWokReportMetrology
         dy = self.positionerTableMeas.yWokMeasMetrology - \
-             self.positionerTableMeas.yWokExpectMetrology
-        self.positionerRMS = numpy.sqrt(numpy.mean(dx**2 + dy**2))
-        self.nPositioner_found = len(positionerMeas)
+             self.positionerTableMeas.yWokReportMetrology
+        sqerr = dx**2 + dy**2
 
-        plotFVCResults(
-            self.plotPathPrefix + ".zhaoBurgeTransform.pdf",
-            xyFitCentroids=xyWokMeas,
-            xyMetFiber=xyMetFiber,
-            xyFIF=xyWokFIF,
-            positionerIDs=list(self._fullTable.positionerID),
-            title="Zhao-Burge Transform of all Detections"
+        self.positionerRMS = numpy.sqrt(numpy.mean(sqerr))
+        self.positionerRMS_clipped = numpy.sqrt(
+            numpy.mean(sqerr[distances < maxFinalDist])
+        )
+        self.nPositionerWarn = numpy.sum(distances > maxFinalDist)
+        _pwl = positionerMeas[positionerMeas.wokErrWarn]["positionerID"].to_numpy()
+        self.positionerWarnList = _pwl
+
+
+        # find unmatched remaining centroids
+        centroidsUsed = list(set(
+            list(self.positionerTableMeas.centroidID) + \
+            list(self.fiducialCoordsMeas.centroidID)
+        ))
+
+        unusedCentroids_idx = ~self.centroids["centroidID"].isin(centroidsUsed)
+        self.unmatchedCentroids = self.centroids[unusedCentroids_idx]
+        unusedCentroidsXY = xyWokMeas[unusedCentroids_idx]
+
+
+        xyMetWarn = self.positionerTableMeas[self.positionerTableMeas.wokErrWarn]
+        xyMetWarn = xyMetWarn[
+            ["xWokReportMetrology", "yWokReportMetrology"]
+        ].to_numpy()
+
+
+
+        if self.plotPathPrefix is not None:
+            pwarnStr = ",".join("%i"%pid for pid in self.positionerWarnList)
+            title = "Zhao-Burge Transform of all Detections\n"
+            title += "positioner warnings: %s"%pwarnStr
+
+            plotFVCResults(
+                self.plotPathPrefix + ".zhaoBurgeTransform.pdf",
+                xyFitCentroids=xyWokMeas,
+                xyMetFiber=xyMetFiber,
+                xyFIF=xyWokFIF,
+                positionerIDs=list(self._fullTable.positionerID),
+                xyFitCentroidsUnmatched=unusedCentroidsXY,
+                xyFiberWarn=xyMetWarn,
+                title=title
+            )
+
+        # lastly compute measured alpha/beta and measured boss/Ap
+        # locations of fibers based on metrology fiber location
+
+        self.positionerTableMeas = alphaBetaFromMetMeas(
+            self.positionerTableMeas, newInvKin=newInvKin
         )
 
+        self.positionerTableMeas = xyWokFiberFromPositioner(
+            self.positionerTableMeas, angleType="Meas", doMetrology=False
+            )
+
+
+        # plt.figure()
+        # plt.hist(self.positionerTableMeas.alphaReport-self.positionerTableMeas.alphaMeas, bins=100, label="alpha", alpha=0.5)
+        # plt.hist(self.positionerTableMeas.betaReport-self.positionerTableMeas.betaMeas, bins=100, label="beta", alpha=0.5)
+        # plt.legend()
+
+        # plt.figure()
+
+        # dxb = self.positionerTableMeas.xWokReportBOSS - self.positionerTableMeas.xWokMeasBOSS
+        # dyb = self.positionerTableMeas.yWokReportBOSS - self.positionerTableMeas.yWokMeasBOSS
+        # berr = numpy.sqrt(dxb**2+dyb**2)
+        # plt.hist(berr, bins=100, label="boss", alpha=0.5)
+
+        # dxb = self.positionerTableMeas.xWokReportMetrology - self.positionerTableMeas.xWokMeasMetrology
+        # dyb = self.positionerTableMeas.yWokReportMetrology - self.positionerTableMeas.yWokMeasMetrology
+        # berr = numpy.sqrt(dxb**2+dyb**2)
+        # plt.hist(berr, bins=100, label="met", alpha=0.5)
+
+
+        # dxb = self.positionerTableMeas.xWokReportAPOGEE - self.positionerTableMeas.xWokMeasAPOGEE
+        # dyb = self.positionerTableMeas.yWokReportAPOGEE - self.positionerTableMeas.yWokMeasAPOGEE
+        # berr = numpy.sqrt(dxb**2+dyb**2)
+        # plt.hist(berr, bins=100, label="apogee", alpha=0.5)
+        # plt.legend()
+
+        # plt.show()
+
+        # import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         # now associate measured xy locations of fiber
         # for each robot, and measured angles for each robot
         # fullTable = self._fullTable.copy()
