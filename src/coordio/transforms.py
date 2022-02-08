@@ -986,6 +986,8 @@ class FVCTransformAPO(object):
         self.centroids = objects
         self.nCentroids = len(objects)
 
+        return self.centroids
+
     def fit(
         self,
         useWinpos=True,
@@ -1228,7 +1230,3 @@ class FVCTransformAPO(object):
         self.positionerTableMeas = xyWokFiberFromPositioner(
             self.positionerTableMeas, angleType="Meas", doMetrology=False
             )
-
-
-
-
