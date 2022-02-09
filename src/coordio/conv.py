@@ -1203,10 +1203,62 @@ def proj2XYplane(x, y, z, rayOrigin):
 
     return xyzProj[0], xyzProj[1], xyzProj[2], projDist
 
+# def tangentToPositioner2(
+#     xTangent, yTangent, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0
+# ):
+#     """
+#     Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm
+#     at xTangent, yTangent.  New CPP Version.  Should never return NaN values
+#     for alpha beta, and instead.
+
+#     note: vectorized option not here yet.
+
+#     todo: include hooks for positioner non-linearity
+
+#     Parameters
+#     -------------
+#     xTangent: float
+#         x position (mm) in tangent coordinates
+#     yTangent: float
+#         y position (mm) in tangent coordinates
+#     xBeta: float
+#         x position (mm) in beta arm frame
+#     yBeta: float
+#         y position (mm) in beta arm frame
+#     la: float
+#         length (mm) of alpha arm
+#     alphaOffDeg: float
+#         alpha zeropoint offset (deg)
+#     betaOffDeg: float
+#         beta zeropoint offset (deg)
+
+#     Returns
+#     ---------
+#     alphaDegRH: scalar or 1D array
+#         alpha angle in degrees for a right-handed robot
+#     betaDegRH: scalar or 1D array
+#         beta angle in degrees for a right-handed robot
+#     alphaDegLH: scalar or 1D array
+#         alpha angle in degrees for a right-lefthanded robot
+#     betaDegLH: scalar or 1D array
+#         beta angle in degrees for a left-handed robot
+#     err: scalar or 1D array
+#         distance beween fiber and xyWok.  This is non-zero when
+#         xyWok is outside the positioners workspace
+#     """
+
+#     # C++ wrapped stuff wants lists, not numpy arrays
+#         alphaRH, betaRH, alphaLH, betaLH, dist = libcoordio.tangentToPositioner2(
+#             [xTangent, yTangent], [xBeta, yBeta],
+#             la, alphaOffDeg, betaOffDeg
+#         )
+
+#     return alphaRH, betaRH, alphaLH, betaLH, dist
+
 
 def tangentToPositioner(
     xTangent, yTangent, xBeta, yBeta, la=7.4, alphaOffDeg=0, betaOffDeg=0,
-    lefthand=False,
+    lefthand=False
 ):
     """
     Determine alpha/beta positioner angles that place xBeta, yBeta coords in mm

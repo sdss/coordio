@@ -1,3 +1,5 @@
+# code copied from https://github.com/desihub/desimeter/blob/master/py/desimeter/transform/zhaoburge.py
+
 # code extracted from DESI-3798 IterFitter8.py
 
 
