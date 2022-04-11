@@ -978,8 +978,8 @@ class FVCTransformAPO(object):
                 xyWinpos, xyBlanton, None
                 )
             xyBlantonMatched = xyBlanton[xyBlanton_idx]
-            objects["xBlanton"] = xyBlantonMatched[:,1]
-            objects["yBlanton"] = xyBlantonMatched[:,2]
+            objects["xBlanton"] = xyBlantonMatched[:,0]
+            objects["yBlanton"] = xyBlantonMatched[:,1]
 
 
 
