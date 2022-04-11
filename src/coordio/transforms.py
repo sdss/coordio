@@ -610,8 +610,8 @@ def xyWokFiberFromPositioner(
     ------------
     fullTable : pandas.DataFrame
         A merge on holeID of positionerTable and wokCoords DataFrames,
-        with additional columns names specified by alphaColumn and betaColumn
-        indicating the robot's arm coords.
+        with additional columns names specifying alpha and beta arm
+        coordinates.
     angleType : str
         look for columns alphaXXX betaXXX where XXX=column type
     doMetrology : bool
@@ -748,7 +748,8 @@ class FVCTransformAPO(object):
         wokCoords=calibration.wokCoords,
         fiducialCoords=calibration.fiducialCoords,
         telRotAngRef=135.4,
-        polids=None
+        polids=None,
+        altcentroids=None
     ):
         """
         Parameters
@@ -794,6 +795,7 @@ class FVCTransformAPO(object):
         self.plotPathPrefix = plotPathPrefix
         if polids is not None:
             self.polids = polids
+        self.altcentroids = altcentroids
 
         ft = positionerTable.merge(wokCoords, on="holeID").reset_index()
         ft = ft.merge(positionerCoords, on="positionerID")
@@ -967,6 +969,20 @@ class FVCTransformAPO(object):
         objects["xWinpos"] = xNew
         objects["yWinpos"] = yNew
 
+        if self.altcentroids is not None:
+            # additionally match centriods to
+            # blanton's simple xys
+            xyWinpos = objects[["xWinpos", "yWinpos"]].to_numpy()
+            xyBlanton = self.altcentroids[["x", "y"]].to_numpy()
+            xyWinpos_idx, xyBlanton_idx, distances = arg_nearest_neighbor(
+                xyWinpos, xyBlanton, None
+                )
+            xyBlantonMatched = xyBlanton[xyBlanton_idx]
+            objects["xBlanton"] = xyBlantonMatched.x.to_numpy()
+            objects["yBlanton"] = xyBlantonMatched.y.to_numpy()
+
+
+
         # rotate raw centroids by rotator angle
         xy = objects[["x", "y"]].to_numpy()
         xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
@@ -981,6 +997,12 @@ class FVCTransformAPO(object):
         objects["xWinposRot"] = xyRot[:, 0]
         objects["yWinposRot"] = xyRot[:, 1]
 
+        xy = objects[["xBlanton", "yBlanton"]].to_numpy()
+        xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+
+        objects["xBlantonRot"] = xyRot[:, 0]
+        objects["yBlantonRot"] = xyRot[:, 1]
+
         objects["centroidID"] = list(range(len(objects)))
 
         self.centroids = objects
@@ -988,7 +1010,7 @@ class FVCTransformAPO(object):
 
     def fit(
         self,
-        useWinpos=True,
+        centtype="winpos",
         maxRoughDist=10,
         maxMidDist=4,
         maxFinalDist=0.5,
@@ -1014,7 +1036,8 @@ class FVCTransformAPO(object):
         newInvKin : bool
             If True use new inverse kinematics
         """
-        self.useWinpos = useWinpos
+        # self.useWinpos = useWinpos
+        self.centtype = centtype
         self.maxRoughDist = maxRoughDist
         self.maxMidDist = maxMidDist
         self.maxFinalDist = maxFinalDist
@@ -1029,8 +1052,10 @@ class FVCTransformAPO(object):
 
         xyWokFIF = self.fiducialCoords[["xWok", "yWok"]].to_numpy()
 
-        if useWinpos:
+        if centtype == "winpos":
             xyCCD = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
+        elif centtype == "blanton":
+            xyCCD = self.centroids[["xBlantonRot", "yBlantonRot"]].to_numpy()
         else:
             xyCCD = self.centroids[["xRot", "yRot"]].to_numpy()
 
@@ -1227,7 +1252,7 @@ class FVCTransformAPO(object):
 
         self.positionerTableMeas = xyWokFiberFromPositioner(
             self.positionerTableMeas, angleType="Meas", doMetrology=False
-            )
+        )
 
 
 
