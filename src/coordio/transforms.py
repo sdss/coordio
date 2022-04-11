@@ -978,8 +978,8 @@ class FVCTransformAPO(object):
                 xyWinpos, xyBlanton, None
                 )
             xyBlantonMatched = xyBlanton[xyBlanton_idx]
-            objects["xBlanton"] = xyBlantonMatched.x.to_numpy()
-            objects["yBlanton"] = xyBlantonMatched.y.to_numpy()
+            objects["xBlanton"] = xyBlantonMatched[:,1]
+            objects["yBlanton"] = xyBlantonMatched[:,2]
 
 
 
