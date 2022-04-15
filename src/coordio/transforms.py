@@ -8,12 +8,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as PathEffects
 import sep
 import scipy
+import time
 
 from .zhaoburge import fitZhaoBurge, getZhaoBurgeXY
 from .conv import positionerToTangent, tangentToWok, wokToTangent
 from .libcoordio import tangentToPositioner, tangentToPositioner2
 from .defaults import calibration, POSITIONER_HEIGHT
 from .exceptions import CoordIOError
+from .utils import simplexy
 
 
 # __all__ = ["RoughTransform", "ZhaoBurgeTransform", "FVCTransformAPO"]
@@ -826,6 +828,10 @@ class FVCTransformAPO(object):
         self.ccdRotCenXY = None
         self.nCentroidFound = None
 
+        self.simpleSigma = None
+        self.simplePlim = None
+        self.simpleMaxper = None
+
         ############## populated by self.fit() ####################
         # pandas.DataFrame join w/ centroids every positioner
         # gets closest match (no clipping), but warnings present
@@ -841,7 +847,7 @@ class FVCTransformAPO(object):
         self.similarityTransform = None
         self.fullTransform = None
 
-        self.useWinpos = None
+        self.centType = None
         self.maxRoughDist = None
         self.maxMidDist = None
         self.maxFinalDist = None
@@ -860,14 +866,18 @@ class FVCTransformAPO(object):
         """Get a list of data that can be easily stuffed in a fits
         header.
         """
+
         metaDataList = [
             ("FVC_NWRN", self.nPositionerWarn, "number of robots out of measurement spec"),
             ("FVC_MAXD", self.maxFinalDist, "distance beyond to consider robot out of spec (mm)"),
-            ("FVC_WNPO", self.useWinpos, "winpos centroiding used"),
+            ("FVC_CNTT", self.centType, "centroid type used for fitting"),
             ("FVC_BSIG", self.backgroundSigma, "above background sigma for centroid detection"),
             ("FVC_MNPX", self.centroidMinNpix, "minimum number of pixels for a valid centroid"),
             ("FVC_WSIG", self.winposSigma, "sigma for winpos centroid algorithm"),
             ("FVC_WBSZ", self.winposBoxSize, "box size for winpos centroid algorithm (pix)"),
+            ("FVC_SSIG", self.simpleSigma, "sigma for simple centroid algorithm (pix)"),
+            ("FVC_SPLM", self.simplePlim, "plim for simple centroid algorithm (pix)"),
+            ("FVC_SPLM", self.simpleMaxper, "maxper for simple centroid algorithm (pix)"),
             ("FVC_RMS", self.positionerRMS, "robot rms (mm)"),
             ("FVC_FRMS", self.fiducialRMS, "fiducial rms (mm)"),
             ("FVC_CRMS", self.positionerRMS_clipped, "in-spec (outlier-clipped) robot rms (mm)"),
@@ -891,6 +901,9 @@ class FVCTransformAPO(object):
         backgroundSigma=3.5,
         winposSigma=0.7,
         winposBoxSize=3,
+        simpleSigma=1.5,
+        simplePlim=300,
+        simpleMaxper=1,
         ccdRotCenXY=numpy.array([4115, 3092]),
     ):
         """
@@ -920,6 +933,9 @@ class FVCTransformAPO(object):
         self.winposSigma = winposSigma
         self.winposBoxSize = winposBoxSize
         self.ccdRotCenXY = ccdRotCenXY
+        self.simpleSigma = simpleSigma
+        self.simplePlim = simplePlim
+        self.simpleMaxper = simpleMaxper
 
         if winposBoxSize % 2 == 0 or winposBoxSize <= 0:
             raise CoordIOError("winposBoxSize must be a positive odd integer")
@@ -933,14 +949,18 @@ class FVCTransformAPO(object):
 
         data_sub = self.fvcImgData - bkg_image
 
+        t1 = time.time()
         objects = sep.extract(
             data_sub,
             backgroundSigma,
             err=bkg.globalrms,
         )
+        print("sep extract took", time.time()-t1)
+        print("sep found %i sources"%len(objects))
 
         # get rid of obvious bogus detections
-        objects = objects[objects["npix"] > centroidMinNpix]
+        # objects = objects[objects["npix"] > centroidMinNpix]
+        print("sep found %i sources after npix cut"%len(objects))
 
         # create mask and re-extract using winpos algorithm
         maskArr = numpy.ones(data_sub.shape, dtype=bool)
@@ -954,6 +974,7 @@ class FVCTransformAPO(object):
                 for ystep in boxSteps:
                     maskArr[_ym + ystep, _xm + xstep] = False
 
+        t1 = time.time()
         xNew, yNew, flags = sep.winpos(
             data_sub,
             objects["xcpeak"],
@@ -961,11 +982,52 @@ class FVCTransformAPO(object):
             sig=winposSigma,
             mask=maskArr
         )
+        print("winpos took", time.time()-t1)
 
-        objects = pandas.DataFrame(objects)
+        # rough bias/bg subtract
+        imbias = numpy.median(self.fvcImgData, axis=0)
+        imbias = numpy.outer(
+            numpy.ones(self.fvcImgData.shape[0], dtype=numpy.float32),
+            imbias
+        )
+        im = self.fvcImgData - imbias
+        off = 1022  # trim the LR edges speeds things up a bit
+        im = im[:, off:-off].copy()
 
-        objects["xWinpos"] = xNew
-        objects["yWinpos"] = yNew
+        print("imshape", im.shape)
+        t1 = time.time()
+
+
+        xSimple, ySimple, peakSimple = simplexy(
+            im, psf_sigma=self.simpleSigma,
+            plim=self.simplePlim, maxper=self.simpleMaxper
+        )
+        # import pdb; pdb.set_trace()
+        xSimple = xSimple + off
+        # xSimple = xSimple + off
+        print("simplxy took", time.time()-t1)
+        print("simplexy found", len(xSimple))
+
+        # match simple centroids to new centroids
+        xyNew = numpy.array([xNew, yNew]).T
+        xySimple = numpy.array([xSimple, ySimple]).T
+        # self.xySimple = xySimple
+        # self.simplePeak = peakSimple
+
+        # match em to the sep routines,
+        # generally simple finds more than sep
+        # sepInds, simpleInds, dist = arg_nearest_neighbor(xyNew, xySimple)
+        simpleInds, newInds, dist = arg_nearest_neighbor(xySimple, xyNew)
+
+        objects = pandas.DataFrame(objects[newInds])
+
+        objects["xWinpos"] = xNew[newInds]
+        objects["yWinpos"] = yNew[newInds]
+        objects["xSimple"] = xSimple
+        objects["ySimple"] = ySimple
+        objects["peakSimple"] = peakSimple
+
+        # import pdb; pdb.set_trace()
 
         # rotate raw centroids by rotator angle
         xy = objects[["x", "y"]].to_numpy()
@@ -981,6 +1043,13 @@ class FVCTransformAPO(object):
         objects["xWinposRot"] = xyRot[:, 0]
         objects["yWinposRot"] = xyRot[:, 1]
 
+        # rotate simple centroids by rotator angle
+        xy = objects[["xSimple", "ySimple"]].to_numpy()
+        xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+
+        objects["xSimpleRot"] = xyRot[:, 0]
+        objects["ySimpleRot"] = xyRot[:, 1]
+
         objects["centroidID"] = list(range(len(objects)))
 
         self.centroids = objects
@@ -990,7 +1059,7 @@ class FVCTransformAPO(object):
 
     def fit(
         self,
-        useWinpos=True,
+        centType="simple",
         maxRoughDist=10,
         maxMidDist=4,
         maxFinalDist=0.5,
@@ -1002,9 +1071,8 @@ class FVCTransformAPO(object):
 
         Parameters
         -----------
-        useWinpos : bool
-            If True, use sep.winpos centroids, else use raw sep.extract
-            centroids
+        centType : str
+            one of "sep", "winpos", or "simple", default is "simple"
         maxRoughDist : float
             Max distance for an outer fiducial match (rough mm)
         maxMidDist : float
@@ -1016,7 +1084,8 @@ class FVCTransformAPO(object):
         newInvKin : bool
             If True use new inverse kinematics
         """
-        self.useWinpos = useWinpos
+        centType = centType.lower()
+        self.centType = centType
         self.maxRoughDist = maxRoughDist
         self.maxMidDist = maxMidDist
         self.maxFinalDist = maxFinalDist
@@ -1031,10 +1100,14 @@ class FVCTransformAPO(object):
 
         xyWokFIF = self.fiducialCoords[["xWok", "yWok"]].to_numpy()
 
-        if useWinpos:
+        if centType == "winpos":
             xyCCD = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
-        else:
+        elif centType == "sep":
             xyCCD = self.centroids[["xRot", "yRot"]].to_numpy()
+        elif centType == "simple":
+            xyCCD = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
+        else:
+            raise CoordIOError("unknown centroid type passed to fit")
 
         # first do a rough transform
         self.roughTransform = RoughTransform(

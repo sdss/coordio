@@ -1,5 +1,8 @@
 import numpy
 import pandas
+import ctypes
+import importlib
+import os
 
 from .sky import ICRS, Observed
 from .telescope import Field, FocalPlane
@@ -7,6 +10,23 @@ from .wok import Wok
 from .site import Site
 from . import defaults
 
+# Get simplexy C function
+mod_path = os.path.join(os.path.dirname(__file__), 'libdimage')
+success = False
+for suffix in importlib.machinery.EXTENSION_SUFFIXES:
+    try:
+        libPath = mod_path + suffix
+        if os.path.exists(libPath):
+            success = True
+            break
+    except OSError:
+        pass
+if success is False:
+    raise OSError('Could not find a valid libdimage extension.')
+
+
+libdimage = ctypes.cdll.LoadLibrary(libPath)
+simplexy_function = libdimage.simplexy
 
 def wokCurveAPO(r):
     """Curve of the wok at APO at radial position r
@@ -20,6 +40,9 @@ def wokCurveAPO(r):
     ---------
     result : scalar or 1D array
         z (height) of wok surface in mm (0 at vertex)
+
+
+    Curve that was specified for machining the APO wok, decided by Colby J.
     """
     A = 9199.322517101522
     return A - numpy.sqrt(A**2 - r**2)
@@ -37,6 +60,8 @@ def wokCurveLCO(r):
     ---------
     result : scalar or 1D array
         z (height) of wok surface in mm (0 at vertex)
+
+    Curve that was specified for machining the LCO wok, decided by Colby J.
     """
     A = 0.000113636363636
     B = 0.0000000129132231405
@@ -285,3 +310,78 @@ def fitsTableToPandas(recarray):
     for name in recarray.names:
         d[name] = recarray[name].byteswap().newbyteorder()
     return pandas.DataFrame(d)
+
+
+def simplexy(image, psf_sigma=1., plim=8., dlim=1., saddle=3., maxper=1000,
+             maxnpeaks=5000):
+    """Determines positions of stars in an image.
+
+    Parameters
+    ----------
+    image : numpy.float32
+        2-D ndarray
+    psf_sigma : float
+        sigma of Gaussian PSF to assume (default 1 pixel)
+    plim : float
+        significance to select objects on (default 8)
+    dlim : float
+        tolerance for closeness of pairs of objects (default 1 pixel)
+    saddle : float
+        tolerance for depth of saddle point to separate sources
+        (default 3 sigma)
+    maxper : int
+        maximum number of children per parent (default 1000)
+    maxnpeaks : int
+        maximum number of stars to find total (default 100000)
+
+    Returns
+    -------
+    (x, y, flux) : (numpy.float32, numpy.float32, numpy.float32)
+         ndarrays with pixel positions and peak pixel values of stars
+
+    Notes
+    -----
+    Calls simplexy.c in libdimage.so
+
+    copied directly from: https://github.com/blanton144/dimage
+
+    """
+
+    # Create image pointer
+    if(image.dtype != numpy.float32):
+        image_float32 = image.astype(numpy.float32)
+        image_ptr = image_float32.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    else:
+        image_ptr = image.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+
+    nx = image.shape[0]
+    ny = image.shape[1]
+    psf_sigma_ptr = ctypes.c_float(psf_sigma)
+    plim_ptr = ctypes.c_float(plim)
+    dlim_ptr = ctypes.c_float(dlim)
+    saddle_ptr = ctypes.c_float(saddle)
+    maxper_ptr = ctypes.c_int(maxper)
+    maxnpeaks_ptr = ctypes.c_int(maxnpeaks)
+
+    x = numpy.zeros(maxnpeaks, dtype=numpy.float32)
+    x_ptr = x.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    y = numpy.zeros(maxnpeaks, dtype=numpy.float32)
+    y_ptr = y.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    flux = numpy.zeros(maxnpeaks, dtype=numpy.float32)
+    flux_ptr = flux.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    sigma = ctypes.c_float(0.)
+    npeaks = ctypes.c_int(0)
+
+    simplexy_function(
+        image_ptr, nx, ny, psf_sigma_ptr, plim_ptr,
+        dlim_ptr, saddle_ptr, maxper_ptr, maxnpeaks_ptr,
+        ctypes.byref(sigma), x_ptr, y_ptr, flux_ptr,
+        ctypes.byref(npeaks)
+    )
+
+    npeaks = npeaks.value
+    x = x[0:npeaks]
+    y = y[0:npeaks]
+    flux = flux[0:npeaks]
+
+    return (x, y, flux)
