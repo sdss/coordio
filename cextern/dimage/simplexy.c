@@ -75,5 +75,5 @@ int simplexy(float *image,
   FREEVEC(oimage);
   FREEVEC(smooth);
   
-	// return(1);
+  return(1);
 } /* end dmedsmooth */
