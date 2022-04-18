@@ -955,12 +955,12 @@ class FVCTransformAPO(object):
             backgroundSigma,
             err=bkg.globalrms,
         )
-        print("sep extract took", time.time()-t1)
-        print("sep found %i sources"%len(objects))
+        # print("sep extract took", time.time()-t1)
+        # print("sep found %i sources"%len(objects))
 
         # get rid of obvious bogus detections
         # objects = objects[objects["npix"] > centroidMinNpix]
-        print("sep found %i sources after npix cut"%len(objects))
+        # print("sep found %i sources after npix cut"%len(objects))
 
         # create mask and re-extract using winpos algorithm
         maskArr = numpy.ones(data_sub.shape, dtype=bool)
@@ -982,7 +982,7 @@ class FVCTransformAPO(object):
             sig=winposSigma,
             mask=maskArr
         )
-        print("winpos took", time.time()-t1)
+        # print("winpos took", time.time()-t1)
 
         # rough bias/bg subtract
         imbias = numpy.median(self.fvcImgData, axis=0)
@@ -994,7 +994,7 @@ class FVCTransformAPO(object):
         off = 1022  # trim the LR edges speeds things up a bit
         im = im[:, off:-off].copy()
 
-        print("imshape", im.shape)
+        # print("imshape", im.shape)
         t1 = time.time()
 
 
@@ -1005,8 +1005,8 @@ class FVCTransformAPO(object):
         # import pdb; pdb.set_trace()
         xSimple = xSimple + off
         # xSimple = xSimple + off
-        print("simplxy took", time.time()-t1)
-        print("simplexy found", len(xSimple))
+        # print("simplxy took", time.time()-t1)
+        # print("simplexy found", len(xSimple))
 
         # match simple centroids to new centroids
         xyNew = numpy.array([xNew, yNew]).T
