@@ -16,7 +16,7 @@ from . import config, sofa
 from .exceptions import CoordIOError, CoordIOUserWarning
 
 
-BASE_URL = 'ftp://ftp.iers.org/products/eop/rapid/'
+BASE_URL = 'https://datacenter.iers.org/products/eop/rapid/'
 
 
 class IERS:
