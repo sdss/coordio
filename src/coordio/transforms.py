@@ -15,7 +15,7 @@ from .conv import positionerToTangent, tangentToWok, wokToTangent
 from .libcoordio import tangentToPositioner, tangentToPositioner2
 from .defaults import calibration, POSITIONER_HEIGHT
 from .exceptions import CoordIOError
-from .utils import simplexy
+from .utils import refinexy
 
 
 # __all__ = ["RoughTransform", "ZhaoBurgeTransform", "FVCTransformAPO"]
@@ -829,8 +829,7 @@ class FVCTransformAPO(object):
         self.nCentroidFound = None
 
         self.simpleSigma = None
-        self.simplePlim = None
-        self.simpleMaxper = None
+        self.simpleBoxSize = None
 
         ############## populated by self.fit() ####################
         # pandas.DataFrame join w/ centroids every positioner
@@ -876,7 +875,7 @@ class FVCTransformAPO(object):
             ("FVC_WSIG", self.winposSigma, "sigma for winpos centroid algorithm"),
             ("FVC_WBSZ", self.winposBoxSize, "box size for winpos centroid algorithm (pix)"),
             ("FVC_SSIG", self.simpleSigma, "sigma for simple centroid algorithm (pix)"),
-            ("FVC_SPLM", self.simplePlim, "plim for simple centroid algorithm (pix)"),
+            ("FVC_SPLM", self.simpleBoxSize, "box size for simple centroid algorithm (pix)"),
             ("FVC_SPLM", self.simpleMaxper, "maxper for simple centroid algorithm (pix)"),
             ("FVC_RMS", self.positionerRMS, "robot rms (mm)"),
             ("FVC_FRMS", self.fiducialRMS, "fiducial rms (mm)"),
@@ -901,9 +900,8 @@ class FVCTransformAPO(object):
         backgroundSigma=3.5,
         winposSigma=0.7,
         winposBoxSize=3,
-        simpleSigma=1.5,
-        simplePlim=300,
-        simpleMaxper=1,
+        simpleSigma=2,
+        simpleBoxSize=19,
         ccdRotCenXY=numpy.array([4115, 3092]),
     ):
         """
@@ -934,8 +932,7 @@ class FVCTransformAPO(object):
         self.winposBoxSize = winposBoxSize
         self.ccdRotCenXY = ccdRotCenXY
         self.simpleSigma = simpleSigma
-        self.simplePlim = simplePlim
-        self.simpleMaxper = simpleMaxper
+        self.simpleBoxSize = simpleBoxSize
 
         if winposBoxSize % 2 == 0 or winposBoxSize <= 0:
             raise CoordIOError("winposBoxSize must be a positive odd integer")
@@ -949,7 +946,7 @@ class FVCTransformAPO(object):
 
         data_sub = self.fvcImgData - bkg_image
 
-        t1 = time.time()
+        # t1 = time.time()
         objects = sep.extract(
             data_sub,
             backgroundSigma,
@@ -959,7 +956,12 @@ class FVCTransformAPO(object):
         # print("sep found %i sources"%len(objects))
 
         # get rid of obvious bogus detections
-        # objects = objects[objects["npix"] > centroidMinNpix]
+        objects = objects[objects["npix"] > centroidMinNpix]
+        # remove detections near edges of chip
+        objects = objects[objects["x"] > 500]
+        objects = objects[objects["x"] < 7500]
+        objects = objects[objects["y"] > 30]
+        objects = objects[objects["y"] < 5970]
         # print("sep found %i sources after npix cut"%len(objects))
 
         # create mask and re-extract using winpos algorithm
@@ -974,7 +976,7 @@ class FVCTransformAPO(object):
                 for ystep in boxSteps:
                     maskArr[_ym + ystep, _xm + xstep] = False
 
-        t1 = time.time()
+        # t1 = time.time()
         xNew, yNew, flags = sep.winpos(
             data_sub,
             objects["xcpeak"],
@@ -991,41 +993,44 @@ class FVCTransformAPO(object):
             imbias
         )
         im = self.fvcImgData - imbias
-        off = 1022  # trim the LR edges speeds things up a bit
+        off = 1022  # trim the LR edges refinexy needs square
         im = im[:, off:-off].copy()
 
         # print("imshape", im.shape)
-        t1 = time.time()
+        # t1 = time.time()
 
 
-        xSimple, ySimple, peakSimple = simplexy(
-            im, psf_sigma=self.simpleSigma,
-            plim=self.simplePlim, maxper=self.simpleMaxper
+        xSimple, ySimple = refinexy(
+            im, xNew-off, yNew,
+            psf_sigma=self.simpleSigma, cutout=self.simpleBoxSize
         )
+
+
         # import pdb; pdb.set_trace()
         xSimple = xSimple + off
-        # xSimple = xSimple + off
-        # print("simplxy took", time.time()-t1)
-        # print("simplexy found", len(xSimple))
+
+        # import pdb; pdb.set_trace()
+        # # xSimple = xSimple + off
+        # print("refinexy took", time.time()-t1)
+        # print("refinexy found", len(xSimple))
 
         # match simple centroids to new centroids
-        xyNew = numpy.array([xNew, yNew]).T
-        xySimple = numpy.array([xSimple, ySimple]).T
+        # xyNew = numpy.array([xNew, yNew]).T
+        # xySimple = numpy.array([xSimple, ySimple]).T
         # self.xySimple = xySimple
         # self.simplePeak = peakSimple
 
         # match em to the sep routines,
         # generally simple finds more than sep
         # sepInds, simpleInds, dist = arg_nearest_neighbor(xyNew, xySimple)
-        simpleInds, newInds, dist = arg_nearest_neighbor(xySimple, xyNew)
+        # simpleInds, newInds, dist = arg_nearest_neighbor(xySimple, xyNew)
 
-        objects = pandas.DataFrame(objects[newInds])
+        objects = pandas.DataFrame(objects)
 
-        objects["xWinpos"] = xNew[newInds]
-        objects["yWinpos"] = yNew[newInds]
+        objects["xWinpos"] = xNew
+        objects["yWinpos"] = yNew
         objects["xSimple"] = xSimple
         objects["ySimple"] = ySimple
-        objects["peakSimple"] = peakSimple
 
         # import pdb; pdb.set_trace()
 

@@ -26,7 +26,8 @@ if success is False:
 
 
 libdimage = ctypes.cdll.LoadLibrary(libPath)
-simplexy_function = libdimage.simplexy
+# simplexy_function = libdimage.simplexy
+
 
 def wokCurveAPO(r):
     """Curve of the wok at APO at radial position r
@@ -372,7 +373,7 @@ def simplexy(image, psf_sigma=1., plim=8., dlim=1., saddle=3., maxper=1000,
     sigma = ctypes.c_float(0.)
     npeaks = ctypes.c_int(0)
 
-    simplexy_function(
+    libdimage.simplexy(
         image_ptr, nx, ny, psf_sigma_ptr, plim_ptr,
         dlim_ptr, saddle_ptr, maxper_ptr, maxnpeaks_ptr,
         ctypes.byref(sigma), x_ptr, y_ptr, flux_ptr,
@@ -385,3 +386,73 @@ def simplexy(image, psf_sigma=1., plim=8., dlim=1., saddle=3., maxper=1000,
     flux = flux[0:npeaks]
 
     return (x, y, flux)
+
+
+def refinexy(image, x, y, psf_sigma=2., cutout=19):
+    """Refines positions of stars in an image.
+
+    Parameters
+    ----------
+
+    image : numpy.float32
+        2-D ndarray
+
+    x : numpy.float32
+        1-D ndarray of rough x positions
+
+    y : numpy.float32
+        1-D ndarray of rough y positions
+
+    psf_sigma : float
+        sigma of Gaussian PSF to assume (default 2 pixels)
+
+    cutout : int
+        size of cutout used, should be odd (default 19)
+
+    Returns
+    -------
+
+    xr : ndarray of numpy.float32
+        refined x positions
+
+    yr : ndarray of numpy.float32
+        refined y positions
+
+    Notes
+    -----
+    Calls drefine.c in libdimage.so
+
+    copied directly from: https://github.com/blanton144/dimage
+    """
+
+    # Create image pointer
+    if(image.dtype != numpy.float32):
+        image_float32 = image.astype(numpy.float32)
+        image_ptr = image_float32.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    else:
+        image_ptr = image.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+
+    nx = image.shape[0]
+    ny = image.shape[1]
+    psf_sigma_ptr = ctypes.c_float(psf_sigma)
+
+    ncen = len(x)
+    ncen_ptr = ctypes.c_int(ncen)
+    cutout_ptr = ctypes.c_int(cutout)
+    xrough = numpy.float32(x)
+    xrough_ptr = xrough.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    yrough = numpy.float32(y)
+    yrough_ptr = yrough.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+
+    xrefined = numpy.zeros(ncen, dtype=numpy.float32)
+    xrefined_ptr = xrefined.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    yrefined = numpy.zeros(ncen, dtype=numpy.float32)
+    yrefined_ptr = yrefined.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+
+    libdimage.drefine(
+        image_ptr, nx, ny,
+        xrough_ptr, yrough_ptr, xrefined_ptr, yrefined_ptr,
+        ncen_ptr, cutout_ptr, psf_sigma_ptr
+    )
+
+    return (xrefined, yrefined)
