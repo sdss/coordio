@@ -4,6 +4,14 @@
 Change Log
 ==========
 
+1.3.0 (2022-04-21)
+------------------
+
+* Add ``FVCTransformAPO`` class.
+* Change the base URL for the IERS bulletins.
+* Pass the ``fpsScale`` parameter to ``wokToFocal`` when creating focal coordinates from wok coordinates.
+
+
 1.2.1 (2022-01-26)
 ------------------
 
