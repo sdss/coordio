@@ -10,8 +10,6 @@ jobs:
   build_on_macos:
     name: Build macOS wheels and upload artifacts
 
-    needs: [build_on_linux]
-
     runs-on: macos-latest
 
     steps:
@@ -39,6 +37,9 @@ jobs:
 
   build_on_linux:
     name: Build Linux source and manylinux wheels and upload to PyPI
+
+    needs: [build_on_macos]
+
 
     runs-on: ubuntu-latest
 
