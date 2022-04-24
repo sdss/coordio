@@ -12,6 +12,10 @@ jobs:
 
     runs-on: macos-latest
 
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -19,7 +23,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
@@ -32,14 +36,13 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: macos-wheels
-          path: dist/
+          name: macos-wheels-${{ matrix.python-version }}
+          path: dist/*.whl
 
   build_on_linux:
     name: Build Linux source and manylinux wheels and upload to PyPI
 
     needs: [build_on_macos]
-
 
     runs-on: ubuntu-latest
 
@@ -68,12 +71,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel twine
 
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: macos-wheels
-
-      - name: Build package
+      - name: Build source package
         run: |
           python setup.py sdist
 
@@ -82,9 +80,17 @@ jobs:
         with:
           python-versions: 'cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310'
 
-      - name: Remove linux wheels
+      - name: Remove non-manylinux wheels
         run: |
           rm dist/*-linux_*.whl
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: dist/
+
+      - run: |
+        ls -la dist/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@master
