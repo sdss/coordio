@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+1.3.1 (2022-04-24)
+------------------
+
+* Updated release action in GitHub to build wheels for manylinux and macOS.
+
+
 1.3.0 (2022-04-21)
 ------------------
 
