@@ -8,7 +8,7 @@ name: Create Release
 jobs:
 
   build_on_macos:
-    name: Build macOS wheels and upload artifacts
+    name: Build macOS wheels
 
     runs-on: macos-latest
 
@@ -40,7 +40,7 @@ jobs:
           path: dist/*.whl
 
   build_on_linux:
-    name: Build Linux source and manylinux wheels and upload to PyPI
+    name: Build for Linux and upload to PyPI
 
     needs: [build_on_macos]
 
@@ -88,6 +88,11 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           path: dist/
+
+      - name: Remove artifact directories
+        run: |
+          mv dist/macos-wheels-*/* dist/
+          rm -Rf dist/macos-wheels-*
 
       - name: List files
         run: |
