@@ -82,6 +82,10 @@ jobs:
         with:
           python-versions: 'cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310'
 
+      - name: Remove linux wheels
+        run: |
+          rm dist/*-linux_*.whl
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
