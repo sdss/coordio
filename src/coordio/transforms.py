@@ -924,7 +924,7 @@ class FVCTransformAPO(object):
             ("FVC_WBSZ", self.winposBoxSize, "box size for winpos centroid algorithm (pix)"),
             ("FVC_SSIG", self.simpleSigma, "sigma for simple centroid algorithm (pix)"),
             ("FVC_SPLM", self.simpleBoxSize, "box size for simple centroid algorithm (pix)"),
-            ("FVC_SPLM", self.simpleMaxper, "maxper for simple centroid algorithm (pix)"),
+            # ("FVC_SPLM", self.simpleMaxper, "maxper for simple centroid algorithm (pix)"),
             ("FVC_RMS", self.positionerRMS, "robot rms (mm)"),
             ("FVC_FRMS", self.fiducialRMS, "fiducial rms (mm)"),
             ("FVC_CRMS", self.positionerRMS_clipped, "in-spec (outlier-clipped) robot rms (mm)"),
