@@ -1,22 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import annotations
+
+import os
+import time
+
+import matplotlib.patheffects as PathEffects
+import matplotlib.pyplot as plt
 import numpy
 import pandas
-from skimage.transform import SimilarityTransform
-import matplotlib.pyplot as plt
-import matplotlib.patheffects as PathEffects
-import sep
 import scipy
-import time
-import os
+import sep
+from skimage.transform import SimilarityTransform
 
-from .zhaoburge import fitZhaoBurge, getZhaoBurgeXY
 from .conv import positionerToTangent, tangentToWok, wokToTangent
-from .libcoordio import tangentToPositioner, tangentToPositioner2
-from .defaults import calibration, POSITIONER_HEIGHT
+from .defaults import POSITIONER_HEIGHT, calibration
 from .exceptions import CoordIOError
+from .libcoordio import tangentToPositioner, tangentToPositioner2
 from .utils import refinexy
+from .zhaoburge import fitZhaoBurge, getZhaoBurgeXY
 
 
 # __all__ = ["RoughTransform", "ZhaoBurgeTransform", "FVCTransformAPO"]
@@ -1138,7 +1140,7 @@ class FVCTransformAPO(object):
         Parameters
         -----------
         centType : str
-            one of "sep", "winpos", or "simple", default is "simple"
+            one of "sep", "winpos", "nudge" or "simple", default is "nudge"
         maxRoughDist : float
             Max distance for an outer fiducial match (rough mm)
         maxMidDist : float
