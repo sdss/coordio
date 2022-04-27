@@ -946,7 +946,7 @@ class FVCTransformAPO(object):
         backgroundSigma=3.5,
         winposSigma=0.7,
         winposBoxSize=3,
-        simpleSigma=2,
+        simpleSigma=1,
         simpleBoxSize=19,
         ccdRotCenXY=numpy.array([4115, 3092]),
     ):
@@ -1125,7 +1125,7 @@ class FVCTransformAPO(object):
 
     def fit(
         self,
-        centType="simple",
+        centType="nudge",
         maxRoughDist=10,
         maxMidDist=4,
         maxFinalDist=0.5,
