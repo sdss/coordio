@@ -323,7 +323,8 @@ class FocalPlane(Coordinate3D):
         xF, yF, zF = conv.wokToFocal(
             xWok, yWok, zWok, pa, xOff,
             yOff, zOff, tiltX, tiltY,
-            b=self.b, R=self.R # set b and R to None if NOT using flat wok model
+            b=self.b, R=self.R, # set b and R to None if NOT using flat wok model
+            fpScale=self.fpScale
         )
 
         self[:, 0] = xF
