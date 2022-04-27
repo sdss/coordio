@@ -4,6 +4,14 @@
 Change Log
 ==========
 
+1.4.1 (2022-04-27)
+------------------
+
+* Add dimage (Blanton's) simplexy and refinexy for centroiding if wanted
+* Add nudge option for centroiding based on CCD static distortion model
+* Default to 33 term ZB basis and nudge centroiding for FVC
+
+
 1.3.1 (2022-04-24)
 ------------------
 
