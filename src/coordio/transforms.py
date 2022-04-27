@@ -9,6 +9,7 @@ import matplotlib.patheffects as PathEffects
 import sep
 import scipy
 import time
+import os
 
 from .zhaoburge import fitZhaoBurge, getZhaoBurgeXY
 from .conv import positionerToTangent, tangentToWok, wokToTangent
@@ -737,8 +738,53 @@ def alphaBetaFromMetMeas(fullTable, newInvKin=True):
     return fullTable
 
 
+# hogg fourier basis fit stuff
+
+IMAX = 32 # maximum integer wave number
+DELTAK = 2. * numpy.pi / 10000.0 # wave number spacing in inverse pixels
+with open(os.path.join(os.environ.get('WOKCALIB_DIR'), "beta_x.npy"), "rb") as f:
+    beta_x = numpy.load(f)
+with open(os.path.join(os.environ.get('WOKCALIB_DIR'), "beta_y.npy"), "rb") as f:
+    beta_y = numpy.load(f)
+
+
+# functions to set up design matrices
+
+
+def fourier_functions(xs, ys):
+    n = len(xs)
+    assert len(ys) == n
+    fxs = numpy.zeros((n, IMAX * 2 + 2))
+    fys = numpy.zeros((n, IMAX * 2 + 2))
+    iis = numpy.zeros(IMAX * 2 + 2).astype(int)
+    for i in range(IMAX+1):
+        fxs[:, i * 2] = numpy.cos(i * DELTAK * xs)
+        fys[:, i * 2] = numpy.cos(i * DELTAK * ys)
+        iis[i * 2] = i
+        fxs[:, i * 2 + 1] = numpy.sin((i + 1) * DELTAK * xs)
+        fys[:, i * 2 + 1] = numpy.sin((i + 1) * DELTAK * ys)
+        iis[i * 2 + 1] = i + 1
+    return fxs, fys, iis
+
+
+def design_matrix(xs, ys):
+    fxs, fys, iis = fourier_functions(xs, ys)
+    n, p = fxs.shape
+    Xbig = (fxs[:, :, None] * fys[:, None, :]).reshape((n, p * p))
+    i2plusj2 = (iis[:, None] ** 2 + iis[None, :] ** 2).reshape(p * p)
+    return Xbig[:, i2plusj2 <= IMAX ** 2]
+
+
+def updateCCDMeas(x,y):
+    X = design_matrix(x,y)
+    dx = X @ beta_x
+    dy = X @ beta_y
+    return x - dx, y - dy
+
+
 class FVCTransformAPO(object):
-    polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
+    # polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
+    polids = numpy.arange(33)
 
     def __init__(
         self,
@@ -941,10 +987,19 @@ class FVCTransformAPO(object):
         if len(ccdRotCenXY) != 2:
             raise CoordIOError("ccdRotCenXY must be a 2 element vector")
 
-        bkg = sep.Background(self.fvcImgData)
+
+        # rough bias/bg subtract
+        imbias = numpy.median(self.fvcImgData, axis=0)
+        imbias = numpy.outer(
+            numpy.ones(self.fvcImgData.shape[0], dtype=numpy.float32),
+            imbias
+        )
+        im = self.fvcImgData - imbias
+
+        bkg = sep.Background(im) #self.fvcImgData)
         bkg_image = bkg.back()
 
-        data_sub = self.fvcImgData - bkg_image
+        data_sub = im - bkg_image
 
         # t1 = time.time()
         objects = sep.extract(
@@ -962,7 +1017,30 @@ class FVCTransformAPO(object):
         objects = objects[objects["x"] < 7500]
         objects = objects[objects["y"] > 30]
         objects = objects[objects["y"] < 5970]
-        # print("sep found %i sources after npix cut"%len(objects))
+
+        # update based on CCD distortion model the "true location"
+        # of the fibers
+        xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"])
+
+        # don't fit anything over a radius of 300 (domain problems of hogg fit)
+        _xm = objects["x"] - numpy.mean(objects["x"])
+        _ym = objects["y"] - numpy.mean(objects["y"])
+        _rm = numpy.sqrt(_xm**2+_ym**2) * 120 / 1000
+        rejectInds = _rm > 300
+
+        # plt.figure()
+        # plt.plot(objects["x"], objects["y"], 'ok')
+        # plt.plot(objects["x"][rejectInds], objects["y"][rejectInds], 'xr')
+
+        # plt.axis("equal")
+        # plt.show()
+
+        # print("rejecting", len(xNudge[rejectInds]))
+        xNudge[rejectInds] = objects["x"][rejectInds]
+        yNudge[rejectInds] = objects["y"][rejectInds]
+
+        # nudged centroid domain only includes positioners,
+        # overwrite them for the outer fiducials
 
         # create mask and re-extract using winpos algorithm
         maskArr = numpy.ones(data_sub.shape, dtype=bool)
@@ -986,19 +1064,9 @@ class FVCTransformAPO(object):
         )
         # print("winpos took", time.time()-t1)
 
-        # rough bias/bg subtract
-        imbias = numpy.median(self.fvcImgData, axis=0)
-        imbias = numpy.outer(
-            numpy.ones(self.fvcImgData.shape[0], dtype=numpy.float32),
-            imbias
-        )
-        im = self.fvcImgData - imbias
+
         off = 1022  # trim the LR edges refinexy needs square
-        im = im[:, off:-off].copy()
-
-        # print("imshape", im.shape)
-        # t1 = time.time()
-
+        im = data_sub[:, off:-off].copy()
 
         xSimple, ySimple = refinexy(
             im, xNew-off, yNew,
@@ -1006,24 +1074,7 @@ class FVCTransformAPO(object):
         )
 
 
-        # import pdb; pdb.set_trace()
         xSimple = xSimple + off
-
-        # import pdb; pdb.set_trace()
-        # # xSimple = xSimple + off
-        # print("refinexy took", time.time()-t1)
-        # print("refinexy found", len(xSimple))
-
-        # match simple centroids to new centroids
-        # xyNew = numpy.array([xNew, yNew]).T
-        # xySimple = numpy.array([xSimple, ySimple]).T
-        # self.xySimple = xySimple
-        # self.simplePeak = peakSimple
-
-        # match em to the sep routines,
-        # generally simple finds more than sep
-        # sepInds, simpleInds, dist = arg_nearest_neighbor(xyNew, xySimple)
-        # simpleInds, newInds, dist = arg_nearest_neighbor(xySimple, xyNew)
 
         objects = pandas.DataFrame(objects)
 
@@ -1031,6 +1082,8 @@ class FVCTransformAPO(object):
         objects["yWinpos"] = yNew
         objects["xSimple"] = xSimple
         objects["ySimple"] = ySimple
+        objects["xNudge"] = xNudge
+        objects["yNudge"] = yNudge
 
         # import pdb; pdb.set_trace()
 
@@ -1054,6 +1107,14 @@ class FVCTransformAPO(object):
 
         objects["xSimpleRot"] = xyRot[:, 0]
         objects["ySimpleRot"] = xyRot[:, 1]
+
+        # rotate nudged centroids by rotator angle
+        xy = objects[["xNudge", "yNudge"]].to_numpy()
+        xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+
+        objects["xNudgeRot"] = xyRot[:, 0]
+        objects["yNudgeRot"] = xyRot[:, 1]
+
 
         objects["centroidID"] = list(range(len(objects)))
 
@@ -1111,6 +1172,8 @@ class FVCTransformAPO(object):
             xyCCD = self.centroids[["xRot", "yRot"]].to_numpy()
         elif centType == "simple":
             xyCCD = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
+        elif centType == "nudge":
+            xyCCD = self.centroids[["xNudgeRot", "yNudgeRot"]].to_numpy()
         else:
             raise CoordIOError("unknown centroid type passed to fit")
 
