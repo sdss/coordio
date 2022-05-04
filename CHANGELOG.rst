@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+1.3.2
+-----
+
+* Fix a bug in which the object epoch for an ``ICRS`` coordinate would not change when ``ICRS.to_epoch()`` was called.
+
+
 1.3.1 (2022-04-24)
 ------------------
 

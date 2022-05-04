@@ -184,6 +184,7 @@ class ICRS(Coordinate2D):
             new_icrs.pmdec[ii] = numpy.rad2deg(pmdec2.value) * 3600. * 1000.
             new_icrs.parallax[ii] = parallax2.value * 1000.
             new_icrs.rvel[ii] = rvel2.value
+            new_icrs.epoch[ii] = jd
 
         return new_icrs
 
