@@ -782,7 +782,7 @@ def updateCCDMeas(x,y, dxythresh=0.75):
     dx = X @ beta_x
     dy = X @ beta_y
 
-    rejectInds = (numpy.abs(dx) > 0.75) & (numpy.abs(dy) > 0.75)
+    rejectInds = (numpy.abs(dx) > dxythresh) & (numpy.abs(dy) > dxythresh)
 
     newX = x - dx
     newY = y - dy
