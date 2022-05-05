@@ -777,11 +777,28 @@ def design_matrix(xs, ys):
     return Xbig[:, i2plusj2 <= IMAX ** 2]
 
 
-def updateCCDMeas(x,y):
+def updateCCDMeas(x,y, dxythresh=0.75):
     X = design_matrix(x,y)
     dx = X @ beta_x
     dy = X @ beta_y
-    return x - dx, y - dy
+
+    rejectInds = (numpy.abs(dx) > 0.75) & (numpy.abs(dy) > 0.75)
+
+    newX = x - dx
+    newY = y - dy
+
+    newX[rejectInds] = x[rejectInds]
+    newY[rejectInds] = y[rejectInds]
+
+
+    # plt.figure()
+    # plt.plot(x, y, 'ok')
+    # plt.plot(x[adjustInds], y[adjustInds], 'xr')
+    # plt.axis("equal")
+    # plt.show()
+
+
+    return newX, newY
 
 
 class FVCTransformAPO(object):
@@ -1025,24 +1042,29 @@ class FVCTransformAPO(object):
         xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"])
 
         # don't fit anything with an absolute correction > 0.75 pixels
-        rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
+        # rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
 
         # don't fit anything over a radius of 300 (domain problems of hogg fit)
         # _xm = objects["x"] - numpy.mean(objects["x"])
         # _ym = objects["y"] - numpy.mean(objects["y"])
         # _rm = numpy.sqrt(_xm**2+_ym**2) * 120 / 1000
-        # rejectInds = _rm > 300
+        # _rejectInds = _rm > 300
+
+        # print("old/new reject", sum(_rejectInds), sum(rejectInds))
 
         # plt.figure()
         # plt.plot(objects["x"], objects["y"], 'ok')
-        # plt.plot(objects["x"][rejectInds], objects["y"][rejectInds], 'xr')
+        # plt.plot(xNudge, yNudge, 'xr')
+        # plt.axis("equal")
 
         # plt.axis("equal")
+
+
         # plt.show()
 
         # print("rejecting", len(xNudge[rejectInds]))
-        xNudge[rejectInds] = objects["x"][rejectInds]
-        yNudge[rejectInds] = objects["y"][rejectInds]
+        # xNudge[rejectInds] = objects["x"][rejectInds]
+        # yNudge[rejectInds] = objects["y"][rejectInds]
 
         # nudged centroid domain only includes positioners,
         # overwrite them for the outer fiducials
