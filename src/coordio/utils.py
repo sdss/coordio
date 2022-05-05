@@ -341,7 +341,8 @@ def offset_definition(mag, mag_limit, lunation):
 def object_offset(mag, mag_limit, lunation, safety_factor=0.1):
     """
     Returns the offset needed for object with mag to be
-    observed at mag_limit.
+    observed at mag_limit. Currently assumption is all offsets
+    are set in positive RA direction.
 
     Parameters
     ----------
