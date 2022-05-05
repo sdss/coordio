@@ -285,3 +285,86 @@ def fitsTableToPandas(recarray):
     for name in recarray.names:
         d[name] = recarray[name].byteswap().newbyteorder()
     return pandas.DataFrame(d)
+
+
+def offset_definition(mag, mag_limit, lunation):
+    """
+    Returns the offset needed for object with mag to be
+    observed at mag_limit.
+    This is for the piecewise appromixation used based on:
+    https://wiki.sdss.org/pages/viewpage.action?pageId=100173069
+
+    Parameters
+    ----------
+    mag: float or np.array
+        The magniutde(s) of the objects. For BOSS should be
+        Gaia G-band and for APOGEE should be 2MASS H-band.
+
+    mag_limit: float
+        Magnitude limit for the designmode of the design.
+        For BOSS should be r-band limit and for APOGEE should
+        be H-band limit.
+
+    lunation: str:
+        If the designmode is bright time ('bright') or dark
+        time ('dark')
+
+    Returns
+    -------
+    r: float or np.array
+        offset radius in arcseconds around object(s)
+    """
+    # linear portion in the wings
+    r_wings = (mag_limit - mag - 8.2) / 0.05
+    # linear portion in transition area
+    r_trans = (mag_limit - mag - 4.5) / 0.25
+    # core area
+    if lunation == 'bright':
+        r_core = 1.75 * (mag_limit - mag) ** 0.6
+    else:
+        r_core = 1.5 * (mag_limit - mag) ** 0.8
+    # exlusion radius is the max of each section
+    if isinstance(mag, float):
+        if mag <= mag_limit:
+            r = max(r_wings, r_trans, r_core)
+        else:
+            r = 0.
+    else:
+        r = np.nanmax(np.column_stack((r_wings,
+                                       r_trans,
+                                       r_core)),
+                      axis=1)
+        r[mag > mag_limit] = 0.
+    return r
+
+
+def object_offset(mag, mag_limit, lunation, safety_factor=0.1):
+    """
+    Returns the offset needed for object with mag to be
+    observed at mag_limit.
+
+    Parameters
+    ----------
+    mag: float or np.array
+        The magniutde(s) of the objects. For BOSS should be
+        Gaia G-band and for APOGEE should be 2MASS H-band.
+
+    mag_limit: float
+        Magnitude limit for the designmode of the design.
+        For BOSS should be r-band limit and for APOGEE should
+        be H-band limit.
+
+    lunation: str:
+        If the designmode is bright time ('bright') or dark
+        time ('dark')
+
+    safety_factor: float
+        Factor to add to mag_limit.
+
+    Returns
+    -------
+    r: float or np.array
+        offset radius in arcseconds around object(s)
+    """
+    r = offset_definition(mag, mag_limit + safety_factor, lunation)
+    return r
