@@ -296,7 +296,7 @@ def offset_definition(mag, mag_limit, lunation):
 
     Parameters
     ----------
-    mag: float or np.array
+    mag: float or numpy.array
         The magniutde(s) of the objects. For BOSS should be
         Gaia G-band and for APOGEE should be 2MASS H-band.
 
@@ -311,7 +311,7 @@ def offset_definition(mag, mag_limit, lunation):
 
     Returns
     -------
-    r: float or np.array
+    r: float or numpy.array
         offset radius in arcseconds around object(s)
     """
     # linear portion in the wings
@@ -330,10 +330,10 @@ def offset_definition(mag, mag_limit, lunation):
         else:
             r = 0.
     else:
-        r = np.nanmax(np.column_stack((r_wings,
-                                       r_trans,
-                                       r_core)),
-                      axis=1)
+        r = numpy.nanmax(numpy.column_stack((r_wings,
+                                             r_trans,
+                                             r_core)),
+                         axis=1)
         r[mag > mag_limit] = 0.
     return r
 
@@ -345,7 +345,7 @@ def object_offset(mag, mag_limit, lunation, safety_factor=0.1):
 
     Parameters
     ----------
-    mag: float or np.array
+    mag: float or numpy.array
         The magniutde(s) of the objects. For BOSS should be
         Gaia G-band and for APOGEE should be 2MASS H-band.
 
@@ -363,8 +363,15 @@ def object_offset(mag, mag_limit, lunation, safety_factor=0.1):
 
     Returns
     -------
-    r: float or np.array
-        offset radius in arcseconds around object(s)
+    delta_ra: float or numpy.array
+        offset in RA in arcseconds around object(s)
+
+    delta_dec: float or numpy.array
+        offset in Decl. in arcseconds around object(s)
     """
-    r = offset_definition(mag, mag_limit + safety_factor, lunation)
-    return r
+    delta_ra = offset_definition(mag, mag_limit + safety_factor, lunation)
+    if isinstance(delta_ra, float):
+        delta_dec = 0.
+    else:
+        delta_dec = numpy.zeros(len(delta_ra))
+    return delta_ra, delta_dec
