@@ -924,7 +924,6 @@ class FVCTransformAPO(object):
             ("FVC_WBSZ", self.winposBoxSize, "box size for winpos centroid algorithm (pix)"),
             ("FVC_SSIG", self.simpleSigma, "sigma for simple centroid algorithm (pix)"),
             ("FVC_SPLM", self.simpleBoxSize, "box size for simple centroid algorithm (pix)"),
-            # ("FVC_SPLM", self.simpleMaxper, "maxper for simple centroid algorithm (pix)"),
             ("FVC_RMS", self.positionerRMS, "robot rms (mm)"),
             ("FVC_FRMS", self.fiducialRMS, "fiducial rms (mm)"),
             ("FVC_CRMS", self.positionerRMS_clipped, "in-spec (outlier-clipped) robot rms (mm)"),
@@ -1015,6 +1014,7 @@ class FVCTransformAPO(object):
         # get rid of obvious bogus detections
         objects = objects[objects["npix"] > centroidMinNpix]
         # remove detections near edges of chip
+        # (causes issues for unlucky winpos detections)
         objects = objects[objects["x"] > 500]
         objects = objects[objects["x"] < 7500]
         objects = objects[objects["y"] > 30]
@@ -1024,11 +1024,14 @@ class FVCTransformAPO(object):
         # of the fibers
         xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"])
 
+        # don't fit anything with an absolute correction > 0.75 pixels
+        rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
+
         # don't fit anything over a radius of 300 (domain problems of hogg fit)
-        _xm = objects["x"] - numpy.mean(objects["x"])
-        _ym = objects["y"] - numpy.mean(objects["y"])
-        _rm = numpy.sqrt(_xm**2+_ym**2) * 120 / 1000
-        rejectInds = _rm > 300
+        # _xm = objects["x"] - numpy.mean(objects["x"])
+        # _ym = objects["y"] - numpy.mean(objects["y"])
+        # _rm = numpy.sqrt(_xm**2+_ym**2) * 120 / 1000
+        # rejectInds = _rm > 300
 
         # plt.figure()
         # plt.plot(objects["x"], objects["y"], 'ok')
@@ -1373,3 +1376,25 @@ class FVCTransformAPO(object):
         self.positionerTableMeas = xyWokFiberFromPositioner(
             self.positionerTableMeas, angleType="Meas", doMetrology=False
             )
+
+        if self.centType == "nudge":
+            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xNudge"]
+            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yNudge"]
+            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xNudge"]
+            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["yNudge"]
+        elif self.centType == "winpos":
+            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xWinpos"]
+            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yWinpos"]
+            self.fiducialCoordsMeasMeas["xFVC"] = self.fiducialCoordsMeas["xWinpos"]
+            self.fiducialCoordsMeasMeas["yFVC"] = self.fiducialCoordsMeas["yWinpos"]
+        elif self.centType == "simple":
+            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xSimple"]
+            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["ySimple"]
+            self.fiducialCoordsMeasMeas["xFVC"] = self.fiducialCoordsMeas["xSimple"]
+            self.fiducialCoordsMeasMeas["yFVC"] = self.fiducialCoordsMeas["ySimple"]
+        elif self.centType == "sep":
+            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["x"]
+            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["y"]
+            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["x"]
+            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["y"]
+
