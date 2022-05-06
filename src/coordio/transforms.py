@@ -1407,13 +1407,13 @@ class FVCTransformAPO(object):
         elif self.centType == "winpos":
             self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xWinpos"]
             self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yWinpos"]
-            self.fiducialCoordsMeasMeas["xFVC"] = self.fiducialCoordsMeas["xWinpos"]
-            self.fiducialCoordsMeasMeas["yFVC"] = self.fiducialCoordsMeas["yWinpos"]
+            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xWinpos"]
+            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["yWinpos"]
         elif self.centType == "simple":
             self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xSimple"]
             self.positionerTableMeas["yFVC"] = self.positionerTableMeas["ySimple"]
-            self.fiducialCoordsMeasMeas["xFVC"] = self.fiducialCoordsMeas["xSimple"]
-            self.fiducialCoordsMeasMeas["yFVC"] = self.fiducialCoordsMeas["ySimple"]
+            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xSimple"]
+            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["ySimple"]
         elif self.centType == "sep":
             self.positionerTableMeas["xFVC"] = self.positionerTableMeas["x"]
             self.positionerTableMeas["yFVC"] = self.positionerTableMeas["y"]
