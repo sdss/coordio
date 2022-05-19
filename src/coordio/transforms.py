@@ -797,13 +797,23 @@ def updateCCDMeas(x,y, dxythresh=0.75):
     # plt.axis("equal")
     # plt.show()
 
-
     return newX, newY
 
 
 class FVCTransformAPO(object):
     # polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
     polids = numpy.arange(33)
+    zbCoeffs = numpy.array([
+        3.30790633e-01, 4.13533378e-01, 1.71951213e-03, -9.90141758e-04,
+        -4.48460907e-04, -3.68228879e-06, -2.45423918e-06, 3.06249618e-07,
+        1.52595326e-06, -1.73037375e-08, 9.09750974e-09, 1.40858150e-08,
+        -8.69986544e-11, 2.25009469e-09, 5.94658320e-12, 5.67065198e-12,
+        -1.99111356e-12, 6.33175666e-13, -2.82452951e-12, 1.94818210e-12,
+        4.03105186e-14, -2.79909483e-14, -1.46249329e-14, -5.04644513e-15,
+        1.41549916e-15, 1.27613775e-15, -8.70792948e-15, 2.00843998e-04,
+        -1.05007864e-06, 2.48271534e-07, -9.28099433e-10, 6.13172886e-10,
+        -1.31799608e-09
+    ])
 
     def __init__(
         self,
@@ -1165,7 +1175,7 @@ class FVCTransformAPO(object):
         Parameters
         -----------
         centType : str
-            one of "sep", "winpos", "nudge" or "simple", default is "nudge"
+            one of "zbplus", "zbminus", sep", "winpos", "nudge" or "simple", default is "nudge"
         maxRoughDist : float
             Max distance for an outer fiducial match (rough mm)
         maxMidDist : float
@@ -1199,7 +1209,7 @@ class FVCTransformAPO(object):
             xyCCD = self.centroids[["xRot", "yRot"]].to_numpy()
         elif centType == "simple":
             xyCCD = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
-        elif centType == "nudge":
+        elif centType in ["nudge", "zbplus", "zbminus"]:
             xyCCD = self.centroids[["xNudgeRot", "yNudgeRot"]].to_numpy()
         else:
             raise CoordIOError("unknown centroid type passed to fit")
@@ -1337,6 +1347,23 @@ class FVCTransformAPO(object):
         positionerMeas["wokErr"] = distances
         positionerMeas["wokErrWarn"] = distances > maxFinalDist
 
+        #### apply zb corrections if centype is zbplus or zbminus
+        if centType.startswith("zb"):
+            dx_zb_fit, dy_zb_fit = getZhaoBurgeXY(
+                self.polids, self.zbCoeffs,
+                positionerMeas.xWokMeasMetrology,
+                positionerMeas.yWokMeasMetrology
+            )
+            # multiply by scale (arcsec to mm)
+            dx_zb_fit *= 0.06
+            dy_zb_fit *= 0.06
+            if centType == "zbplus":
+                positionerMeas["xWokMeasMetrology"] = positionerMeas["xWokMeasMetrology"] + dx_zb_fit
+                positionerMeas["yWokMeasMetrology"] = positionerMeas["yWokMeasMetrology"] + dy_zb_fit
+            else:
+                positionerMeas["xWokMeasMetrology"] = positionerMeas["xWokMeasMetrology"] - dx_zb_fit
+                positionerMeas["yWokMeasMetrology"] = positionerMeas["yWokMeasMetrology"] - dy_zb_fit
+
         self.positionerTableMeas = positionerMeas
 
         dx = self.positionerTableMeas.xWokMeasMetrology - \
@@ -1399,7 +1426,7 @@ class FVCTransformAPO(object):
             self.positionerTableMeas, angleType="Meas", doMetrology=False
             )
 
-        if self.centType == "nudge":
+        if self.centType in ["nudge", "zbplus", "zbminus"]:
             self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xNudge"]
             self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yNudge"]
             self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xNudge"]
