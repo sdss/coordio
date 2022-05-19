@@ -1351,8 +1351,8 @@ class FVCTransformAPO(object):
         if centType.startswith("zb"):
             dx_zb_fit, dy_zb_fit = getZhaoBurgeXY(
                 self.polids, self.zbCoeffs,
-                positionerMeas.xWokMeasMetrology,
-                positionerMeas.yWokMeasMetrology
+                positionerMeas.xWokMeasMetrology.to_numpy(),
+                positionerMeas.yWokMeasMetrology.to_numpy()
             )
             # multiply by scale (arcsec to mm)
             dx_zb_fit *= 0.06

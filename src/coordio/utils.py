@@ -321,10 +321,11 @@ def fitsTableToPandas(recarray):
     df = pandas.DataFrame(d)
     # decode binary data into strings, if present
     # https://stackoverflow.com/questions/40389764/how-to-translate-bytes-objects-into-literal-strings-in-pandas-dataframe-pytho
-    str_df = df.select_dtypes([numpy.object])
-    str_df = str_df.stack().str.decode('utf-8').unstack()
-    for col in str_df:
-        df[col] = str_df[col]
+    # str_df = df.select_dtypes([numpy.object])
+    # if len(str_df) > 0:
+    #     str_df = str_df.stack().str.decode('utf-8').unstack()
+    #     for col in str_df:
+    #         df[col] = str_df[col]
     return df
 
 
