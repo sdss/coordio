@@ -71,7 +71,7 @@ def wokCurveLCO(r):
 
 
 def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
-                obsSite, obsTime, pmra=None, pmdec=None, parallax=None,
+                obsSite, obsTime, focalScale=defaults.FOCAL_SCALE, pmra=None, pmdec=None, parallax=None,
                 radVel=None, pressure=None, relativeHumidity=0.5,
                 temperature=10):
     r"""
@@ -187,7 +187,7 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 
     obs = Observed(icrs, site=site, wavelength=wavelength)
     field = Field(obs, field_center=obsCen)
-    focal = FocalPlane(field, wavelength=wavelength, site=site)
+    focal = FocalPlane(field, wavelength=wavelength, site=site, fpScale=focalScale)
     wok = Wok(focal, site=site, obsAngle=obsAngle)
 
     output = (
@@ -308,9 +308,24 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
 
 def fitsTableToPandas(recarray):
     d = {}
-    for name in recarray.names:
-        d[name] = recarray[name].byteswap().newbyteorder()
-    return pandas.DataFrame(d)
+    if hasattr(recarray, "names"):
+        names = recarray.names
+    else:
+        names = recarray.dtype.names
+    for name in names:
+        key = name
+        if hasattr(key, "decode"):
+            key = key.decode()
+        d[key] = recarray[name].byteswap().newbyteorder()
+
+    df = pandas.DataFrame(d)
+    # decode binary data into strings, if present
+    # https://stackoverflow.com/questions/40389764/how-to-translate-bytes-objects-into-literal-strings-in-pandas-dataframe-pytho
+    str_df = df.select_dtypes([numpy.object])
+    str_df = str_df.stack().str.decode('utf-8').unstack()
+    for col in str_df:
+        df[col] = str_df[col]
+    return df
 
 
 def simplexy(image, psf_sigma=1., plim=8., dlim=1., saddle=3., maxper=1000,
