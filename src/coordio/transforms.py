@@ -1196,6 +1196,8 @@ class FVCTransformAPO(object):
 
         if self.centroids is None:
             raise CoordIOError("Must run extractCentroids before fit")
+        if centType not in ["zbplus", "zbminus", "sep", "winpos", "nudge", "simple"]:
+            raise CoordIOError("unknown centType")
 
         xyMetFiber = self._fullTable[
             ["xWokReportMetrology", "yWokReportMetrology"]
@@ -1357,12 +1359,19 @@ class FVCTransformAPO(object):
             # multiply by scale (arcsec to mm)
             dx_zb_fit *= 0.06
             dy_zb_fit *= 0.06
-            if centType == "zbplus":
-                positionerMeas["xWokMeasMetrology"] = positionerMeas["xWokMeasMetrology"] + dx_zb_fit
-                positionerMeas["yWokMeasMetrology"] = positionerMeas["yWokMeasMetrology"] + dy_zb_fit
-            else:
-                positionerMeas["xWokMeasMetrology"] = positionerMeas["xWokMeasMetrology"] - dx_zb_fit
-                positionerMeas["yWokMeasMetrology"] = positionerMeas["yWokMeasMetrology"] - dy_zb_fit
+
+            if centType == "zbminus":
+                dx_zb_fit *= -1
+                dy_zb_fit *= -1
+        else:
+            dx_zb_fit = numpy.zeros(len(positionerMeas))
+            dy_zb_fit = numpy.zeros(len(positionerMeas))
+
+        positionerMeas["xWokMeasMetrology"] = positionerMeas["xWokMeasMetrology"] + dx_zb_fit
+        positionerMeas["yWokMeasMetrology"] = positionerMeas["yWokMeasMetrology"] + dy_zb_fit
+        positionerMeas["xWokAdjMetrology"] = dx_zb_fit
+        positionerMeas["yWokAdjMetrology"] = dy_zb_fit
+
 
         self.positionerTableMeas = positionerMeas
 
