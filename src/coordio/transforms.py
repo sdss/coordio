@@ -790,13 +790,6 @@ def updateCCDMeas(x,y, dxythresh=0.75):
     newX[rejectInds] = x[rejectInds]
     newY[rejectInds] = y[rejectInds]
 
-
-    # plt.figure()
-    # plt.plot(x, y, 'ok')
-    # plt.plot(x[rejectInds], y[rejectInds], 'xr')
-    # plt.axis("equal")
-    # plt.show()
-
     return newX, newY
 
 
@@ -1350,7 +1343,7 @@ class FVCTransformAPO(object):
         positionerMeas["wokErrWarn"] = distances > maxFinalDist
 
         #### apply zb corrections if centype is zbplus or zbminus
-        if centType.startswith("zb"):
+        if centType.startswith("zb") and self.zbCoeffs is not None:
             dx_zb_fit, dy_zb_fit = getZhaoBurgeXY(
                 self.polids, self.zbCoeffs,
                 positionerMeas.xWokMeasMetrology.to_numpy(),
@@ -1456,3 +1449,7 @@ class FVCTransformAPO(object):
             self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["x"]
             self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["y"]
 
+class FVCTransformLCO(FVCTransformAPO):
+    polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
+    # polids = numpy.arange(33)
+    zbCoeffs = None
