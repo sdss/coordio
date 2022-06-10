@@ -314,27 +314,43 @@ def offset_definition(mag, mag_limit, lunation):
     r: float or numpy.array
         offset radius in arcseconds around object(s)
     """
-    # linear portion in the wings
-    r_wings = (mag_limit - mag - 8.2) / 0.05
-    # linear portion in transition area
-    r_trans = (mag_limit - mag - 4.5) / 0.25
-    # core area
-    if lunation == 'bright':
-        r_core = 1.75 * (mag_limit - mag) ** 0.6
-    else:
-        r_core = 1.5 * (mag_limit - mag) ** 0.8
-    # exlusion radius is the max of each section
     if isinstance(mag, float):
         if mag <= mag_limit:
+            # linear portion in the wings
+            r_wings = (mag_limit - mag - 8.2) / 0.05
+            # linear portion in transition area
+            r_trans = (mag_limit - mag - 4.5) / 0.25
+            # core area
+            if lunation == 'bright':
+                r_core = 1.75 * (mag_limit - mag) ** 0.6
+            else:
+                r_core = 1.5 * (mag_limit - mag) ** 0.8
+            # exlusion radius is the max of each section
             r = max(r_wings, r_trans, r_core)
         else:
             r = 0.
     else:
+        # create empty arrays for each portion
+        r_wings = np.zeros(mag.shape)
+        r_trans = np.zeros(mag.shape)
+        r_core = np.zeros(mag.shape)
+        # only do calc for valid mags for offset
+        # to avoid warning
+        mag_valid = (mag <= mag_limit)
+        # linear portion in the wings
+        r_wings[mag_valid] = (mag_limit - mag[mag_valid] - 8.2) / 0.05
+        # linear portion in transition area
+        r_trans[mag_valid] = (mag_limit - mag[mag_valid] - 4.5) / 0.25
+        # core area
+        if lunation == 'bright':
+            r_core[mag_valid] = 1.75 * (mag_limit - mag[mag_valid]) ** 0.6
+        else:
+            r_core[mag_valid] = 1.5 * (mag_limit - mag[mag_valid]) ** 0.8
+        # exlusion radius is the max of each section
         r = numpy.nanmax(numpy.column_stack((r_wings,
                                              r_trans,
                                              r_core)),
                          axis=1)
-        r[mag > mag_limit] = 0.
     return r
 
 
