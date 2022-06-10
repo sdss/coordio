@@ -331,9 +331,9 @@ def offset_definition(mag, mag_limit, lunation):
             r = 0.
     else:
         # create empty arrays for each portion
-        r_wings = np.zeros(mag.shape)
-        r_trans = np.zeros(mag.shape)
-        r_core = np.zeros(mag.shape)
+        r_wings = numpy.zeros(mag.shape)
+        r_trans = numpy.zeros(mag.shape)
+        r_core = numpy.zeros(mag.shape)
         # only do calc for valid mags for offset
         # to avoid warning
         mag_valid = (mag <= mag_limit)
