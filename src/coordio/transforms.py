@@ -1453,3 +1453,5 @@ class FVCTransformLCO(FVCTransformAPO):
     polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
     # polids = numpy.arange(33)
     zbCoeffs = None
+
+
