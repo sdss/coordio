@@ -287,7 +287,7 @@ def fitsTableToPandas(recarray):
     return pandas.DataFrame(d)
 
 
-def offset_definition(mag, mag_limit, lunation, instrument):
+def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit.
@@ -313,6 +313,9 @@ def offset_definition(mag, mag_limit, lunation, instrument):
         Instrument for the fibers offset definition being applied
         to. Either 'BOSS' or 'APOGEE'.
 
+    safety_factor: float
+        Factor to add to mag_limit.
+
     Returns
     -------
     r: float or numpy.array
@@ -321,15 +324,15 @@ def offset_definition(mag, mag_limit, lunation, instrument):
     if isinstance(mag, float):
         if mag <= mag_limit:
             # linear portion in the wings
-            r_wings = (mag_limit - mag - 8.2) / 0.05
+            r_wings = ((mag_limit + safety_factor) - mag - 8.2) / 0.05
             # linear portion in transition area
-            r_trans = (mag_limit - mag - 4.5) / 0.25
+            r_trans = ((mag_limit + safety_factor) - mag - 4.5) / 0.25
             # core area
             # do dark core for apogee or dark
             if lunation == 'dark' or instrument == 'APOGEE':
-                r_core = 1.5 * (mag_limit - mag) ** 0.8
+                r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             else:
-                r_core = 1.75 * (mag_limit - mag) ** 0.6
+                r_core = 1.75 * ((mag_limit + safety_factor) - mag) ** 0.6
             # exlusion radius is the max of each section
             r = max(r_wings, r_trans, r_core)
         else:
@@ -343,16 +346,16 @@ def offset_definition(mag, mag_limit, lunation, instrument):
         # to avoid warning
         mag_valid = (mag <= mag_limit)
         # linear portion in the wings
-        r_wings[mag_valid] = (mag_limit - mag[mag_valid] - 8.2) / 0.05
+        r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
         # linear portion in transition area
-        r_trans[mag_valid] = (mag_limit - mag[mag_valid] - 4.5) / 0.25
+        r_trans[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 4.5) / 0.25
         # core area
         # core area
         # do dark core for apogee or dark
         if lunation == 'dark' or instrument == 'APOGEE':
-            r_core[mag_valid] = 1.5 * (mag_limit - mag[mag_valid]) ** 0.8
+            r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         else:
-            r_core[mag_valid] = 1.75 * (mag_limit - mag[mag_valid]) ** 0.6
+            r_core[mag_valid] = 1.75 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.6
         # exlusion radius is the max of each section
         r = numpy.nanmax(numpy.column_stack((r_wings,
                                              r_trans,
@@ -397,7 +400,8 @@ def object_offset(mag, mag_limit, lunation, instrument, safety_factor=0.1):
     delta_dec: float or numpy.array
         offset in Decl. in arcseconds around object(s)
     """
-    delta_ra = offset_definition(mag, mag_limit + safety_factor, lunation, instrument)
+    delta_ra = offset_definition(mag, mag_limit, lunation, instrument,
+                                 safety_factor=safety_factor)
     if isinstance(delta_ra, float):
         delta_dec = 0.
     else:
