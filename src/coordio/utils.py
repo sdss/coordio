@@ -314,15 +314,25 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
         to. Either 'BOSS' or 'APOGEE'.
 
     safety_factor: float
-        Factor to add to mag_limit.
+        Factor to add to mag_limit. Should equal zero for
+        bright neighbor checks (i.e. remain at default).
 
     Returns
     -------
     r: float or numpy.array
         offset radius in arcseconds around object(s)
+
+    offset_flag: int or numpy.array
+        Flag for how offset was set. 0 indicates offset applied
+        normally (i.e. when mag > mag_limit), 1 indicates no offset applied
+        because mag <= mag_limit and 2 indiciates no offset applied
+        because magnitude was null value.
     """
+    # define Null cases for targetdb.magnitude table
+    cases = [-999, -9999, 999,
+             0.0, numpy.nan, 99.9, None]
     if isinstance(mag, float):
-        if mag <= mag_limit:
+        if mag <= mag_limit or mag in cases:
             # linear portion in the wings
             r_wings = ((mag_limit + safety_factor) - mag - 8.2) / 0.05
             # linear portion in transition area
@@ -335,8 +345,13 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
                 r_core = 1.75 * ((mag_limit + safety_factor) - mag) ** 0.6
             # exlusion radius is the max of each section
             r = max(r_wings, r_trans, r_core)
+            offset_flag = 0
         else:
             r = 0.
+            if mag <= mag_limit:
+                offset_flag = 1
+            else:
+                offset_flag = 2
     else:
         # create empty arrays for each portion
         r_wings = numpy.zeros(mag.shape)
@@ -344,7 +359,11 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
         r_core = numpy.zeros(mag.shape)
         # only do calc for valid mags for offset
         # to avoid warning
-        mag_valid = (mag <= mag_limit)
+        mag_valid = (mag <= mag_limit) | (mag in cases)
+        # set flags
+        offset_flag = numpy.zeros(mags.shape, dtype=int)
+        offset_flag[mag <= mag_limit] = 1
+        offset_flag[mag in cases] = 2
         # linear portion in the wings
         r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
         # linear portion in transition area
@@ -361,7 +380,7 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
                                              r_trans,
                                              r_core)),
                          axis=1)
-    return r
+    return r, offset_flag
 
 
 def object_offset(mag, mag_limit, lunation, instrument, safety_factor=0.1):
@@ -392,6 +411,12 @@ def object_offset(mag, mag_limit, lunation, instrument, safety_factor=0.1):
     safety_factor: float
         Factor to add to mag_limit.
 
+    offset_flag: int or numpy.array
+        Flag for how offset was set. 0 indicates offset applied
+        normally (i.e. when mag > mag_limit), 1 indicates no offset applied
+        because mag <= mag_limit and 2 indiciates no offset applied
+        because magnitude was null value.
+
     Returns
     -------
     delta_ra: float or numpy.array
@@ -400,10 +425,10 @@ def object_offset(mag, mag_limit, lunation, instrument, safety_factor=0.1):
     delta_dec: float or numpy.array
         offset in Decl. in arcseconds around object(s)
     """
-    delta_ra = offset_definition(mag, mag_limit, lunation, instrument,
-                                 safety_factor=safety_factor)
+    delta_ra, offset_flag = offset_definition(mag, mag_limit, lunation, instrument,
+                                              safety_factor=safety_factor)
     if isinstance(delta_ra, float):
         delta_dec = 0.
     else:
         delta_dec = numpy.zeros(len(delta_ra))
-    return delta_ra, delta_dec
+    return delta_ra, delta_dec, offset_flag
