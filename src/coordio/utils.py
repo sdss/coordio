@@ -332,7 +332,7 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
     cases = [-999, -9999, 999,
              0.0, numpy.nan, 99.9, None]
     if isinstance(mag, float):
-        if mag <= mag_limit or mag in cases:
+        if mag <= mag_limit and mag not in cases:
             # linear portion in the wings
             r_wings = ((mag_limit + safety_factor) - mag - 8.2) / 0.05
             # linear portion in transition area
@@ -348,7 +348,7 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
             offset_flag = 0
         else:
             r = 0.
-            if mag <= mag_limit:
+            if mag > mag_limit:
                 offset_flag = 1
             else:
                 offset_flag = 2
@@ -359,11 +359,11 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
         r_core = numpy.zeros(mag.shape)
         # only do calc for valid mags for offset
         # to avoid warning
-        mag_valid = (mag <= mag_limit) | (mag in cases)
+        mag_valid = (mag <= mag_limit) & (~numpy.isin(mag, cases)) & (~numpy.isnan(mag))
         # set flags
-        offset_flag = numpy.zeros(mags.shape, dtype=int)
-        offset_flag[mag <= mag_limit] = 1
-        offset_flag[mag in cases] = 2
+        offset_flag = numpy.zeros(mag.shape, dtype=int)
+        offset_flag[mag > mag_limit] = 1
+        offset_flag[(numpy.isin(mag, cases)) | (numpy.isnan(mag))] = 2
         # linear portion in the wings
         r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
         # linear portion in transition area
