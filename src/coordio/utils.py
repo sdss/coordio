@@ -324,8 +324,8 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
 
     offset_flag: int or numpy.array
         Flag for how offset was set. 0 indicates offset applied
-        normally (i.e. when mag > mag_limit), 1 indicates no offset applied
-        because mag <= mag_limit and 2 indiciates no offset applied
+        normally (i.e. when mag <= mag_limit), 1 indicates no offset applied
+        because mag > mag_limit and 2 indiciates no offset applied
         because magnitude was null value.
     """
     # define Null cases for targetdb.magnitude table
@@ -413,8 +413,8 @@ def object_offset(mag, mag_limit, lunation, instrument, safety_factor=0.1):
 
     offset_flag: int or numpy.array
         Flag for how offset was set. 0 indicates offset applied
-        normally (i.e. when mag > mag_limit), 1 indicates no offset applied
-        because mag <= mag_limit and 2 indiciates no offset applied
+        normally (i.e. when mag <= mag_limit), 1 indicates no offset applied
+        because mag > mag_limit and 2 indiciates no offset applied
         because magnitude was null value.
 
     Returns
