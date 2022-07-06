@@ -287,7 +287,7 @@ def fitsTableToPandas(recarray):
     return pandas.DataFrame(d)
 
 
-def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
+def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit.
@@ -309,9 +309,9 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
         If the designmode is bright time ('bright') or dark
         time ('dark')
 
-    instrument: str
+    waveName: str
         Instrument for the fibers offset definition being applied
-        to. Either 'BOSS' or 'APOGEE'.
+        to. Either 'Boss' or 'Apogee'.
 
     safety_factor: float
         Factor to add to mag_limit. Should equal zero for
@@ -339,7 +339,7 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
             r_trans = ((mag_limit + safety_factor) - mag - 4.5) / 0.25
             # core area
             # do dark core for apogee or dark
-            if lunation == 'dark' or instrument == 'APOGEE':
+            if lunation == 'dark' or waveName == 'APOGEE':
                 r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             else:
                 r_core = 1.75 * ((mag_limit + safety_factor) - mag) ** 0.6
@@ -371,7 +371,7 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
         # core area
         # core area
         # do dark core for apogee or dark
-        if lunation == 'dark' or instrument == 'APOGEE':
+        if lunation == 'dark' or waveName == 'APOGEE':
             r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         else:
             r_core[mag_valid] = 1.75 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.6
@@ -383,7 +383,7 @@ def offset_definition(mag, mag_limit, lunation, instrument, safety_factor=0.):
     return r, offset_flag
 
 
-def object_offset(mag, mag_limit, lunation, instrument, safety_factor=0.1):
+def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit. Currently assumption is all offsets
@@ -404,9 +404,9 @@ def object_offset(mag, mag_limit, lunation, instrument, safety_factor=0.1):
         If the designmode is bright time ('bright') or dark
         time ('dark')
 
-    instrument: str
+    waveName: str
         Instrument for the fibers offset definition being applied
-        to. Either 'BOSS' or 'APOGEE'.
+        to. Either 'Boss' or 'Apogee'.
 
     safety_factor: float
         Factor to add to mag_limit.
@@ -425,7 +425,7 @@ def object_offset(mag, mag_limit, lunation, instrument, safety_factor=0.1):
     delta_dec: float or numpy.array
         offset in Decl. in arcseconds around object(s)
     """
-    delta_ra, offset_flag = offset_definition(mag, mag_limit, lunation, instrument,
+    delta_ra, offset_flag = offset_definition(mag, mag_limit, lunation, waveName,
                                               safety_factor=safety_factor)
     if isinstance(delta_ra, float):
         delta_dec = 0.
