@@ -339,7 +339,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.):
             r_trans = ((mag_limit + safety_factor) - mag - 4.5) / 0.25
             # core area
             # do dark core for apogee or dark
-            if lunation == 'dark' or waveName == 'APOGEE':
+            if lunation == 'dark' or waveName == 'Apogee':
                 r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             else:
                 r_core = 1.75 * ((mag_limit + safety_factor) - mag) ** 0.6
@@ -371,7 +371,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.):
         # core area
         # core area
         # do dark core for apogee or dark
-        if lunation == 'dark' or waveName == 'APOGEE':
+        if lunation == 'dark' or waveName == 'Apogee':
             r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         else:
             r_core[mag_valid] = 1.75 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.6
