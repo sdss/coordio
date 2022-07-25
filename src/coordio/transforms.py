@@ -855,6 +855,20 @@ class FVCTransformAPO(object):
         """
 
         self.fvcImgData = numpy.array(fvcImgData, dtype=numpy.float32)
+        # apply rough bias/background subtraction
+        # rough bias/bg subtract
+        imbias = numpy.median(self.fvcImgData, axis=0)
+        imbias = numpy.outer(
+            numpy.ones(self.fvcImgData.shape[0], dtype=numpy.float32),
+            imbias
+        )
+        im = self.fvcImgData - imbias
+
+        self.bkg = sep.Background(im) #self.fvcImgData)
+        bkg_image = self.bkg.back()
+
+        self.data_sub = im - bkg_image
+
         self.positionerTable = positionerTable.reset_index()
         self.wokCoords = wokCoords.reset_index()
         self.fiducialCoords = fiducialCoords.reset_index()
@@ -1009,24 +1023,11 @@ class FVCTransformAPO(object):
             raise CoordIOError("ccdRotCenXY must be a 2 element vector")
 
 
-        # rough bias/bg subtract
-        imbias = numpy.median(self.fvcImgData, axis=0)
-        imbias = numpy.outer(
-            numpy.ones(self.fvcImgData.shape[0], dtype=numpy.float32),
-            imbias
-        )
-        im = self.fvcImgData - imbias
-
-        bkg = sep.Background(im) #self.fvcImgData)
-        bkg_image = bkg.back()
-
-        data_sub = im - bkg_image
-
         # t1 = time.time()
         objects = sep.extract(
-            data_sub,
+            self.data_sub,
             backgroundSigma,
-            err=bkg.globalrms,
+            err=self.bkg.globalrms,
         )
         # print("sep extract took", time.time()-t1)
         # print("sep found %i sources"%len(objects))
@@ -1073,7 +1074,7 @@ class FVCTransformAPO(object):
         # overwrite them for the outer fiducials
 
         # create mask and re-extract using winpos algorithm
-        maskArr = numpy.ones(data_sub.shape, dtype=bool)
+        maskArr = numpy.ones(self.data_sub.shape, dtype=bool)
         boxRad = numpy.floor(winposBoxSize/2)
         boxSteps = numpy.arange(-boxRad, boxRad+1, dtype=int)
 
@@ -1086,7 +1087,7 @@ class FVCTransformAPO(object):
 
         # t1 = time.time()
         xNew, yNew, flags = sep.winpos(
-            data_sub,
+            self.data_sub,
             objects["xcpeak"],
             objects["ycpeak"],
             sig=winposSigma,
@@ -1096,7 +1097,7 @@ class FVCTransformAPO(object):
 
 
         off = 1022  # trim the LR edges refinexy needs square
-        im = data_sub[:, off:-off].copy()
+        im = self.data_sub[:, off:-off].copy()
 
         xSimple, ySimple = refinexy(
             im, xNew-off, yNew,
@@ -1199,22 +1200,26 @@ class FVCTransformAPO(object):
         xyWokFIF = self.fiducialCoords[["xWok", "yWok"]].to_numpy()
 
         if centType == "winpos":
-            xyCCD = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
+            xyCCDRot = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
+            xyCCD = self.centroids[["xWinpos", "yWinpos"]].to_numpy()
         elif centType == "sep":
-            xyCCD = self.centroids[["xRot", "yRot"]].to_numpy()
+            xyCCDRot = self.centroids[["xRot", "yRot"]].to_numpy()
+            xyCCD = self.centroids[["x", "y"]].to_numpy()
         elif centType == "simple":
-            xyCCD = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
+            xyCCDRot = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
+            xyCCD = self.centroids[["xSimple", "ySimple"]].to_numpy()
         elif centType in ["nudge", "zbplus", "zbminus"]:
-            xyCCD = self.centroids[["xNudgeRot", "yNudgeRot"]].to_numpy()
+            xyCCDRot = self.centroids[["xNudgeRot", "yNudgeRot"]].to_numpy()
+            xyCCD = self.centroids[["xNudge", "yNudge"]].to_numpy()
         else:
             raise CoordIOError("unknown centroid type passed to fit")
 
         # first do a rough transform
         self.roughTransform = RoughTransform(
-            xyCCD,
+            xyCCDRot,
             numpy.vstack((xyMetFiber, xyWokFIF))
         )
-        xyWokRough = self.roughTransform.apply(xyCCD)
+        xyWokRough = self.roughTransform.apply(xyCCDRot)
 
         # just grab outer fiducials for first pass, they're easier to identify
         # centroids lying at radii > 310 must be outer ring fiducials
