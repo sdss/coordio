@@ -296,7 +296,7 @@ def observedToField(alt, az, altCenter, azCenter, pa):
     ])
 
     coords = rotTheta.dot(coords.T).T
-    print("coords1", ["%.3f"%x for x in coords])
+
 
     # rotate the xyz coordinate system about the x axis
     # such that +z points to the field center.
@@ -309,7 +309,7 @@ def observedToField(alt, az, altCenter, azCenter, pa):
         [0, -sinPhi, cosPhi]
     ])
     coords = rotPhi.dot(coords.T).T
-    print("coords2", ["%.3f"%x for x in coords])
+
     # return coords
 
     # finally rotate about z by the parallactic angle
@@ -323,7 +323,7 @@ def observedToField(alt, az, altCenter, azCenter, pa):
     ])
 
     coords = rotQ.dot(coords.T).T
-    print("coords3", ["%.3f"%x for x in coords])
+
 
     x = coords[:, 0]
     y = coords[:, 1]
