@@ -287,7 +287,7 @@ def fitsTableToPandas(recarray):
     return pandas.DataFrame(d)
 
 
-class MoffatFluxLoss(object):
+class MoffatLossProfile(object):
     """
     class for calculating fiber loss based on Moffat profile
 
