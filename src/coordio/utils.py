@@ -309,35 +309,28 @@ class MoffatFluxLoss(object):
         self.offset = offset
         self.beta = beta
         self.FWHM = FWHM
+        self.alpha = self.FWHM / (2. * numpy.sqrt(2 ** (1 / self.beta) - 1))
+        self.amplitude = 1. / self.moffat_norm(1.)  # this is the amplitude needed to normalize the Moffat profile
         self.rfiber = rfiber
 
-    def moffat_1D(self, amplitude, r, alpha, beta):  # unit flux at the center
+    def moffat_1D(self, r):  # unit flux at the center
         """
         Function computing Moffat 1D profile
 
         Parameters
         ------------
-        amplitude: float
-            Amplitude of the profile
-
         r: float or numpy.array
             Distance from the centre of the profile
-
-        alpha: float
-            Scale parameter of the Moffat profile, depends on seeing
-
-        beta: float
-            Power index of the Moffat profile
 
         Returns
         -------
         moff_prof: float or numpy.array
             1D Moffat profile.
         """
-        moff_prof = amplitude * (1 + (r / alpha) ** 2) ** (-beta)
+        moff_prof = self.amplitude * (1 + (r / self.alpha) ** 2) ** (-self.beta)
         return moff_prof
 
-    def moffat_norm(self, amplitude, alpha, beta):
+    def moffat_norm(self, amplitude):
         """
         Function computing the normalized the Moffat 1D profile.
 
@@ -345,12 +338,6 @@ class MoffatFluxLoss(object):
         -----------
         amplitude: float
             Amplitude of the profile
-
-        alpha: float
-            Scale parameter of the Moffat profile, depends on seeing
-
-        beta: float
-            Power index of the Moffat profile
 
         Returns
         -------
@@ -361,12 +348,12 @@ class MoffatFluxLoss(object):
         xmin, xmax, xstep = -7., 7., 0.05  # fixed ln radius steps
         # x is the ln radius in units of the r / alpha
         steps = numpy.arange(xmin, xmax, xstep)
-        r = alpha * numpy.exp(steps)
-        norm = numpy.sum(numpy.exp(2 * steps) * self.moffat_1D(amplitude, r, alpha, beta))
-        moff_prof_norm = 2 * numpy.pi * alpha ** 2 * norm * xstep
+        r = self.alpha * numpy.exp(steps)
+        norm = numpy.sum(numpy.exp(2 * steps) * self.moffat_1D(r))
+        moff_prof_norm = 2 * numpy.pi * self.alpha ** 2 * norm * xstep
         return moff_prof_norm
 
-    def flux_loss(self, offset, alpha, beta):
+    def flux_loss(self, offset):
         """
         Function computing the flux loss obtained by moving the fiber
         across the source in a certain direction.
@@ -376,18 +363,11 @@ class MoffatFluxLoss(object):
         offset: numpy.array
             fiber offset
 
-         alpha: float
-            Scale parameter of the Moffat profile, depends on seeing
-
-        beta: float
-            Power index of the Moffat profile
-
         Returns
         --------
         norm: numpy.array
             the flux loss
         """
-        amplitude = 1. / self.moffat_norm(1., alpha, beta)  # this is the amplitude needed to normalize the Moffat profile
         x = numpy.arange(-self.rfiber, self.rfiber, self.rfiber / 50)    # set up a 100x100 Cartesian grid across the fiber
         y = numpy.arange(-self.rfiber, self.rfiber, self.rfiber / 50)
         X, Y = numpy.meshgrid(x, y)
@@ -396,7 +376,7 @@ class MoffatFluxLoss(object):
         for i in range(len(offset)):
             r_moffat = numpy.sqrt((X - offset[i]) ** 2 + Y ** 2)
             norm[i] = numpy.sum((self.rfiber / 50) ** 2 *
-                                self.moffat_1D(amplitude, r_moffat[r <= self.rfiber], alpha, beta))            
+                                self.moffat_1D(r_moffat[r <= self.rfiber]))            
         return norm
 
     def func_magloss(self):
@@ -415,9 +395,8 @@ class MoffatFluxLoss(object):
             the magnitude loss
         """
         magloss = numpy.zeros(len(self.offset))
-        seeing_alpha = self.FWHM / (2. * numpy.sqrt(2 ** (1 / self.beta) - 1))
-        magloss = -2.5 * numpy.log10(self.flux_loss(self.offset, seeing_alpha, self.beta)) \
-                   + 2.5 * numpy.log10(self.flux_loss(numpy.array([0.]), seeing_alpha, self.beta)[0])
+        magloss = -2.5 * numpy.log10(self.flux_loss(self.offset)) \
+                   + 2.5 * numpy.log10(self.flux_loss(numpy.array([0.]))[0])
         return magloss
 
 
