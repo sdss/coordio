@@ -297,7 +297,7 @@ class MoffatLossProfile(object):
         fiber offset
 
     beta: float
-            Power index of the Moffat profile
+        Power index of the Moffat profile
 
     FWHM: float
         seeing
@@ -403,7 +403,8 @@ class MoffatLossProfile(object):
         return magloss
 
 
-def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.):
+def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
+                      beta=5, FWHM=1.5):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit.
@@ -433,6 +434,12 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.):
         Factor to add to mag_limit. Should equal zero for
         bright neighbor checks (i.e. remain at default).
 
+    beta: float
+        Power index of the Moffat profile
+
+    FWHM: float
+        seeing for the Moffat profile
+
     Returns
     -------
     r: float or numpy.array
@@ -458,9 +465,12 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.):
             if lunation == 'dark' or waveName == 'Apogee':
                 r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             else:
-                r_core = 1.75 * ((mag_limit + safety_factor) - mag) ** 0.6
+                offsets = numpy.linspace(0, 20, 1000)
+                magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
+                r_core = numpy.interp((mag_limit + safety_factor) - mag,
+                                      magloss, offsets, right=numpy.nan)
             # exlusion radius is the max of each section
-            r = max(r_wings, r_trans, r_core)
+            r = numpy.nanmax([r_wings, r_trans, r_core])
             offset_flag = 0
         else:
             r = 0.
@@ -490,7 +500,10 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.):
         if lunation == 'dark' or waveName == 'Apogee':
             r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         else:
-            r_core[mag_valid] = 1.75 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.6
+            offsets = numpy.linspace(0, 20, 1000)
+            magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
+            r_core = numpy.interp((mag_limit + safety_factor) - mag[mag_valid],
+                                  magloss, offsets, right=numpy.nan)
         # exlusion radius is the max of each section
         r = numpy.nanmax(numpy.column_stack((r_wings,
                                              r_trans,
@@ -499,7 +512,8 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.):
     return r, offset_flag
 
 
-def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1):
+def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1,
+                  beta=5, FWHM=1.5):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit. Currently assumption is all offsets
@@ -527,11 +541,11 @@ def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1):
     safety_factor: float
         Factor to add to mag_limit.
 
-    offset_flag: int or numpy.array
-        Flag for how offset was set. 0 indicates offset applied
-        normally (i.e. when mag <= mag_limit), 1 indicates no offset applied
-        because mag > mag_limit and 2 indiciates no offset applied
-        because magnitude was null value.
+    beta: float
+        Power index of the Moffat profile
+
+    FWHM: float
+        seeing for the Moffat profile
 
     Returns
     -------
@@ -540,9 +554,17 @@ def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1):
 
     delta_dec: float or numpy.array
         offset in Decl. in arcseconds around object(s)
+
+
+    offset_flag: int or numpy.array
+        Flag for how offset was set. 0 indicates offset applied
+        normally (i.e. when mag <= mag_limit), 1 indicates no offset applied
+        because mag > mag_limit and 2 indiciates no offset applied
+        because magnitude was null value.
     """
     delta_ra, offset_flag = offset_definition(mag, mag_limit, lunation, waveName,
-                                              safety_factor=safety_factor)
+                                              safety_factor=safety_factor, beta=beta,
+                                              FWHM=FWHM)
     if isinstance(delta_ra, float):
         delta_dec = 0.
     else:
