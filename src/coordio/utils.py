@@ -310,11 +310,10 @@ class MoffatLossProfile(object):
         self.beta = beta
         self.FWHM = FWHM
         self.alpha = self.FWHM / (2. * numpy.sqrt(2 ** (1 / self.beta) - 1))
-        self.amplitude = 1.
         self.amplitude = 1. / self.moffat_norm(1.)  # this is the amplitude needed to normalize the Moffat profile
         self.rfiber = rfiber
 
-    def moffat_1D(self, r):  # unit flux at the center
+    def moffat_1D(self, r, amplitude=None):  # unit flux at the center
         """
         Function computing Moffat 1D profile
 
@@ -328,7 +327,10 @@ class MoffatLossProfile(object):
         moff_prof: float or numpy.array
             1D Moffat profile.
         """
-        moff_prof = self.amplitude * (1 + (r / self.alpha) ** 2) ** (-self.beta)
+        if amplitude is None:
+            moff_prof = self.amplitude * (1 + (r / self.alpha) ** 2) ** (-self.beta)
+        else:
+            moff_prof = amplitude * (1 + (r / self.alpha) ** 2) ** (-self.beta)
         return moff_prof
 
     def moffat_norm(self, amplitude):
@@ -350,7 +352,7 @@ class MoffatLossProfile(object):
         # x is the ln radius in units of the r / alpha
         steps = numpy.arange(xmin, xmax, xstep)
         r = self.alpha * numpy.exp(steps)
-        norm = numpy.sum(numpy.exp(2 * steps) * self.moffat_1D(r))
+        norm = numpy.sum(numpy.exp(2 * steps) * self.moffat_1D(r, amplitude=amplitude))
         moff_prof_norm = 2 * numpy.pi * self.alpha ** 2 * norm * xstep
         return moff_prof_norm
 
