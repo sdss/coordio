@@ -465,7 +465,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
             if lunation == 'dark' or waveName == 'Apogee':
                 r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             else:
-                offsets = numpy.linspace(0, 20, 1000)
+                offsets = numpy.linspace(0, 20, 100)
                 magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
                 r_core = numpy.interp((mag_limit + safety_factor) - mag,
                                       magloss, offsets, right=numpy.nan)
@@ -500,7 +500,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         if lunation == 'dark' or waveName == 'Apogee':
             r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         else:
-            offsets = numpy.linspace(0, 20, 1000)
+            offsets = numpy.linspace(0, 20, 100)
             magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
             r_core = numpy.interp((mag_limit + safety_factor) - mag[mag_valid],
                                   magloss, offsets, right=numpy.nan)
