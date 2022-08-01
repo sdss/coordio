@@ -310,6 +310,7 @@ class MoffatFluxLoss(object):
         self.beta = beta
         self.FWHM = FWHM
         self.alpha = self.FWHM / (2. * numpy.sqrt(2 ** (1 / self.beta) - 1))
+        self.amplitude = 1.
         self.amplitude = 1. / self.moffat_norm(1.)  # this is the amplitude needed to normalize the Moffat profile
         self.rfiber = rfiber
 
