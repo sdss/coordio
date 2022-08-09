@@ -376,10 +376,11 @@ class MoffatLossProfile(object):
         X, Y = numpy.meshgrid(x, y)
         r = numpy.sqrt(X **2 + Y ** 2)
         norm = numpy.zeros(len(offset))
+        r_ev = (r <= self.rfiber)
         for i in range(len(offset)):
             r_moffat = numpy.sqrt((X - offset[i]) ** 2 + Y ** 2)
             norm[i] = numpy.sum((self.rfiber / 50) ** 2 *
-                                self.moffat_1D(r_moffat[r <= self.rfiber]))            
+                                self.moffat_1D(r_moffat[r_ev]))            
         return norm
 
     def func_magloss(self):
