@@ -489,13 +489,13 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
             r_trans = ((mag_limit + safety_factor) - mag - 4.5) / 0.25
             # core area
             # do dark core for apogee or dark
-            if lunation == 'dark' or waveName == 'Apogee':
-                r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
-            else:
+            if lunation == 'bright' or waveName == 'Apogee':
                 offsets = numpy.linspace(0, 20, 100)
                 magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
                 r_core = numpy.interp((mag_limit + safety_factor) - mag,
                                       magloss, offsets, right=numpy.nan)
+            else:
+                r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
             r = numpy.nanmax([r_wings, r_trans, r_core])
             offset_flag = 0
@@ -538,13 +538,13 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         # core area
         # core area
         # do dark core for apogee or dark
-        if lunation == 'dark' or waveName == 'Apogee':
-            r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
-        else:
+        if lunation == 'bright' or waveName == 'Apogee':
             offsets = numpy.linspace(0, 20, 100)
             magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
             r_core = numpy.interp((mag_limit + safety_factor) - mag[mag_valid],
                                   magloss, offsets, right=numpy.nan)
+        else:
+            r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
         r = numpy.nanmax(numpy.column_stack((r_wings,
                                              r_trans,
