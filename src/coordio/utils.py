@@ -464,7 +464,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
             - 0: offset applied normally (i.e. when mag <= mag_limit)
             - 1: no offset applied because mag > mag_limit
             - 2: no offset applied because magnitude was null value.
-            - 8: offsets should not be used as sky brightness is <=
+            - 8: No offset applied because sky brightness is <=
                  minimum offset sky brightness
             - 16: no offsets applied because can_offset = False
             - 32: no offset applied because mag <= offset_bright_limit
@@ -512,6 +512,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         if skybrightness is not None and offset_min_skybrightness is not None:
             if skybrightness <= offset_min_skybrightness:
                 offset_flag = 8
+                r = 0.
     else:
         # make can_offset always True if not supplied
         if can_offset is None:
@@ -528,9 +529,6 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         offset_flag = numpy.zeros(mag.shape, dtype=int)
         offset_flag[mag > mag_limit] = 1
         offset_flag[(numpy.isin(mag, cases)) | (numpy.isnan(mag))] = 2
-        if skybrightness is not None and offset_min_skybrightness is not None:
-            if skybrightness <= offset_min_skybrightness:
-                offset_flag[:] = 8
         offset_flag[~can_offset] = 16
         offset_flag[mag <= offset_bright_limit] = 32
         # linear portion in the wings
@@ -552,6 +550,10 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
                                              r_trans,
                                              r_core)),
                          axis=1)
+        if skybrightness is not None and offset_min_skybrightness is not None:
+            if skybrightness <= offset_min_skybrightness:
+                offset_flag[:] = 8
+                r[:] = 0.
     return r, offset_flag
 
 
