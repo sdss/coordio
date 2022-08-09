@@ -467,15 +467,22 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
             - 8: offsets should not be used as sky brightness is <=
                  minimum offset sky brightness
             - 16: no offsets applied because can_offset = False
+            - 32: no offset applied because mag <= offset_bright_limit
+                  (offset_bright_limit is G = 6 for Boss and
+                   H = 1 for Apogee).
     """
     # define Null cases for targetdb.magnitude table
     cases = [-999, -9999, 999,
              0.0, numpy.nan, 99.9, None]
+    if waveName == 'Boss':
+        offset_bright_limit = 6.
+    else:
+        offset_bright_limit = 1.
     if isinstance(mag, float):
         # make can_offset always True if not supplied
         if can_offset is None:
             can_offset = True
-        if mag <= mag_limit and mag not in cases and can_offset:
+        if mag <= mag_limit and mag not in cases and can_offset and mag > offset_bright_limit:
             # linear portion in the wings
             r_wings = ((mag_limit + safety_factor) - mag - 8.2) / 0.05
             # linear portion in transition area
@@ -498,8 +505,10 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
                 offset_flag = 1
             elif mag in cases:
                 offset_flag = 2
-            else:
+            elif not can_offset:
                 offset_flag = 16
+            else:
+                offset_flag = 32
         if skybrightness is not None and offset_min_skybrightness is not None:
             if skybrightness <= offset_min_skybrightness:
                 offset_flag = 8
@@ -513,7 +522,8 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         r_core = numpy.zeros(mag.shape)
         # only do calc for valid mags and can_offsets for offset
         # to avoid warning
-        mag_valid = (mag <= mag_limit) & (~numpy.isin(mag, cases)) & (~numpy.isnan(mag)) & (can_offset)
+        mag_valid = ((mag <= mag_limit) & (~numpy.isin(mag, cases)) &
+                     (~numpy.isnan(mag)) & (can_offset) & (mag > offset_bright_limit))
         # set flags
         offset_flag = numpy.zeros(mag.shape, dtype=int)
         offset_flag[mag > mag_limit] = 1
@@ -522,6 +532,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
             if skybrightness <= offset_min_skybrightness:
                 offset_flag[:] = 8
         offset_flag[~can_offset] = 16
+        offset_flag[mag <= offset_bright_limit] = 32
         # linear portion in the wings
         r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
         # linear portion in transition area
@@ -609,6 +620,9 @@ def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1,
             - 8: offsets should not be used as sky brightness is <=
                  minimum offset sky brightness
             - 16: no offsets applied because can_offset = False
+            - 32: no offset applied because mag <= offset_bright_limit
+                  (offset_bright_limit is G = 6 for Boss and
+                   H = 1 for Apogee).
     """
     delta_ra, offset_flag = offset_definition(mag, mag_limit, lunation, waveName,
                                               safety_factor=safety_factor, beta=beta,
