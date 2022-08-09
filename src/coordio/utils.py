@@ -405,7 +405,7 @@ class MoffatLossProfile(object):
 
 def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
                       beta=5, FWHM=1.5, skybrightness=None,
-                      offset_min_skybrightness=None):
+                      offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit.
@@ -449,6 +449,11 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         Minimum sky brightness for the offset. Only set if
         want to check for offset_flag TOO_DARK (8).
 
+    can_offset: boolean or np.array
+        can_offset value from targetdb for the target(s) to be
+        offset. Only set if
+        want to check for offset_flag NO_CAN_OFFSET (16).
+
     Returns
     -------
     r: float or numpy.array
@@ -461,12 +466,16 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
             - 2: no offset applied because magnitude was null value.
             - 8: offsets should not be used as sky brightness is <=
                  minimum offset sky brightness
+            - 16: no offsets applied because can_offset = False
     """
     # define Null cases for targetdb.magnitude table
     cases = [-999, -9999, 999,
              0.0, numpy.nan, 99.9, None]
     if isinstance(mag, float):
-        if mag <= mag_limit and mag not in cases:
+        # make can_offset always True if not supplied
+        if can_offset is None:
+            can_offset = True
+        if mag <= mag_limit and mag not in cases and can_offset:
             # linear portion in the wings
             r_wings = ((mag_limit + safety_factor) - mag - 8.2) / 0.05
             # linear portion in transition area
@@ -487,19 +496,24 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
             r = 0.
             if mag > mag_limit:
                 offset_flag = 1
-            else:
+            elif mag in cases:
                 offset_flag = 2
+            else:
+                offset_flag = 16
         if skybrightness is not None and offset_min_skybrightness is not None:
             if skybrightness <= offset_min_skybrightness:
                 offset_flag = 8
     else:
+        # make can_offset always True if not supplied
+        if can_offset is None:
+            can_offset = numpy.zeros(mag.shape, dtype=bool) + True
         # create empty arrays for each portion
         r_wings = numpy.zeros(mag.shape)
         r_trans = numpy.zeros(mag.shape)
         r_core = numpy.zeros(mag.shape)
-        # only do calc for valid mags for offset
+        # only do calc for valid mags and can_offsets for offset
         # to avoid warning
-        mag_valid = (mag <= mag_limit) & (~numpy.isin(mag, cases)) & (~numpy.isnan(mag))
+        mag_valid = (mag <= mag_limit) & (~numpy.isin(mag, cases)) & (~numpy.isnan(mag)) & (can_offset)
         # set flags
         offset_flag = numpy.zeros(mag.shape, dtype=int)
         offset_flag[mag > mag_limit] = 1
@@ -507,6 +521,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         if skybrightness is not None and offset_min_skybrightness is not None:
             if skybrightness <= offset_min_skybrightness:
                 offset_flag[:] = 8
+        offset_flag[~can_offset] = 16
         # linear portion in the wings
         r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
         # linear portion in transition area
@@ -531,7 +546,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
 
 def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1,
                   beta=5, FWHM=1.5, skybrightness=None,
-                      offset_min_skybrightness=None):
+                      offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit. Currently assumption is all offsets
@@ -573,6 +588,11 @@ def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1,
         Minimum sky brightness for the offset. Only set if
         want to check for offset_flag TOO_DARK (8).
 
+    can_offset: boolean or np.array
+        can_offset value from targetdb for the target(s) to be
+        offset. Only set if
+        want to check for offset_flag NO_CAN_OFFSET (16).
+
     Returns
     -------
     delta_ra: float or numpy.array
@@ -588,11 +608,13 @@ def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1,
             - 2: no offset applied because magnitude was null value.
             - 8: offsets should not be used as sky brightness is <=
                  minimum offset sky brightness
+            - 16: no offsets applied because can_offset = False
     """
     delta_ra, offset_flag = offset_definition(mag, mag_limit, lunation, waveName,
                                               safety_factor=safety_factor, beta=beta,
                                               FWHM=FWHM, skybrightness=skybrightness,
-                                              offset_min_skybrightness=offset_min_skybrightness)
+                                              offset_min_skybrightness=offset_min_skybrightness,
+                                              can_offset=can_offset)
     if isinstance(delta_ra, float):
         delta_dec = 0.
     else:
