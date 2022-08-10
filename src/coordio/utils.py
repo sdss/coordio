@@ -544,7 +544,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
         offset_flag[mag > mag_limit] = 1
         offset_flag[(numpy.isin(mag, cases)) | (numpy.isnan(mag))] = 2
         offset_flag[~can_offset] = 16
-        offset_flag[mag <= offset_bright_limit] = 32
+        offset_flag[(mag <= offset_bright_limit) & ~((numpy.isin(mag, cases)) | (numpy.isnan(mag)))] = 32
         # linear portion in the wings
         r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
         # linear portion in transition area
@@ -555,8 +555,8 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
         if lunation == 'bright' or waveName == 'Apogee':
             offsets = numpy.linspace(0, 20, 100)
             magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
-            r_core = numpy.interp((mag_limit + safety_factor) - mag[mag_valid],
-                                  magloss, offsets, right=numpy.nan)
+            r_core[mag_valid] = numpy.interp((mag_limit + safety_factor) - mag[mag_valid],
+                                             magloss, offsets, right=numpy.nan)
         else:
             r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
