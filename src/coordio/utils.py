@@ -1,5 +1,6 @@
 import numpy
 import pandas
+from scipy.interpolate import interp2d
 
 from .sky import ICRS, Observed
 from .telescope import Field, FocalPlane
@@ -404,6 +405,31 @@ class MoffatLossProfile(object):
         return magloss
 
 
+def moffat_2d_interp(Noffset, FWHM, beta):
+    """
+    Create the 2D interpolation function
+    for a moffat profile offset for various FWHMs
+    """
+    offsets = numpy.zeros((len(FWHM), Noffset))
+    for i in range(4):
+        offsets[i, :] = numpy.linspace(0, 20, Noffset)
+    FWHMs = numpy.zeros((len(FWHM), Noffset))
+    for i, f in enumerate(FWHM):
+        FWHMs[i, :] = f
+
+    magloss = numpy.zeros((FWHMs.shape[0], Noffset))
+
+    for i, FWHM in enumerate(FWHMs[:, 0]):
+        magloss[i, :] = MoffatLossProfile(offsets[i, :], beta, FWHM).func_magloss()
+
+    fmagloss = interp2d(magloss, FWHMs, offsets, kind='linear')
+    return fmagloss
+
+beta_interp2d = 5
+FWHM_interp2d = [1.3, 1.5, 1.7, 1.9]
+fmagloss = moffat_2d_interp(1000, FWHM_interp2d, beta_interp2d)
+
+
 def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
                       beta=5, FWHM=1.7, skybrightness=None,
                       offset_min_skybrightness=None, can_offset=None):
@@ -504,12 +530,16 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
             # core area
             # do dark core for apogee or dark
             if lunation == 'bright' or waveName == 'Apogee':
-                offsets = numpy.linspace(0, 20, 100)
-                magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
-                r_core = numpy.interp((mag_limit + safety_factor) - mag,
-                                      magloss, offsets, right=numpy.nan)
+                r_core = fmagloss((mag_limit + safety_factor) - mag,
+                                  FWHM)
             else:
-                r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
+                if beta != beta_interp2d or FWHM < FWHM_interp2d[0] or FWHM > FWHM_interp2d[-1]:
+                    offsets = numpy.linspace(0, 20, 1000)
+                    magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
+                    r_core = numpy.interp((mag_limit + safety_factor) - mag,
+                                          magloss, offsets, right=numpy.nan)
+                else:
+                    r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
             r = numpy.nanmax([r_wings, r_trans, r_core])
             offset_flag = 0
@@ -553,10 +583,14 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
         # core area
         # do dark core for apogee or dark
         if lunation == 'bright' or waveName == 'Apogee':
-            offsets = numpy.linspace(0, 20, 100)
-            magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
-            r_core[mag_valid] = numpy.interp((mag_limit + safety_factor) - mag[mag_valid],
-                                             magloss, offsets, right=numpy.nan)
+            if beta != beta_interp2d or FWHM < FWHM_interp2d[0] or FWHM > FWHM_interp2d[-1]:
+                offsets = numpy.linspace(0, 20, 1000)
+                magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
+                r_core[mag_valid] = numpy.interp((mag_limit + safety_factor) - mag[mag_valid],
+                                                 magloss, offsets, right=numpy.nan)
+            else:
+                r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
+                                             FWHM)
         else:
             r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
@@ -573,7 +607,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
 
 def object_offset(mag, mag_limits, lunation, waveName, safety_factor=0.1,
                   beta=5, FWHM=1.7, skybrightness=None,
-                      offset_min_skybrightness=None, can_offset=None):
+                  offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit. Currently assumption is all offsets
