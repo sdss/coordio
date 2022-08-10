@@ -404,7 +404,7 @@ class MoffatLossProfile(object):
         return magloss
 
 
-def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
+def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
                       beta=5, FWHM=1.7, skybrightness=None,
                       offset_min_skybrightness=None, can_offset=None):
     """
@@ -419,10 +419,13 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         The magniutde(s) of the objects. For BOSS should be
         Gaia G-band and for APOGEE should be 2MASS H-band.
 
-    mag_limit: float
-        Magnitude limit for the designmode of the design.
-        For BOSS should be r-band limit and for APOGEE should
-        be H-band limit.
+    mag_limits: numpy.array
+        Magnitude limits for the designmode of the design.
+        This should be an array of length N=10 where indexes
+        correspond to magntidues: [g, r, i, z, bp, gaia_g, rp, J, H, K].
+        This matches the apogee_bright_limit_targets_min or
+        boss_bright_limit_targets_min (depending on instrument) from
+        targetdb.DesignMode for the design_mode of the design.
 
     lunation: str:
         If the designmode is bright time ('bright') or dark
@@ -479,6 +482,16 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
         offset_bright_limit = 6.
     else:
         offset_bright_limit = 1.
+    # set magntiude limit for instrument and lunation
+    if waveName == 'Apogee':
+        # 2MASS H
+        mag_limit = mag_limits[8]
+    elif lunation == 'bright':
+        # Gaia G
+        mag_limit = mag_limits[5]
+    else:
+        # SDSS r
+        mag_limit = mag_limits[1]
     if isinstance(mag, float):
         # make can_offset always True if not supplied
         if can_offset is None:
@@ -558,7 +571,7 @@ def offset_definition(mag, mag_limit, lunation, waveName, safety_factor=0.,
     return r, offset_flag
 
 
-def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1,
+def object_offset(mag, mag_limits, lunation, waveName, safety_factor=0.1,
                   beta=5, FWHM=1.7, skybrightness=None,
                       offset_min_skybrightness=None, can_offset=None):
     """
@@ -572,10 +585,13 @@ def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1,
         The magniutde(s) of the objects. For BOSS should be
         Gaia G-band and for APOGEE should be 2MASS H-band.
 
-    mag_limit: float
-        Magnitude limit for the designmode of the design.
-        For BOSS should be r-band limit and for APOGEE should
-        be H-band limit.
+    mag_limits: numpy.array
+        Magnitude limits for the designmode of the design.
+        This should be an array of length N=10 where indexes
+        correspond to magntidues: [g, r, i, z, bp, gaia_g, rp, J, H, K].
+        This matches the apogee_bright_limit_targets_min or
+        boss_bright_limit_targets_min (depending on instrument) from
+        targetdb.DesignMode for the design_mode of the design.
 
     lunation: str:
         If the designmode is bright time ('bright') or dark
@@ -627,7 +643,7 @@ def object_offset(mag, mag_limit, lunation, waveName, safety_factor=0.1,
                   (offset_bright_limit is G = 6 for Boss and
                    H = 1 for Apogee).
     """
-    delta_ra, offset_flag = offset_definition(mag, mag_limit, lunation, waveName,
+    delta_ra, offset_flag = offset_definition(mag, mag_limits, lunation, waveName,
                                               safety_factor=safety_factor, beta=beta,
                                               FWHM=FWHM, skybrightness=skybrightness,
                                               offset_min_skybrightness=offset_min_skybrightness,
