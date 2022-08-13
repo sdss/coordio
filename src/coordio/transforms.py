@@ -561,6 +561,7 @@ class ZhaoBurgeTransform(object):
         yWokFit = xySimTransFit[:, 1] + dy
         xyWokFit = numpy.array([xWokFit, yWokFit]).T
 
+        self.xyWokIn = xyWok
         self.errs = xyWok - xyWokFit
         self.rms = numpy.sqrt(numpy.mean(self.errs ** 2))
 
@@ -807,6 +808,9 @@ class FVCTransformAPO(object):
         -1.05007864e-06, 2.48271534e-07, -9.28099433e-10, 6.13172886e-10,
         -1.31799608e-09
     ])
+    telRotAngRef = 135.4
+    rotAngDir = 1
+    centType = "zbplus"
 
     def __init__(
         self,
@@ -817,7 +821,7 @@ class FVCTransformAPO(object):
         positionerTable=calibration.positionerTable,
         wokCoords=calibration.wokCoords,
         fiducialCoords=calibration.fiducialCoords,
-        telRotAngRef=135.4,
+        telRotAngRef=None,
         polids=None
     ):
         """
@@ -874,7 +878,8 @@ class FVCTransformAPO(object):
         self.fiducialCoords = fiducialCoords.reset_index()
         self.positionerCoords = positionerCoords.reset_index()
         self.telRotAng = telRotAng
-        self.telRotAngRef = telRotAngRef
+        if telRotAngRef is not None:
+            self.telRotAngRef = telRotAngRef
         self.plotPathPrefix = plotPathPrefix
         if polids is not None:
             self.polids = polids
@@ -888,7 +893,7 @@ class FVCTransformAPO(object):
 
         # construct a matrix for rotating centroids based on telescope
         # rotator angle
-        self.ccd2WokRot = telRotAng - telRotAngRef
+        self.ccd2WokRot = (telRotAng - self.telRotAngRef)*self.rotAngDir
         sinRot = numpy.sin(numpy.radians(self.ccd2WokRot))
         cosRot = numpy.cos(numpy.radians(self.ccd2WokRot))
         self.rotMat = numpy.array([
@@ -928,7 +933,6 @@ class FVCTransformAPO(object):
         self.similarityTransform = None
         self.fullTransform = None
 
-        self.centType = None
         self.maxRoughDist = None
         self.maxMidDist = None
         self.maxFinalDist = None
@@ -1156,7 +1160,7 @@ class FVCTransformAPO(object):
 
     def fit(
         self,
-        centType="nudge",
+        centType=None,
         maxRoughDist=10,
         maxMidDist=4,
         maxFinalDist=0.5,
@@ -1181,8 +1185,9 @@ class FVCTransformAPO(object):
         newInvKin : bool
             If True use new inverse kinematics
         """
-        centType = centType.lower()
-        self.centType = centType
+        if centType is not None:
+            centType = centType.lower()
+            self.centType = centType
         self.maxRoughDist = maxRoughDist
         self.maxMidDist = maxMidDist
         self.maxFinalDist = maxFinalDist
@@ -1190,8 +1195,8 @@ class FVCTransformAPO(object):
 
         if self.centroids is None:
             raise CoordIOError("Must run extractCentroids before fit")
-        if centType not in ["zbplus", "zbminus", "sep", "winpos", "nudge", "simple"]:
-            raise CoordIOError("unknown centType")
+        if self.centType not in ["zbplus", "zbminus", "sep", "winpos", "nudge", "simple"]:
+            raise CoordIOError("unknown centType: %s"%str(self.centType))
 
         xyMetFiber = self._fullTable[
             ["xWokReportMetrology", "yWokReportMetrology"]
@@ -1199,16 +1204,16 @@ class FVCTransformAPO(object):
 
         xyWokFIF = self.fiducialCoords[["xWok", "yWok"]].to_numpy()
 
-        if centType == "winpos":
+        if self.centType == "winpos":
             xyCCDRot = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
             xyCCD = self.centroids[["xWinpos", "yWinpos"]].to_numpy()
-        elif centType == "sep":
+        elif self.centType == "sep":
             xyCCDRot = self.centroids[["xRot", "yRot"]].to_numpy()
             xyCCD = self.centroids[["x", "y"]].to_numpy()
-        elif centType == "simple":
+        elif self.centType == "simple":
             xyCCDRot = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
             xyCCD = self.centroids[["xSimple", "ySimple"]].to_numpy()
-        elif centType in ["nudge", "zbplus", "zbminus"]:
+        elif self.centType in ["nudge", "zbplus", "zbminus"]:
             xyCCDRot = self.centroids[["xNudgeRot", "yNudgeRot"]].to_numpy()
             xyCCD = self.centroids[["xNudge", "yNudge"]].to_numpy()
         else:
@@ -1348,7 +1353,7 @@ class FVCTransformAPO(object):
         positionerMeas["wokErrWarn"] = distances > maxFinalDist
 
         #### apply zb corrections if centype is zbplus or zbminus
-        if centType.startswith("zb") and self.zbCoeffs is not None:
+        if self.centType.startswith("zb") and self.zbCoeffs is not None:
             dx_zb_fit, dy_zb_fit = getZhaoBurgeXY(
                 self.polids, self.zbCoeffs,
                 positionerMeas.xWokMeasMetrology.to_numpy(),
@@ -1358,7 +1363,7 @@ class FVCTransformAPO(object):
             dx_zb_fit *= 0.06
             dy_zb_fit *= 0.06
 
-            if centType == "zbminus":
+            if self.centType == "zbminus":
                 dx_zb_fit *= -1
                 dy_zb_fit *= -1
         else:
@@ -1454,9 +1459,13 @@ class FVCTransformAPO(object):
             self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["x"]
             self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["y"]
 
+
 class FVCTransformLCO(FVCTransformAPO):
     polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
     # polids = numpy.arange(33)
     zbCoeffs = None
+    telRotAngRef = 89
+    rotAngDir = -1
+    centType = "sep"
 
 
