@@ -405,31 +405,6 @@ class MoffatLossProfile(object):
         return magloss
 
 
-def moffat_2d_interp(Noffset, FWHM, beta):
-    """
-    Create the dict of 1D interpolations function
-    for a moffat profile offset for various FWHMs
-    """
-    offsets = numpy.zeros((len(FWHM), Noffset))
-    for i in range(4):
-        offsets[i, :] = numpy.linspace(0, 20, Noffset)
-    FWHMs = numpy.zeros((len(FWHM), Noffset))
-    for i, f in enumerate(FWHM):
-        FWHMs[i, :] = f
-
-    magloss = numpy.zeros((FWHMs.shape[0], Noffset))
-
-    fmagloss = {}
-    for i, FWHM in enumerate(FWHMs[:, 0]):
-        magloss[i, :] = MoffatLossProfile(offsets[i, :], beta, FWHM).func_magloss()
-        fmagloss[FWHM] = interp1d(magloss[i, :], offsets[i, :])
-    return fmagloss
-
-beta_interp2d = 5
-FWHM_interp2d = [1.3, 1.5, 1.7, 1.9]
-fmagloss = moffat_2d_interp(1000, FWHM_interp2d, beta_interp2d)
-
-
 class Moffat2dInterp(object):
     """
     Create the dict of 1D interpolations function
