@@ -463,8 +463,8 @@ class Moffat2dInterp(object):
         return r
 
 
-def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
-                      beta=5, FWHM=1.7, skybrightness=None,
+def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
+                      safety_factor=0., beta=5, FWHM=1.7, skybrightness=None,
                       offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
@@ -493,6 +493,11 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
     waveName: str
         Instrument for the fibers offset definition being applied
         to. Either 'Boss' or 'Apogee'.
+
+    fmagloss: object
+        Moffat2dInterp class with the lookup table
+        for doing the moffat profile inversion. If None,
+        then table is calculated at function call.
 
     safety_factor: float
         Factor to add to mag_limit. Should equal zero for
@@ -551,6 +556,9 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
     else:
         # SDSS r
         mag_limit = mag_limits[1]
+    # get magloss function
+    if fmagloss is None:
+        fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
     if isinstance(mag, float):
         # make can_offset always True if not supplied
         if can_offset is None:
@@ -563,13 +571,11 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
             # core area
             # do dark core for apogee or dark
             if lunation == 'bright' or waveName == 'Apogee':
-                if beta != beta_interp2d or FWHM not in FWHM_interp2d:
-                    offsets = numpy.linspace(0, 20, 1000)
-                    magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
-                    r_core = numpy.interp((mag_limit + safety_factor) - mag,
-                                          magloss, offsets, right=numpy.nan)
+                if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
+                    fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
+                    r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
                 else:
-                    r_core = fmagloss[FWHM]((mag_limit + safety_factor) - mag)
+                    r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
             else:
                 r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
@@ -615,13 +621,13 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
         # core area
         # do dark core for apogee or dark
         if lunation == 'bright' or waveName == 'Apogee':
-            if beta != beta_interp2d or FWHM not in FWHM_interp2d:
-                offsets = numpy.linspace(0, 20, 1000)
-                magloss = MoffatLossProfile(offsets, beta, FWHM).func_magloss()
-                r_core[mag_valid] = numpy.interp((mag_limit + safety_factor) - mag[mag_valid],
-                                                 magloss, offsets, right=numpy.nan)
+            if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
+                fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
+                r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
+                                             FWHM)
             else:
-                r_core[mag_valid] = fmagloss[FWHM]((mag_limit + safety_factor) - mag[mag_valid])
+                r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
+                                             FWHM)
         else:
             r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
@@ -636,8 +642,8 @@ def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
     return r, offset_flag
 
 
-def object_offset(mag, mag_limits, lunation, waveName, safety_factor=0.1,
-                  beta=5, FWHM=1.7, skybrightness=None,
+def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
+                  safety_factor=0., beta=5, FWHM=1.7, skybrightness=None,
                   offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
@@ -665,6 +671,11 @@ def object_offset(mag, mag_limits, lunation, waveName, safety_factor=0.1,
     waveName: str
         Instrument for the fibers offset definition being applied
         to. Either 'Boss' or 'Apogee'.
+
+    fmagloss: object
+        Moffat2dInterp class with the lookup table
+        for doing the moffat profile inversion. If None,
+        then table is calculated at function call.
 
     safety_factor: float
         Factor to add to mag_limit.
@@ -709,6 +720,7 @@ def object_offset(mag, mag_limits, lunation, waveName, safety_factor=0.1,
                    H = 1 for Apogee).
     """
     delta_ra, offset_flag = offset_definition(mag, mag_limits, lunation, waveName,
+                                              fmagloss=fmagloss,
                                               safety_factor=safety_factor, beta=beta,
                                               FWHM=FWHM, skybrightness=skybrightness,
                                               offset_min_skybrightness=offset_min_skybrightness,
