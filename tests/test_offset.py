@@ -1,4 +1,4 @@
-from coordio.utils import object_offset
+from coordio.utils import object_offset, Moffat2dInterp
 import numpy
 import pytest
 
@@ -12,11 +12,13 @@ mag_limits['dark'] = {}
 mag_limits['dark']['Boss'] = numpy.array([15.0, 15.0, 15.0, -999.0, -999.0, -999.0, -999.0, -999.0, -999.0, -999.0])
 mag_limits['dark']['Apogee'] = numpy.array([-999.0, -999.0, -999.0, -999.0, -999.0, -999.0, -999.0, -999.0, 7.0, -999.0])
 
+fmagloss = Moffat2dInterp()
+
 
 def  test_flags(flag, mag, mag_limits, lunation, waveName,
                 sky, offset_min_skybrightness, can_off):
     delta_ra, delta_dec, offset_flag = object_offset(mag, mag_limits, lunation,
-                                                     waveName, safety_factor=0.1,
+                                                     waveName, fmagloss=fmagloss, safety_factor=0.1,
                                                      beta=5, FWHM=1.7, skybrightness=sky,
                                                      offset_min_skybrightness=offset_min_skybrightness,
                                                      can_offset=can_off)
@@ -32,7 +34,7 @@ def  test_flags(flag, mag, mag_limits, lunation, waveName,
     else:
         can_off_arr = numpy.array([can_off])
     delta_ra, delta_dec, offset_flag = object_offset(numpy.array([mag]), mag_limits, lunation,
-                                                     waveName, safety_factor=0.1,
+                                                     waveName, fmagloss=fmagloss, safety_factor=0.1,
                                                      beta=5, FWHM=1.7, skybrightness=sky,
                                                      offset_min_skybrightness=offset_min_skybrightness,
                                                      can_offset=can_off_arr)
