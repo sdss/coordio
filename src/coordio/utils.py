@@ -430,6 +430,39 @@ FWHM_interp2d = [1.3, 1.5, 1.7, 1.9]
 fmagloss = moffat_2d_interp(1000, FWHM_interp2d, beta_interp2d)
 
 
+class Moffat2dInterp(object):
+    """
+    Create the dict of 1D interpolations function
+    for a moffat profile offset for various FWHMs
+    """
+    def __init__(self, Noffset=None, FWHM=None, beta=None):
+        if Noffset is None:
+            Noffset = 1000
+        if FWHM is None:
+            FWHM = [1.3, 1.5, 1.7, 1.9]
+        if beta is None:
+            beta = 5
+        offsets = numpy.zeros((len(FWHM), Noffset))
+        FWHMs = numpy.zeros((len(FWHM), Noffset))
+        for i, f in enumerate(FWHM):
+            FWHMs[i, :] = f
+            offsets[i, :] = numpy.linspace(0, 20, Noffset)
+
+        magloss = numpy.zeros((FWHMs.shape[0], Noffset))
+
+        fmagloss = {}
+        for i, f in enumerate(FWHMs[:, 0]):
+            magloss[i, :] = MoffatLossProfile(offsets[i, :], beta, f).func_magloss()
+            fmagloss[f] = interp1d(magloss[i, :], offsets[i, :])
+        self.fmagloss = fmagloss
+        self.beta_interp2d = beta
+        self.FWHM_interp2d = FWHM
+
+    def __call__(self, magloss, FWHM):
+        r = self.fmagloss[FWHM](magloss)
+        return r
+
+
 def offset_definition(mag, mag_limits, lunation, waveName, safety_factor=0.,
                       beta=5, FWHM=1.7, skybrightness=None,
                       offset_min_skybrightness=None, can_offset=None):
