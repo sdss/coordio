@@ -534,7 +534,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
     # get magloss function
     if fmagloss is None:
         fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
-    if isinstance(mag, float):
+    if isinstance(mag, float) or isinstance(mag, int):
         # make can_offset always True if not supplied
         if can_offset is None:
             can_offset = True
