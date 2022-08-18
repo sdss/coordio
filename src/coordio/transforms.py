@@ -1461,11 +1461,12 @@ class FVCTransformAPO(object):
 
 
 class FVCTransformLCO(FVCTransformAPO):
-    polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
+    polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults, best so far
+
     # polids = numpy.arange(33)
     zbCoeffs = None
     telRotAngRef = 89
     rotAngDir = -1
-    centType = "sep"
+    centType = "nudge"
 
 
