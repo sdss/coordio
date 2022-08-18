@@ -811,6 +811,7 @@ class FVCTransformAPO(object):
     telRotAngRef = 135.4
     rotAngDir = 1
     centType = "zbplus"
+    telescopePlateScale = 0.060 # mm/arcsec
 
     def __init__(
         self,
@@ -1027,14 +1028,11 @@ class FVCTransformAPO(object):
             raise CoordIOError("ccdRotCenXY must be a 2 element vector")
 
 
-        # t1 = time.time()
         objects = sep.extract(
             self.data_sub,
             backgroundSigma,
             err=self.bkg.globalrms,
         )
-        # print("sep extract took", time.time()-t1)
-        # print("sep found %i sources"%len(objects))
 
         # get rid of obvious bogus detections
         objects = objects[objects["npix"] > centroidMinNpix]
@@ -1052,30 +1050,6 @@ class FVCTransformAPO(object):
         # don't fit anything with an absolute correction > 0.75 pixels
         # rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
 
-        # don't fit anything over a radius of 300 (domain problems of hogg fit)
-        # _xm = objects["x"] - numpy.mean(objects["x"])
-        # _ym = objects["y"] - numpy.mean(objects["y"])
-        # _rm = numpy.sqrt(_xm**2+_ym**2) * 120 / 1000
-        # _rejectInds = _rm > 300
-
-        # print("old/new reject", sum(_rejectInds), sum(rejectInds))
-
-        # plt.figure()
-        # plt.plot(objects["x"], objects["y"], 'ok')
-        # plt.plot(xNudge, yNudge, 'xr')
-        # plt.axis("equal")
-
-        # plt.axis("equal")
-
-
-        # plt.show()
-
-        # print("rejecting", len(xNudge[rejectInds]))
-        # xNudge[rejectInds] = objects["x"][rejectInds]
-        # yNudge[rejectInds] = objects["y"][rejectInds]
-
-        # nudged centroid domain only includes positioners,
-        # overwrite them for the outer fiducials
 
         # create mask and re-extract using winpos algorithm
         maskArr = numpy.ones(self.data_sub.shape, dtype=bool)
@@ -1089,7 +1063,6 @@ class FVCTransformAPO(object):
                 for ystep in boxSteps:
                     maskArr[_ym + ystep, _xm + xstep] = False
 
-        # t1 = time.time()
         xNew, yNew, flags = sep.winpos(
             self.data_sub,
             objects["xcpeak"],
@@ -1097,7 +1070,6 @@ class FVCTransformAPO(object):
             sig=winposSigma,
             mask=maskArr
         )
-        # print("winpos took", time.time()-t1)
 
 
         off = 1022  # trim the LR edges refinexy needs square
@@ -1120,35 +1092,46 @@ class FVCTransformAPO(object):
         objects["xNudge"] = xNudge
         objects["yNudge"] = yNudge
 
-        # import pdb; pdb.set_trace()
-
         # rotate raw centroids by rotator angle
-        xy = objects[["x", "y"]].to_numpy()
-        xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+        _centTypes = [
+            ["x", "y"],
+            ["xWinpos", "yWinpos"],
+            ["xSimple", "ySimple"],
+            ["xNudge", "yNudge"]
+        ]
 
-        objects["xRot"] = xyRot[:, 0]
-        objects["yRot"] = xyRot[:, 1]
+        for _centType in _centTypes:
+            xy = objects[_centType].to_numpy()
+            xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+            objects[_centType[0]+"Rot"] = xyRot[:,0]
+            objects[_centType[1]+"Rot"] = xyRot[:,1]
 
-        # rotate winpos centroids by rotator angle
-        xy = objects[["xWinpos", "yWinpos"]].to_numpy()
-        xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+        # xy = objects[["x", "y"]].to_numpy()
+        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
 
-        objects["xWinposRot"] = xyRot[:, 0]
-        objects["yWinposRot"] = xyRot[:, 1]
+        # objects["xRot"] = xyRot[:, 0]
+        # objects["yRot"] = xyRot[:, 1]
 
-        # rotate simple centroids by rotator angle
-        xy = objects[["xSimple", "ySimple"]].to_numpy()
-        xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+        # # rotate winpos centroids by rotator angle
+        # xy = objects[["xWinpos", "yWinpos"]].to_numpy()
+        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
 
-        objects["xSimpleRot"] = xyRot[:, 0]
-        objects["ySimpleRot"] = xyRot[:, 1]
+        # objects["xWinposRot"] = xyRot[:, 0]
+        # objects["yWinposRot"] = xyRot[:, 1]
 
-        # rotate nudged centroids by rotator angle
-        xy = objects[["xNudge", "yNudge"]].to_numpy()
-        xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+        # # rotate simple centroids by rotator angle
+        # xy = objects[["xSimple", "ySimple"]].to_numpy()
+        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
 
-        objects["xNudgeRot"] = xyRot[:, 0]
-        objects["yNudgeRot"] = xyRot[:, 1]
+        # objects["xSimpleRot"] = xyRot[:, 0]
+        # objects["ySimpleRot"] = xyRot[:, 1]
+
+        # # rotate nudged centroids by rotator angle
+        # xy = objects[["xNudge", "yNudge"]].to_numpy()
+        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
+
+        # objects["xNudgeRot"] = xyRot[:, 0]
+        # objects["yNudgeRot"] = xyRot[:, 1]
 
 
         objects["centroidID"] = list(range(len(objects)))
@@ -1360,8 +1343,8 @@ class FVCTransformAPO(object):
                 positionerMeas.yWokMeasMetrology.to_numpy()
             )
             # multiply by scale (arcsec to mm)
-            dx_zb_fit *= 0.06
-            dy_zb_fit *= 0.06
+            dx_zb_fit *= self.telescopePlateScale
+            dy_zb_fit *= self.telescopePlateScale
 
             if self.centType == "zbminus":
                 dx_zb_fit *= -1
@@ -1465,8 +1448,9 @@ class FVCTransformLCO(FVCTransformAPO):
 
     # polids = numpy.arange(33)
     zbCoeffs = None
-    telRotAngRef = 89
+    telRotAngRef = 89 # rotator angle that puts xyWok aligned with xyCCD on FVC image
     rotAngDir = -1
     centType = "nudge"
+    telescopePlateScale = 0.092 # mm/arcsec
 
 
