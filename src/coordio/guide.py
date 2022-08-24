@@ -343,7 +343,7 @@ class GuiderFitter:
         """Adds an astrometric measurement."""
 
         if isinstance(camera, str):
-            match = re.match(r".+([1-6]).+", camera)
+            match = re.match(r".*([1-6]).*", camera)
             if not match:
                 raise CoordIOError(f"Cannot understand camera {camera!r}.")
             camera = int(match.group(1))
@@ -358,6 +358,16 @@ class GuiderFitter:
             self.astro_data.set_index("gfa_id", inplace=True)
         else:
             self.astro_data.loc[camera] = new_data[1:]  # type: ignore
+
+    def add_wcs(self, camera: str | int, wcs: WCS, obstime: float):
+        """Adds a camera measurement from a WCS solution."""
+
+        coords: Any = wcs.pixel_to_world(*self.reference_pixel)
+
+        ra = coords.ra.value
+        dec = coords.dec.value
+
+        self.add_astro(camera, ra, dec, obstime)
 
     def add_gimg(self, path: str | pathlib.Path):
         """Processes a raw GFA image, runs astrometry.net, adds the solution."""
@@ -388,23 +398,21 @@ class GuiderFitter:
             position_angle=pa_field,
         )
 
-        astro_solution = astrometrynet_quick(
+        wcs = astrometrynet_quick(
             sources,
             radec_centre[0],
             radec_centre[1],
             self.pixel_scale,
         )
 
-        if astro_solution is None:
+        if wcs is None:
             raise CoordIOError("astrometry.net could not solve image.")
-
-        racen, deccen = astro_solution.pixel_to_world_values([self.reference_pixel])[0]
 
         obstime = Time(header["DATE-OBS"], format="iso").jd
 
-        self.add_astro(camera_id, racen, deccen, obstime)
+        self.add_wcs(camera_id, wcs, obstime)
 
-        return astro_solution
+        return wcs
 
     def add_proc_gimg(self, path: str | pathlib.Path):
         """Adds an astrometric solution from a ``proc-gimg`` image."""
@@ -424,20 +432,16 @@ class GuiderFitter:
             raise CoordIOError(f"Image {path!s} has not been astrometrically solved.")
 
         wcs = WCS(header)
-        coords: Any = wcs.pixel_to_world(*self.reference_pixel)
-
-        ra = coords.ra.value
-        dec = coords.dec.value
         obstime = Time(header["DATE-OBS"], format="iso").jd
 
-        self.add_astro(header["CAMNAME"], ra, dec, obstime)
+        self.add_wcs(header["CAMNAME"], wcs, obstime)
 
     def fit(
         self,
         field_ra: float,
         field_dec: float,
         field_pa: float = 0.0,
-        offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        offset: tuple[float, float, float] | numpy.ndarray = (0.0, 0.0, 0.0),
         scale_rms: bool = False,
     ):
         """Performs the fit and returns a `.GuiderFit` object.
