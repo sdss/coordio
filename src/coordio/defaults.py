@@ -10,7 +10,8 @@ from .exceptions import CoordIOError
 # default/constant values collected here...for now
 
 # a scale factor between xy focal and xy wok
-FOCAL_SCALE = 0.9998
+# JSG: setting this to 1.0. We may remove it eventually.
+FOCAL_SCALE = 1.0
 
 MICRONS_PER_MM = 1000
 GFA_PIXEL_SIZE = 13.5  # micron
@@ -18,25 +19,14 @@ GFA_CHIP_CENTER = 1024  # unbinned pixels
 
 EPOCH = 2451545.0  # J2000
 WAVELENGTH = 6231.0  # angstrom, GFA wavelength
-VALID_WAVELENGTHS = set([5400., 6231., 16600.])
+VALID_WAVELENGTHS = set([5400.0, 6231.0, 16600.0])
 
 # wavelengths in angstroms
-WAVE_TO_INST = {
-    5400.0: "Boss",
-    6231.0: "GFA",  # sdss-r band
-    16600.0: "Apogee"
-}
+WAVE_TO_INST = {5400.0: "Boss", 6231.0: "GFA", 16600.0: "Apogee"}  # sdss-r band
 
-INST_TO_WAVE = {
-    "Boss": 5400.0,
-    "GFA": 6231.0,
-    "Apogee": 16600.0
-}
+INST_TO_WAVE = {"Boss": 5400.0, "GFA": 6231.0, "Apogee": 16600.0}
 
-PLATE_SCALE = {
-    "APO": 217.7358,  # mm/deg
-    "LCO": 330.275
-}
+PLATE_SCALE = {"APO": 217.7358, "LCO": 330.275}  # mm/deg
 
 POSITIONER_HEIGHT = 143.1  # mm, distance from wok surface to fiber
 ALPHA_LEN = 7.4  # mm, length of the alpha arm (distance between alpha and beta axes)
@@ -167,10 +157,10 @@ def getHoleOrient(site, holeID):
 
     wokCoordsH = calibration.wokCoords.loc[(site, holeID)]
 
-    b = wokCoordsH.loc[['xWok', 'yWok', 'zWok']].to_numpy()
-    iHat = wokCoordsH.loc[['ix', 'iy', 'iz']].to_numpy()
-    jHat = wokCoordsH.loc[['jx', 'jy', 'jz']].to_numpy()
-    kHat = wokCoordsH.loc[['kx', 'ky', 'kz']].to_numpy()
+    b = wokCoordsH.loc[["xWok", "yWok", "zWok"]].to_numpy()
+    iHat = wokCoordsH.loc[["ix", "iy", "iz"]].to_numpy()
+    jHat = wokCoordsH.loc[["jx", "jy", "jz"]].to_numpy()
+    kHat = wokCoordsH.loc[["kx", "ky", "kz"]].to_numpy()
 
     return b, iHat, jHat, kHat
 
