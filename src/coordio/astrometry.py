@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -293,6 +294,13 @@ def astrometrynet_quick(
     ra: float,
     dec: float,
     pixel_scale: float,
+    pixel_scale_factor_hi: float = 1.1,
+    pixel_scale_factor_lo: float = 0.9,
+    radius: float = 0.5,
+    width: float = 2048,
+    height: float = 2048,
+    index_path: str | None = None,
+    verbose: bool = False,
 ):
     """Quickly process a set of detections using astrometry.net.
 
@@ -308,6 +316,23 @@ def astrometrynet_quick(
         The estimated declination of the field, in degrees.
     pixel_scale
         The estimated pixel scale, in arcsec.
+    pixel_scale_factor_lo
+        A multiplicative factor for the pixel scale to calculate the
+        lowest possible pixel scale to attempt.
+    pixel_scale_factor_hi
+        A multiplicative factor for the pixel scale to calculate the
+        highest possible pixel scale to attempt.
+    radius
+        The radius, in degrees, around ``ra`` and ``dec`` to search.
+    width
+        The width of the image in pixels.
+    height
+        The height of the image in pixels.
+    index_path
+        The path to the index files to use. By default, uses whatever is
+        defined in ``etc/astrometrynet.cfg`` in the coordio package.
+    verbose
+        Raise an error if the field is not solved.
 
     Returns
     -------
@@ -317,21 +342,37 @@ def astrometrynet_quick(
 
     """
 
-    backend_config = pathlib.Path(__file__).parent / "etc/astrometrynet.cfg"
+    if not isinstance(regions, pandas.DataFrame):
+        regions = pandas.DataFrame(regions)
+
+    outtempfile = tempfile.NamedTemporaryFile().name
+
+    backend_config: str
+    if index_path:
+        index_path = os.path.abspath(index_path)
+        backend_config = os.path.join(os.path.dirname(outtempfile), "astrometrynet.cfg")
+        with open(backend_config, "w") as ff:
+            ff.write(
+                f"""inparallel
+cpulimit 30
+add_path {index_path}
+autoindex
+"""
+            )
+    else:
+        backend_config = str(pathlib.Path(__file__).parent / "etc/astrometrynet.cfg")
 
     astrometry = AstrometryNet(
         backend_config=str(backend_config),
-        width=2048,
-        height=2048,
+        width=width,
+        height=height,
         no_plots=True,
-        scale_low=pixel_scale * 0.9,
-        scale_high=pixel_scale * 1.1,
+        scale_low=pixel_scale * pixel_scale_factor_lo,
+        scale_high=pixel_scale * pixel_scale_factor_hi,
         scale_units="arcsecperpix",
         sort_column="flux",
-        radius=0.5,
+        radius=radius,
     )
-
-    outtempfile = tempfile.NamedTemporaryFile(delete=False).name
 
     xyls_df = regions.loc[:, ["x", "y", "flux"]]
     xyls = Table.from_pandas(xyls_df)
@@ -353,5 +394,11 @@ def astrometrynet_quick(
         wcs = WCS(open(wcs_output).read())
         wcs_output.unlink()
         return wcs
+    else:
+        if verbose:
+            if os.path.exists(outtempfile + ".stdout"):
+                raise RuntimeError(open(outtempfile + ".stdout").read())
+            else:
+                raise RuntimeError("Unexpected error. No stderr was generated.")
 
     return None
