@@ -6,6 +6,8 @@
 # @Filename: test_sky.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
+import sys
+
 import astropy.time
 import numpy
 import pytest
@@ -61,8 +63,13 @@ def test_to_epoch():
                                             icrs_2020[:, 1],
                                             decimal=6)
 
-    astropy_pm_ra_cosdec = (new_astropy_icrs.pm_ra.value *
-                            numpy.cos(numpy.radians(new_astropy_icrs.dec.deg)))
+    if sys.version_info < (3, 8):
+        pm_ra = new_astropy_icrs.pm_ra.value
+    else:
+        pm_ra = new_astropy_icrs.pm_ra_cosdec.value
+
+    astropy_pm_ra_cosdec = pm_ra * numpy.cos(numpy.radians(new_astropy_icrs.dec.deg))
+
     numpy.testing.assert_array_almost_equal(astropy_pm_ra_cosdec,
                                             icrs_2020.pmra,
                                             decimal=6)
