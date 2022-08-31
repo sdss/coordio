@@ -31,9 +31,9 @@ def sextractor_quick(data: numpy.ndarray, threshold: float = 5.0, clean: bool = 
     data = data.astype("f8")
 
     back = sep.Background(data)
-    rms = back.rms()
+    rms = back.globalrms
 
-    stars = sep.extract(data - back, threshold, err=rms)
+    stars = sep.extract(data - back.back(), threshold, err=rms)
 
     df = pandas.DataFrame(stars)
 
