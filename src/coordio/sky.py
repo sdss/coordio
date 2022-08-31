@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ctypes
 import warnings
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy
@@ -162,7 +163,7 @@ class ICRS(Coordinate2D):
         parallax2 = ctypes.c_double()
         rvel2 = ctypes.c_double()
 
-        new_icrs = self.copy()
+        new_icrs = ICRS(numpy.zeros(self.shape, dtype=self.dtype))
 
         for ii in range(self.shape[0]):
 

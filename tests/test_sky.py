@@ -8,12 +8,12 @@
 
 import astropy.time
 import numpy
+import pytest
 from astropy import units as u
 from astropy.coordinates import AltAz, Distance, EarthLocation, SkyCoord
 
-from coordio import ICRS, Observed, Site, CoordIOError
+from coordio import ICRS, CoordIOError, Observed, Site
 
-import pytest
 
 wavelength = 7000
 
