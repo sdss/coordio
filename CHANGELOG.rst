@@ -4,8 +4,8 @@
 Change Log
 ==========
 
-1.4.0
------
+1.4.0 (2022-08-31)
+------------------
 
 * Add dimage (Blanton's) simplexy and refinexy for centroiding if wanted
 * Add nudge option for centroiding based on CCD static distortion model
