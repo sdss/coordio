@@ -64,11 +64,10 @@ def test_to_epoch():
                                             decimal=6)
 
     if sys.version_info < (3, 8):
-        pm_ra = new_astropy_icrs.pm_ra.value
+        cos_dec = numpy.cos(numpy.radians(new_astropy_icrs.dec.deg))
+        astropy_pm_ra_cosdec = new_astropy_icrs.pm_ra.value * cos_dec
     else:
-        pm_ra = new_astropy_icrs.pm_ra_cosdec.value
-
-    astropy_pm_ra_cosdec = pm_ra * numpy.cos(numpy.radians(new_astropy_icrs.dec.deg))
+        astropy_pm_ra_cosdec = new_astropy_icrs.pm_ra_cosdec.value
 
     numpy.testing.assert_array_almost_equal(astropy_pm_ra_cosdec,
                                             icrs_2020.pmra,
