@@ -11,6 +11,10 @@ Change Log
 * Add nudge option for centroiding based on CCD static distortion model
 * Default to 33 term ZB basis and nudge centroiding for FVC
 * Fix a bug in which the object epoch for an ``ICRS`` coordinate would not change when ``ICRS.to_epoch()`` was called.
+* Tweaks to ``FVCTransformLCO`` parameters based on telescope data.
+* Moved astrometry.net and guider fitting tools from ``cherno`` to ``coordio.guide``.
+* Added a ``coordio.extraction.sextractor_quick()`` function for simple extraction with background subtraction using ``sep``.
+* Change ``defaults.FOCAL_SCALE`` to 1. It may be removed in the future.
 
 
 1.3.1 (2022-04-24)
