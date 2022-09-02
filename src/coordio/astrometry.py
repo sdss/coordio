@@ -125,9 +125,20 @@ class AstrometryNet:
             "dir": dir,
             "overwrite": True,
         }
-        self._options.update(kwargs)
+        self._options.update(self._format_options(kwargs))
 
         return
+
+    def _format_options(self, options: dict):
+        """Formats the option names."""
+
+        formatted_options = {}
+
+        for key, value in options.items():
+            formatted_key = key.replace("_", "-")
+            formatted_options[formatted_key] = value
+
+        return formatted_options
 
     def _build_command(self, files, options=None):
         """Builds the ``solve-field`` command to run."""
@@ -186,7 +197,7 @@ class AstrometryNet:
         """
 
         options = self._options.copy()
-        options.update(kwargs)
+        options.update(self._format_options(kwargs))
 
         if not isinstance(files, (tuple, list)):
             files = [files]
