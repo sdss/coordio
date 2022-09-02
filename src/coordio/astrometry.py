@@ -318,6 +318,7 @@ def astrometrynet_quick(
     height: float = 2048,
     index_path: str | None = None,
     verbose: bool = False,
+    **kwargs,
 ):
     """Quickly process a set of detections using astrometry.net.
 
@@ -350,6 +351,8 @@ def astrometrynet_quick(
         defined in ``etc/astrometrynet.cfg`` in the coordio package.
     verbose
         Raise an error if the field is not solved.
+    kwargs
+        Other options to pass to `.AstrometryNet`.
 
     Returns
     -------
@@ -379,7 +382,7 @@ autoindex
     else:
         backend_config = str(pathlib.Path(__file__).parent / "etc/astrometrynet.cfg")
 
-    astrometry = AstrometryNet(
+    opts = dict(
         backend_config=str(backend_config),
         width=width,
         height=height,
@@ -390,9 +393,11 @@ autoindex
         sort_column="flux",
         radius=radius,
     )
+    opts.update(kwargs)
 
-    xyls_df = regions.loc[:, ["x", "y", "flux"]]
-    xyls = Table.from_pandas(xyls_df)
+    astrometry = AstrometryNet(**opts)
+
+    xyls = Table.from_pandas(regions)
     xyls_path = outtempfile + ".xyls"
     xyls.write(xyls_path, format="fits", overwrite=True)
 
@@ -414,7 +419,9 @@ autoindex
     else:
         if verbose:
             if os.path.exists(outtempfile + ".stdout"):
-                raise RuntimeError(open(outtempfile + ".stdout").read())
+                stdout = open(outtempfile + ".stdout").read()
+                stderr = open(outtempfile + ".stderr").read()
+                raise RuntimeError(stdout + "\n" + stderr)
             else:
                 raise RuntimeError("Unexpected error. No stderr was generated.")
 
