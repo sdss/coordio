@@ -208,7 +208,10 @@ class AstrometryNet:
 
         if stdout:
             with open(stdout, "wb") as out:
-                out.write(" ".join(args).encode() + b"\n")
+                if isinstance(args, str):
+                    out.write(args.encode() + b"\n")
+                else:
+                    out.write(" ".join(args).encode() + b"\n")
                 out.write(cmd.stdout)
 
         if stderr:
@@ -279,7 +282,10 @@ class AstrometryNet:
 
         if stdout:
             with open(stdout, "wb") as out:
-                out.write(" ".join(args).encode() + b"\n")
+                if isinstance(args, str):
+                    out.write(args.encode() + b"\n")
+                else:
+                    out.write(" ".join(args).encode() + b"\n")
                 out.write(stdout_bytes)
 
         if stderr:
