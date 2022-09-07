@@ -503,7 +503,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         offset radius in arcseconds around object(s)
 
     offset_flag: int or numpy.array
-        Flag for how offset was set. Flags are:
+        bitmask for how offset was set. Flags are:
             - 0: offset applied normally (i.e. when mag <= mag_limit)
             - 1: no offset applied because mag > mag_limit
             - 2: no offset applied because magnitude was null value.
@@ -538,6 +538,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         # make can_offset always True if not supplied
         if can_offset is None:
             can_offset = True
+        offset_flag = 0
         if mag <= mag_limit and mag not in cases and can_offset and mag > offset_bright_limit:
             # linear portion in the wings
             r_wings = ((mag_limit + safety_factor) - mag - 8.2) / 0.05
@@ -555,20 +556,19 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
                 r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
             r = numpy.nanmax([r_wings, r_trans, r_core])
-            offset_flag = 0
         else:
             r = 0.
             if mag > mag_limit:
-                offset_flag = 1
+                offset_flag += 1
             elif mag in cases:
-                offset_flag = 2
+                offset_flag += 2
             elif not can_offset:
-                offset_flag = 16
+                offset_flag += 16
             else:
-                offset_flag = 32
+                offset_flag += 32
         if skybrightness is not None and offset_min_skybrightness is not None:
             if skybrightness <= offset_min_skybrightness:
-                offset_flag = 8
+                offset_flag += 8
                 r = 0.
     else:
         # make can_offset always True if not supplied
@@ -584,10 +584,10 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
                      (~numpy.isnan(mag)) & (can_offset) & (mag > offset_bright_limit))
         # set flags
         offset_flag = numpy.zeros(mag.shape, dtype=int)
-        offset_flag[mag > mag_limit] = 1
-        offset_flag[(numpy.isin(mag, cases)) | (numpy.isnan(mag))] = 2
-        offset_flag[~can_offset] = 16
-        offset_flag[(mag <= offset_bright_limit) & ~((numpy.isin(mag, cases)) | (numpy.isnan(mag)))] = 32
+        offset_flag[mag > mag_limit] += 1
+        offset_flag[(numpy.isin(mag, cases)) | (numpy.isnan(mag))] += 2
+        offset_flag[~can_offset] += 16
+        offset_flag[(mag <= offset_bright_limit) & ~((numpy.isin(mag, cases)) | (numpy.isnan(mag)))] += 32
         # linear portion in the wings
         r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
         # linear portion in transition area
@@ -612,7 +612,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
                          axis=1)
         if skybrightness is not None and offset_min_skybrightness is not None:
             if skybrightness <= offset_min_skybrightness:
-                offset_flag[:] = 8
+                offset_flag[:] += 8
                 r[:] = 0.
     return r, offset_flag
 
@@ -683,7 +683,7 @@ def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
         offset in Decl. in arcseconds around object(s)
 
     offset_flag: int or numpy.array
-        Flag for how offset was set. Flags are:
+        bitmask for how offset was set. Flags are:
             - 0: offset applied normally (i.e. when mag <= mag_limit)
             - 1: no offset applied because mag > mag_limit
             - 2: no offset applied because magnitude was null value.
