@@ -71,7 +71,7 @@ def wokCurveLCO(r):
 
 
 def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
-                obsSite, obsTime, focalScale=defaults.FOCAL_SCALE, pmra=None, pmdec=None, parallax=None,
+                obsSite, obsTime, focalScale=None, pmra=None, pmdec=None, parallax=None,
                 radVel=None, pressure=None, relativeHumidity=0.5,
                 temperature=10):
     r"""
@@ -104,6 +104,9 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     obsTime : float
         TDB Julian date.  The time at which these coordinates will be observed
         with the FPS.
+    focalScale : float or None
+        Scale factor for conversion between focal and wok coords, found
+        via dither analysis.  Defaults to value in defaults.SITE_TO_SCALE
     pmra : numpy.ndarray
         A 1D array with the proper motion in the RA axis for the N targets,
         in milliarcsec/yr. Must be a true angle, i.e, it must include the
@@ -174,7 +177,6 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     icrsCen = ICRS([[raCen, decCen]])
     obsCen = Observed(icrsCen, site=site, wavelength=defaults.INST_TO_WAVE["GFA"])
 
-
     radec = numpy.array([ra, dec]).T
 
     icrs = ICRS(
@@ -184,6 +186,8 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 
     # propogate propermotions, etc
     icrs = icrs.to_epoch(obsTime, site=site)
+    if focalScale is None:
+        focalScale = defaults.SITE_TO_SCALE[obsSite]
 
     obs = Observed(icrs, site=site, wavelength=wavelength)
     field = Field(obs, field_center=obsCen)
@@ -198,7 +202,7 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 
 
 def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
-                obsSite, obsTime, pressure=None, relativeHumidity=0.5,
+                obsSite, obsTime, focalScale=None, pressure=None, relativeHumidity=0.5,
                 temperature=10):
     r"""
     Convert from flat-wok XY (mm) to ra, dec ICRS coords (deg)
@@ -226,6 +230,9 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
     obsTime : float
         TDB Julian date.  The time at which these coordinates will be observed
         with the FPS.
+    focalScale : float or None
+        Scale factor for conversion between focal and wok coords, found
+        via dither analysis.  Defaults to value in defaults.SITE_TO_SCALE
     pressure : float
         The atmospheric pressure at the site, in millibar (same as hPa). If
         not provided the pressure will be calculated using the altitude
@@ -298,7 +305,9 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
     xyzWok[:, 2] = zWok
 
     wok = Wok(xyzWok, site=site, obsAngle=obsAngle)
-    focal = FocalPlane(wok, wavelength=wavelength, site=site)
+    if focalScale is None:
+        focalScale = defaults.SITE_TO_SCALE[obsSite]
+    focal = FocalPlane(wok, wavelength=wavelength, site=site, fpScale=focalScale)
     field = Field(focal, field_center=obsCen)
     obs = Observed(field, site=site, wavelength=wavelength)
     icrs = ICRS(obs, epoch=obsTime)

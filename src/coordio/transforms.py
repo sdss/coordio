@@ -1419,7 +1419,7 @@ class FVCTransformAPO(object):
 
         self.positionerTableMeas = xyWokFiberFromPositioner(
             self.positionerTableMeas, angleType="Meas", doMetrology=False
-            )
+        )
 
         if self.centType in ["nudge", "zbplus", "zbminus"]:
             self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xNudge"]

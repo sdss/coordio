@@ -50,3 +50,7 @@ def test_copy():
 
     assert isinstance(site_copy, Site)
     assert site_copy != site
+
+
+if __name__ == "__main__":
+    test_set_time()

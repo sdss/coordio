@@ -11,7 +11,11 @@ from .exceptions import CoordIOError
 
 # a scale factor between xy focal and xy wok
 # JSG: setting this to 1.0. We may remove it eventually.
-FOCAL_SCALE = 1.0
+# FOCAL_SCALE = 1.0
+
+# SITE_TO_SCALE cale is focal plane scale mm / wok scale mm
+# found via dither analysis
+SITE_TO_SCALE = {"LCO": 0.9985, "APO": 0.99982}
 
 MICRONS_PER_MM = 1000
 GFA_PIXEL_SIZE = 13.5  # micron

@@ -478,7 +478,7 @@ def focalToField(xFocal, yFocal, zFocal, site, waveCat):
 def focalToWok(
     xFocal, yFocal, zFocal, positionAngle=0,
     xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0,
-    fpScale=defaults.FOCAL_SCALE, projectFlat=True
+    fpScale=1, projectFlat=True
 ):
     """Convert xyz focal coordinates in mm to xyz wok coordinates in mm.
 
@@ -615,7 +615,7 @@ def focalToWok(
 def wokToFocal(
     xWok, yWok, zWok, positionAngle=0,
     xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0,
-    fpScale=defaults.FOCAL_SCALE,
+    fpScale=1,
     b=None, R=None
 ):
     """Convert xyz wok coordinates in mm to xyz focal coordinates in mm.

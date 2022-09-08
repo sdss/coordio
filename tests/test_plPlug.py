@@ -70,7 +70,64 @@ def parsePlugmap(plPlugFile):
     return info
 
 
+def test_scales(plot=False):
+    for siteName, data in zip(["LCO", "APO"], [lco,apo]):
+        plateData = parsePlugmap(data["file"])
+
+        xWok, yWok, fieldWarn, ha, pa = radec2wokxy(
+            plateData["ra"], plateData["dec"], data["utcJD"], plateData["fiberType"],
+            plateData["raCen"], plateData["decCen"], 0, siteName, data["utcJD"]
+        )
+
+        xWok2, yWok2, fieldWarn2, ha2, pa2 = radec2wokxy(
+            plateData["ra"], plateData["dec"], data["utcJD"], plateData["fiberType"],
+            plateData["raCen"], plateData["decCen"], 0, siteName, data["utcJD"],
+            focalScale=1
+        )
+
+        dx = xWok2 - xWok
+        dy = yWok2 - yWok
+
+        if plot:
+            plt.figure()
+            plt.quiver(xWok,yWok,dx,dy,angles='xy',units='xy', scale=0.01)
+            plt.axis("equal")
+            plt.title(siteName)
+
+        ra, dec, fieldWarn = wokxy2radec(xWok,yWok,plateData["fiberType"],
+            plateData["raCen"], plateData["decCen"], 0, siteName, data["utcJD"])
+
+        ra2, dec2, fieldWarn2 = wokxy2radec(xWok2,yWok2,plateData["fiberType"],
+            plateData["raCen"], plateData["decCen"], 0, siteName, data["utcJD"],
+            focalScale=1)
+
+        dra = plateData["ra"] - ra
+        ddec = plateData["dec"] - dec
+        err = numpy.sqrt(dra**2+ddec**2)
+
+        dra2 = plateData["ra"] - ra2
+        ddec2 = plateData["dec"] - dec2
+        err2 = numpy.sqrt(dra2**2+ddec2**2)
+
+        if plot:
+            plt.figure()
+            plt.title(siteName + " 1")
+            plt.hist(err)
+
+            plt.figure()
+            plt.title(siteName + " 2")
+            plt.hist(err2)
+
+        assert numpy.max(err) < 2e-6
+        assert numpy.max(err2) < 2e-6
+
+    # plt.show()
+
+        # import pdb; pdb.set_trace()
+
+
 def run_field(siteName, plot=False):
+
     if siteName == "LCO":
         dd = lco
     else:
@@ -203,12 +260,12 @@ def run_field(siteName, plot=False):
         plt.title("angular sep (arcsec)")
 
 
-
 def test_utils():
     run_field("APO", plot=False)
 
     # TODO: run this when we figure out how to switch calibration files.
     # run_field("LCO")
 
-# test_utils()
-# plt.show()
+if __name__ == "__main__":
+    test_scales()
+    # plt.show()
