@@ -490,6 +490,7 @@ class GuiderFitter:
                 field_pa - offset_pa / 3600.0,
                 self.observatory,
                 d.obstime,
+                focalScale=1.0,  # Guider scale is relative to 1
             )
 
             xwok_astro += _xwok_astro.tolist()
