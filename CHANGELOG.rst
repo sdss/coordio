@@ -4,6 +4,11 @@
 Change Log
 ==========
 
+1.4.2 (2022-08-31)
+------------------
+
+* Add default scale factors for APO and LCO for radec2wokxy and wokxy2radec
+
 1.4.1 (2022-08-31)
 ------------------
 
