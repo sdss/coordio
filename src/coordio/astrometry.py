@@ -264,7 +264,7 @@ class AstrometryNet:
         """
 
         options = self._options.copy()
-        options.update(kwargs)
+        options.update(self._format_options(kwargs))
 
         if not isinstance(files, (tuple, list)):
             files = [files]
