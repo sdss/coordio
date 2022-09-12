@@ -4,10 +4,18 @@
 Change Log
 ==========
 
-1.4.2 (2022-08-31)
+1.4.3 (2022-09-11)
+------------------
+
+* Use ``focalScale=1`` in ``GuiderFitter``.
+* Update the ``solve-field`` command options when calling ``AstrometryNet.run_async()``.
+
+
+1.4.2 (2022-09-08)
 ------------------
 
 * Add default scale factors for APO and LCO for radec2wokxy and wokxy2radec
+
 
 1.4.1 (2022-08-31)
 ------------------
