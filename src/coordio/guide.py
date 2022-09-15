@@ -17,7 +17,7 @@ from coordio.conv import guideToTangent, tangentToWok
 from . import Site, calibration, defaults
 from .astrometry import astrometrynet_quick
 from .coordinate import Coordinate, Coordinate2D
-from .exceptions import CoordIOError
+from .exceptions import CoordIOError, CoordIOUserWarning
 from .extraction import sextractor_quick
 from .sky import ICRS, Observed
 from .telescope import Field, FocalPlane
@@ -280,6 +280,7 @@ class GuiderFit:
     xrms: float
     yrms: float
     rms: float
+    only_radec: bool = False
 
 
 class GuiderFitter:
@@ -443,8 +444,11 @@ class GuiderFitter:
         field_pa: float = 0.0,
         offset: tuple[float, float, float] | numpy.ndarray = (0.0, 0.0, 0.0),
         scale_rms: bool = False,
+        only_radec: bool = False,
     ):
         """Performs the fit and returns a `.GuiderFit` object.
+
+        The fit is performed using `.umeyama`.
 
         Parameters
         ----------
@@ -458,6 +462,12 @@ class GuiderFitter:
             The offset in RA, Dec, PA to apply.
         scale_rms
             Whether to correct the RMS using the measured scale factor.
+        only_radec
+            If `True`, fits only translation. Useful when only one or two cameras
+            are solving. In this case the rotation and scale offsets will still be
+            calculated using the Umeyama model, but the ra and dec offsets are
+            overridden with a simple translation. The `.GuiderFit` object will
+            have `only_radec=True`.
 
         """
 
@@ -496,12 +506,27 @@ class GuiderFitter:
             xwok_astro += _xwok_astro.tolist()
             ywok_astro += _ywok_astro.tolist()
 
+        # X: GFA to wok coordinates as a 2D array
+        # Y: ICRS to wok coordinates as a 2D array
         X = numpy.array([xwok_gfa, ywok_gfa])
         Y = numpy.array([xwok_astro, ywok_astro])
+
         try:
             c, R, t = umeyama(X, Y)
         except ValueError:
-            return False
+            if only_radec is True:
+                warnings.warn(
+                    "Cannot fit using Umeyama. Assuming unitary rotation and scale.",
+                    CoordIOUserWarning,
+                )
+                c = 1.0
+                R = numpy.array([[1, 0], [1, 0]])
+            else:
+                return False
+
+        if only_radec is True:
+            # Override the translation component with a simple average translation
+            t = (Y - X).mean(axis=1).T
 
         # delta_x and delta_y only align with RA/Dec if PA=0. Otherwise we need to
         # project using the PA.
@@ -552,6 +577,7 @@ class GuiderFitter:
             xrms,
             yrms,
             rms,
+            only_radec=only_radec,
         )
 
         return self.result
