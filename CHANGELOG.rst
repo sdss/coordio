@@ -7,7 +7,7 @@ Change Log
 Next version
 ------------
 
-* Add a ``only_radec`` option to ``GuiderFitter.fit()`` to only fit RA/Dec (pure translation).
+* Add an ``only_radec`` option to ``GuiderFitter.fit()`` to only fit RA/Dec (pure translation).
 
 
 1.4.3 (2022-09-11)
