@@ -526,7 +526,7 @@ class GuiderFitter:
 
         if only_radec is True:
             # Override the translation component with a simple average translation
-            t = (X - Y).mean(axis=0)
+            t = (Y - X).mean(axis=1).T
 
         # delta_x and delta_y only align with RA/Dec if PA=0. Otherwise we need to
         # project using the PA.
