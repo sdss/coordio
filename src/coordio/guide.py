@@ -8,9 +8,14 @@ from typing import Any
 
 import numpy
 import pandas
+import scipy.ndimage
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.time import Time
 from astropy.wcs import WCS, FITSFixedWarning
+from astropy.wcs.utils import fit_wcs_from_points
+from scipy.spatial import KDTree
+from skimage.registration import phase_cross_correlation
 
 from coordio.conv import guideToTangent, tangentToWok
 
@@ -26,7 +31,14 @@ from .utils import radec2wokxy
 from .wok import Wok
 
 
-__all__ = ["Guide", "GuiderFitter", "umeyama"]
+__all__ = [
+    "Guide",
+    "GuiderFitter",
+    "umeyama",
+    "radec_to_gfa",
+    "gfa_to_radec",
+    "cross_match",
+]
 
 
 warnings.filterwarnings("ignore", module="astropy.wcs.wcs")
@@ -336,6 +348,99 @@ def umeyama(X, Y):
     t = my - c * numpy.dot(R, mx)
 
     return c, R, t
+
+
+def cross_match(
+    measured_xy: numpy.ndarray,
+    reference_xy: numpy.ndarray,
+    reference_radec: numpy.ndarray,
+    x_size: int,
+    y_size: int,
+    cross_corrlation_shift: bool = True,
+    blur: int = 5,
+    distance_upper_bound: int = 10,
+    **kwargs,
+):
+    """Determines the shift between two sets of points using cross-correlation.
+
+    Constructs 2D images from reference and measured data sets and calculates
+    the image shift using cross-correlation registration. It then associated
+    reference to measured detections using nearest neighbours and builds a
+    WCS using the reference on-sky positions.
+
+    Parameters
+    ----------
+    measured_xy
+        A 2D array with the x and y coordinates of each measured point.
+    reference_xy
+        A 2D array with the x and y coordinates of each reference point.
+    reference_radec
+        A 2D array with the ra and dec coordinates of each reference point.
+    x_size
+        Size of the image for 2D cross-correlation.
+    y_size
+        Size of the image for 2D cross-correlation.
+    blur
+        The sigma, in pixels, of the Gaussian kernel used to convolve the images.
+    distance_upper_bound
+        Maximum distance, in pixels, for KD tree nearest neighbours.
+    kwargs
+        Other arguments to pass to ``skimage.registration.phase_cross_correlation``.
+
+    Returns
+    -------
+    wcs
+        A tuple with the WCS of the solution and the translation invariant normalized
+        RMS error between reference and moving image (see ``phase_cross_correlation``).
+
+    """
+
+    # Create and blur the reference and measured images.
+    ref_image = numpy.zeros((y_size, x_size), numpy.float32)
+    ref_image[reference_xy.astype(int)[:, 1], reference_xy.astype(int)[:, 0]] = 1
+    ref_image = scipy.ndimage.gaussian_filter(ref_image, blur)
+
+    meas_image = numpy.zeros((y_size, x_size), numpy.float32)
+    meas_image[measured_xy.astype(int)[:, 1], measured_xy.astype(int)[:, 0]] = 1
+    meas_image = scipy.ndimage.gaussian_filter(meas_image, blur)
+
+    # Calculate the shift and error.
+    if cross_corrlation_shift:
+        shift, error, _ = phase_cross_correlation(ref_image, meas_image, **kwargs)
+    else:
+        shift = numpy.array([0.0, 0.0])
+        error = numpy.nan
+
+    # Apply shift.
+    measured_shift = measured_xy + shift[::-1]
+
+    # Associate measured to reference using KD tree.
+    tree = KDTree(reference_xy)
+    dd, ii = tree.query(measured_shift, k=1, distance_upper_bound=distance_upper_bound)
+
+    # Reject measured objects without a close neighbour.
+    # KDTree.query() assigns an index larger than the initial set of points when
+    # the closest neighbour has distance > distance_upper_bound.
+    valid = dd < len(reference_xy)
+    ii_valid = ii[valid]
+
+    # Select valid measured object and their corresponding RA/Dec references.
+    measured_xy_valid = measured_xy[valid]
+    reference_radec_valid = reference_radec[ii_valid, :]
+
+    # Build the WCS.
+    reference_skycoord_valid = SkyCoord(
+        ra=reference_radec_valid[:, 0],
+        dec=reference_radec_valid[:, 1],
+        unit="deg",
+    )
+
+    wcs = fit_wcs_from_points(
+        (measured_xy_valid[:, 0], measured_xy_valid[:, 1]),
+        reference_skycoord_valid,
+    )
+
+    return wcs, error
 
 
 @dataclass
