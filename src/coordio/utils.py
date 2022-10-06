@@ -492,7 +492,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         Minimum sky brightness for the offset. Only set if
         want to check for offset_flag TOO_DARK (8).
 
-    can_offset: boolean or np.array
+    can_offset: boolean or numpy.array
         can_offset value from targetdb for the target(s) to be
         offset. Only set if
         want to check for offset_flag NO_CAN_OFFSET (16).
@@ -669,7 +669,7 @@ def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
         Minimum sky brightness for the offset. Only set if
         want to check for offset_flag TOO_DARK (8).
 
-    can_offset: boolean or np.array
+    can_offset: boolean or numpy.array
         can_offset value from targetdb for the target(s) to be
         offset. Only set if
         want to check for offset_flag NO_CAN_OFFSET (16).
@@ -705,3 +705,56 @@ def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
     else:
         delta_dec = numpy.zeros(len(delta_ra))
     return delta_ra, delta_dec, offset_flag
+
+def _offset_radec(ra=None, dec=None, delta_ra=0., delta_dec=0.):
+    """Offsets ra and dec according to specified amount. From Mike's
+    robostrategy.Field object
+
+    Parameters
+    ----------
+    ra : numpy.float64 or ndarray of numpy.float64
+    right ascension, deg
+    dec : numpy.float64 or ndarray of numpy.float64
+        declination, deg
+    delta_ra : numpy.float64 or ndarray of numpy.float64
+        right ascension direction offset, arcsec
+    delta_dec : numpy.float64 or ndarray of numpy.float64
+        declination direction offset, arcsec
+
+    Returns
+    -------
+    offset_ra : numpy.float64 or ndarray of numpy.float64
+        offset right ascension, deg
+    offset_dec : numpy.float64 or ndarray of numpy.float64
+        offset declination, deg
+
+    Notes
+    -----
+    Assumes that delta_ra, delta_dec are in proper coordinates; i.e.
+    an offset of delta_ra=1 arcsec represents the same angular separation
+    on the sky at any declination.
+    Carefully offsets in the local directions of ra, dec based on
+    the local tangent plane (i.e. does not just scale delta_ra by
+    1/cos(dec))
+    """
+    deg2rad = numpy.pi / 180.
+    arcsec2rad = numpy.pi / 180. / 3600.
+    x = numpy.cos(dec * deg2rad) * numpy.cos(ra * deg2rad)
+    y = numpy.cos(dec * deg2rad) * numpy.sin(ra * deg2rad)
+    z = numpy.sin(dec * deg2rad)
+    ra_x = - numpy.sin(ra * deg2rad)
+    ra_y = numpy.cos(ra * deg2rad)
+    ra_z = 0.
+    dec_x = - numpy.sin(dec * deg2rad) * numpy.cos(ra * deg2rad)
+    dec_y = - numpy.sin(dec * deg2rad) * numpy.sin(ra * deg2rad)
+    dec_z = numpy.cos(dec * deg2rad)
+    xoff = x + (ra_x * delta_ra + dec_x * delta_dec) * arcsec2rad
+    yoff = y + (ra_y * delta_ra + dec_y * delta_dec) * arcsec2rad
+    zoff = z + (ra_z * delta_ra + dec_z * delta_dec) * arcsec2rad
+    offnorm = numpy.sqrt(xoff**2 + yoff**2 + zoff**2)
+    xoff = xoff / offnorm
+    yoff = yoff / offnorm
+    zoff = zoff / offnorm
+    decoff = numpy.arcsin(zoff) / deg2rad
+    raoff = ((numpy.arctan2(yoff, xoff) / deg2rad) + 360.) % 360.
+    return(raoff, decoff)
