@@ -405,6 +405,7 @@ def cross_match(
     meas_image = scipy.ndimage.gaussian_filter(meas_image, blur)
 
     # Calculate the shift and error.
+    error: float
     if cross_corrlation_shift:
         shift, error, _ = phase_cross_correlation(ref_image, meas_image, **kwargs)
     else:
@@ -439,6 +440,8 @@ def cross_match(
         (measured_xy_valid[:, 0], measured_xy_valid[:, 1]),
         reference_skycoord_valid,
     )
+
+    assert isinstance(wcs, WCS)
 
     return wcs, error
 
