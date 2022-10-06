@@ -356,21 +356,33 @@ class GuiderFitter:
                 [new_data],
                 columns=["gfa_id", "ra", "dec", "obstime"],
             )
-            self.astro_data.set_index("gfa_id", inplace=True)
         else:
-            self.astro_data.loc[camera] = new_data[1:]  # type: ignore
+            self.astro_data.loc[len(self.astro_data.index)] = new_data
 
-    def add_wcs(self, camera: str | int, wcs: WCS, obstime: float):
+    def add_wcs(
+        self,
+        camera: str | int,
+        wcs: WCS,
+        obstime: float,
+        pixels: numpy.ndarray | None = None,
+    ):
         """Adds a camera measurement from a WCS solution."""
 
-        coords: Any = wcs.pixel_to_world(*self.reference_pixel)
+        if pixels is None:
+            coords: Any = wcs.pixel_to_world(*self.reference_pixel)
 
-        ra = coords.ra.value
-        dec = coords.dec.value
+            ra = coords.ra.value
+            dec = coords.dec.value
 
-        self.add_astro(camera, ra, dec, obstime)
+            self.add_astro(camera, ra, dec, obstime)
 
-    def add_gimg(self, path: str | pathlib.Path):
+        else:
+            ras, decs = wcs.all_pix2world(pixels[:, 0], pixels[:, 1], 0)
+            print(ras)
+            for ii in range(len(ras)):
+                self.add_astro(camera, ras[ii], decs[ii], obstime)
+
+    def add_gimg(self, path: str | pathlib.Path, pixels: numpy.ndarray | None = None):
         """Processes a raw GFA image, runs astrometry.net, adds the solution."""
 
         data = fits.getdata(str(path))
@@ -411,11 +423,15 @@ class GuiderFitter:
 
         obstime = Time(header["DATE-OBS"], format="iso").jd
 
-        self.add_wcs(camera_id, wcs, obstime)
+        self.add_wcs(camera_id, wcs, obstime, pixels=pixels)
 
         return wcs
 
-    def add_proc_gimg(self, path: str | pathlib.Path):
+    def add_proc_gimg(
+        self,
+        path: str | pathlib.Path,
+        pixels: numpy.ndarray | None = None,
+    ):
         """Adds an astrometric solution from a ``proc-gimg`` image."""
 
         hdu = fits.open(str(path))
@@ -435,7 +451,7 @@ class GuiderFitter:
         wcs = WCS(header)
         obstime = Time(header["DATE-OBS"], format="iso").jd
 
-        self.add_wcs(header["CAMNAME"], wcs, obstime)
+        self.add_wcs(header["CAMNAME"], wcs, obstime, pixels=pixels)
 
     def fit(
         self,
@@ -547,8 +563,8 @@ class GuiderFitter:
             xwok_astro = list(numpy.array(xwok_astro) / delta_scale)
             ywok_astro = list(numpy.array(ywok_astro) / delta_scale)
 
-        delta_x = (numpy.array(xwok_gfa) - numpy.array(xwok_astro)) ** 2  # type: ignore
-        delta_y = (numpy.array(ywok_gfa) - numpy.array(ywok_astro)) ** 2  # type: ignore
+        delta_x = (numpy.array(xwok_gfa) - numpy.array(xwok_astro)) ** 2
+        delta_y = (numpy.array(ywok_gfa) - numpy.array(ywok_astro)) ** 2
 
         xrms = numpy.sqrt(numpy.sum(delta_x) / len(delta_x))
         yrms = numpy.sqrt(numpy.sum(delta_y) / len(delta_y))
@@ -561,11 +577,11 @@ class GuiderFitter:
 
         astro_wok = pandas.DataFrame.from_records(
             {"gfa_id": camera_ids, "xwok": xwok_astro, "ywok": ywok_astro}
-        ).set_index("gfa_id")
+        )
 
         gfa_wok = pandas.DataFrame.from_records(
             {"gfa_id": camera_ids, "xwok": xwok_gfa, "ywok": ywok_gfa}
-        ).set_index("gfa_id")
+        )
 
         self.result = GuiderFit(
             gfa_wok,
