@@ -16,6 +16,7 @@ from coordio.conv import guideToTangent, tangentToWok
 
 from . import Site, calibration, defaults
 from .astrometry import astrometrynet_quick
+from .conv import tangentToGuide, wokToTangent
 from .coordinate import Coordinate, Coordinate2D
 from .exceptions import CoordIOError, CoordIOUserWarning
 from .extraction import sextractor_quick
@@ -209,6 +210,62 @@ def gfa_to_radec(
         icrs = ICRS(observed)
         return icrs[0]
 
+
+def radec_to_gfa(
+    observatory: str,
+    ra: float | numpy.ndarray,
+    dec: float | numpy.ndarray,
+    gfa_id: int,
+    bore_ra: float,
+    bore_dec: float,
+    position_angle: float = 0,
+    offset_ra: float = 0,
+    offset_dec: float = 0,
+    offset_pa: float = 0,
+    obstime: float | None = None,
+):
+    """Converts from observed RA/Dec to GFA pixel, taking into account offsets."""
+
+    ra = numpy.atleast_1d(ra)
+    dec = numpy.atleast_1d(dec)
+
+    site = Site(observatory)
+    site.set_time(obstime)
+    assert site.time
+
+    bore_ra += offset_ra / 3600.0 / numpy.cos(numpy.radians(bore_dec))
+    bore_dec += offset_dec / 3600.0
+    position_angle -= offset_pa / 3600.0
+
+    xwok, ywok, *_ = radec2wokxy(
+        ra,
+        dec,
+        None,
+        "GFA",
+        bore_ra,
+        bore_dec,
+        position_angle,
+        observatory,
+        site.time.jd,
+        focalScale=1.0,  # Guider scale is relative to 1
+    )
+
+    zwok = numpy.array([defaults.POSITIONER_HEIGHT] * len(xwok))
+
+    gfa_coords = calibration.gfaCoords.loc[observatory]
+    gfa_coords.reset_index(inplace=True)
+
+    gfa_row = gfa_coords[gfa_coords.id == gfa_id]
+
+    b = gfa_row[["xWok", "yWok", "zWok"]].to_numpy().squeeze()
+    iHat = gfa_row[["ix", "iy", "iz"]].to_numpy().squeeze()
+    jHat = gfa_row[["jx", "jy", "jz"]].to_numpy().squeeze()
+    kHat = gfa_row[["kx", "ky", "kz"]].to_numpy().squeeze()
+
+    xt, yt, _ = wokToTangent(xwok, ywok, zwok, b, iHat, jHat, kHat)
+    x_ccd, y_ccd = tangentToGuide(xt, yt)
+
+    return x_ccd, y_ccd
 
 
 def umeyama(X, Y):
