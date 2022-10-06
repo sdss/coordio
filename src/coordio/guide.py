@@ -172,15 +172,24 @@ def gfa_to_radec(
     bore_ra: float,
     bore_dec: float,
     position_angle: float = 0,
+    offset_ra: float = 0,
+    offset_dec: float = 0,
+    offset_pa: float = 0,
+    obstime: float | None = None,
+    icrs: bool = False,
 ):
-    """Converts from a GFA pixel to observed RA/Dec."""
+    """Converts from a GFA pixel to observed RA/Dec. Offsets are in arcsec."""
 
     site = Site(observatory)
-    site.set_time()
+    site.set_time(obstime)
 
     wavelength = defaults.INST_TO_WAVE["GFA"]
 
     wok_coords = gfa_to_wok(observatory, x_pix, y_pix, gfa_id)
+
+    bore_ra += offset_ra / 3600.0 / numpy.cos(numpy.radians(bore_dec))
+    bore_dec += offset_dec / 3600.0
+    position_angle -= offset_pa / 3600.0
 
     boresight_icrs = ICRS([[bore_ra, bore_dec]])
     boresight = Observed(
@@ -194,7 +203,12 @@ def gfa_to_radec(
     field = Field(focal, field_center=boresight)
     observed = Observed(field, wavelength=wavelength, site=site)
 
-    return (observed.ra[0], observed.dec[0])
+    if icrs is False:
+        return (observed.ra[0], observed.dec[0])
+    else:
+        icrs = ICRS(observed)
+        return icrs[0]
+
 
 
 def umeyama(X, Y):
