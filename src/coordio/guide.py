@@ -519,7 +519,15 @@ class GuiderFitter:
 
         return df
 
-    def add_astro(self, camera: str | int, ra: float, dec: float, obstime: float):
+    def add_astro(
+        self,
+        camera: str | int,
+        ra: float,
+        dec: float,
+        obstime: float,
+        x_pixel: float,
+        y_pixel: float,
+    ):
         """Adds an astrometric measurement."""
 
         if isinstance(camera, str):
@@ -528,12 +536,12 @@ class GuiderFitter:
                 raise CoordIOError(f"Cannot understand camera {camera!r}.")
             camera = int(match.group(1))
 
-        new_data = (camera, ra, dec, obstime)
+        new_data = (camera, ra, dec, obstime, x_pixel, y_pixel)
 
         if self.astro_data is None:
             self.astro_data = pandas.DataFrame(
                 [new_data],
-                columns=["gfa_id", "ra", "dec", "obstime"],
+                columns=["gfa_id", "ra", "dec", "obstime", "x", "y"],
             )
         else:
             self.astro_data.loc[len(self.astro_data.index)] = new_data
@@ -553,13 +561,19 @@ class GuiderFitter:
             ra = coords.ra.value
             dec = coords.dec.value
 
-            self.add_astro(camera, ra, dec, obstime)
+            self.add_astro(camera, ra, dec, obstime, *self.reference_pixel)
 
         else:
             ras, decs = wcs.all_pix2world(pixels[:, 0], pixels[:, 1], 0)
-            print(ras)
             for ii in range(len(ras)):
-                self.add_astro(camera, ras[ii], decs[ii], obstime)
+                self.add_astro(
+                    camera,
+                    ras[ii],
+                    decs[ii],
+                    obstime,
+                    pixels[ii, 0],
+                    pixels[ii, 1],
+                )
 
     def add_gimg(self, path: str | pathlib.Path, pixels: numpy.ndarray | None = None):
         """Processes a raw GFA image, runs astrometry.net, adds the solution."""
@@ -679,11 +693,13 @@ class GuiderFitter:
 
         for d in self.astro_data.itertuples():
 
-            camera_id: int = d.Index
+            camera_id: int = d.gfa_id
 
             camera_ids.append(camera_id)
-            xwok_gfa.append(self.gfa_wok_coords.loc[camera_id, "xwok"])  # type: ignore
-            ywok_gfa.append(self.gfa_wok_coords.loc[camera_id, "ywok"])  # type: ignore
+
+            x_wok, y_wok, _ = gfa_to_wok(self.observatory, d.x, d.y, camera_id)
+            xwok_gfa.append(x_wok)
+            ywok_gfa.append(y_wok)
 
             _xwok_astro, _ywok_astro, *_ = radec2wokxy(
                 [d.ra],
