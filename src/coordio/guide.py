@@ -357,7 +357,7 @@ def cross_match(
     x_size: int,
     y_size: int,
     cross_corrlation_shift: bool = True,
-    blur: int = 5,
+    blur: float = 5,
     distance_upper_bound: int = 10,
     **kwargs,
 ):
@@ -398,11 +398,13 @@ def cross_match(
     # Create and blur the reference and measured images.
     ref_image = numpy.zeros((y_size, x_size), numpy.float32)
     ref_image[reference_xy.astype(int)[:, 1], reference_xy.astype(int)[:, 0]] = 1
-    ref_image = scipy.ndimage.gaussian_filter(ref_image, blur)
+    if blur > 0:
+        ref_image = scipy.ndimage.gaussian_filter(ref_image, blur)
 
     meas_image = numpy.zeros((y_size, x_size), numpy.float32)
     meas_image[measured_xy.astype(int)[:, 1], measured_xy.astype(int)[:, 0]] = 1
-    meas_image = scipy.ndimage.gaussian_filter(meas_image, blur)
+    if blur > 0:
+        meas_image = scipy.ndimage.gaussian_filter(meas_image, blur)
 
     # Calculate the shift and error.
     error: float
@@ -428,6 +430,9 @@ def cross_match(
     # Select valid measured object and their corresponding RA/Dec references.
     measured_xy_valid = measured_xy[valid]
     reference_radec_valid = reference_radec[ii_valid, :]
+
+    if len(reference_radec_valid) < 3 or len(measured_xy_valid) < 3:
+        return None, 0
 
     # Build the WCS.
     reference_skycoord_valid = SkyCoord(
