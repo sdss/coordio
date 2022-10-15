@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+1.4.5b1 (2022-10-15)
+--------------------
+
+* Add guider tools for cross-matching with catalogue data.
+
+
 1.4.4 (2022-09-15)
 ------------------
 
