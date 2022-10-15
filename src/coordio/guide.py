@@ -8,14 +8,20 @@ from typing import Any
 
 import numpy
 import pandas
+import scipy.ndimage
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.time import Time
 from astropy.wcs import WCS, FITSFixedWarning
+from astropy.wcs.utils import fit_wcs_from_points
+from scipy.spatial import KDTree
+from skimage.registration import phase_cross_correlation
 
 from coordio.conv import guideToTangent, tangentToWok
 
 from . import Site, calibration, defaults
 from .astrometry import astrometrynet_quick
+from .conv import tangentToGuide, wokToTangent
 from .coordinate import Coordinate, Coordinate2D
 from .exceptions import CoordIOError, CoordIOUserWarning
 from .extraction import sextractor_quick
@@ -25,7 +31,14 @@ from .utils import radec2wokxy
 from .wok import Wok
 
 
-__all__ = ["Guide", "GuiderFitter", "umeyama"]
+__all__ = [
+    "Guide",
+    "GuiderFitter",
+    "umeyama",
+    "radec_to_gfa",
+    "gfa_to_radec",
+    "cross_match",
+]
 
 
 warnings.filterwarnings("ignore", module="astropy.wcs.wcs")
@@ -172,15 +185,24 @@ def gfa_to_radec(
     bore_ra: float,
     bore_dec: float,
     position_angle: float = 0,
+    offset_ra: float = 0,
+    offset_dec: float = 0,
+    offset_pa: float = 0,
+    obstime: float | None = None,
+    icrs: bool = False,
 ):
-    """Converts from a GFA pixel to observed RA/Dec."""
+    """Converts from a GFA pixel to observed RA/Dec. Offsets are in arcsec."""
 
     site = Site(observatory)
-    site.set_time()
+    site.set_time(obstime)
 
     wavelength = defaults.INST_TO_WAVE["GFA"]
 
     wok_coords = gfa_to_wok(observatory, x_pix, y_pix, gfa_id)
+
+    bore_ra += offset_ra / 3600.0 / numpy.cos(numpy.radians(bore_dec))
+    bore_dec += offset_dec / 3600.0
+    position_angle -= offset_pa / 3600.0
 
     boresight_icrs = ICRS([[bore_ra, bore_dec]])
     boresight = Observed(
@@ -194,7 +216,68 @@ def gfa_to_radec(
     field = Field(focal, field_center=boresight)
     observed = Observed(field, wavelength=wavelength, site=site)
 
-    return (observed.ra[0], observed.dec[0])
+    if icrs is False:
+        return (observed.ra[0], observed.dec[0])
+    else:
+        icrs = ICRS(observed)
+        return icrs[0]
+
+
+def radec_to_gfa(
+    observatory: str,
+    ra: float | numpy.ndarray,
+    dec: float | numpy.ndarray,
+    gfa_id: int,
+    bore_ra: float,
+    bore_dec: float,
+    position_angle: float = 0,
+    offset_ra: float = 0,
+    offset_dec: float = 0,
+    offset_pa: float = 0,
+    obstime: float | None = None,
+):
+    """Converts from observed RA/Dec to GFA pixel, taking into account offsets."""
+
+    ra = numpy.atleast_1d(ra)
+    dec = numpy.atleast_1d(dec)
+
+    site = Site(observatory)
+    site.set_time(obstime)
+    assert site.time
+
+    bore_ra += offset_ra / 3600.0 / numpy.cos(numpy.radians(bore_dec))
+    bore_dec += offset_dec / 3600.0
+    position_angle -= offset_pa / 3600.0
+
+    xwok, ywok, *_ = radec2wokxy(
+        ra,
+        dec,
+        None,
+        "GFA",
+        bore_ra,
+        bore_dec,
+        position_angle,
+        observatory,
+        site.time.jd,
+        focalScale=1.0,  # Guider scale is relative to 1
+    )
+
+    zwok = numpy.array([defaults.POSITIONER_HEIGHT] * len(xwok))
+
+    gfa_coords = calibration.gfaCoords.loc[observatory]
+    gfa_coords.reset_index(inplace=True)
+
+    gfa_row = gfa_coords[gfa_coords.id == gfa_id]
+
+    b = gfa_row[["xWok", "yWok", "zWok"]].to_numpy().squeeze()
+    iHat = gfa_row[["ix", "iy", "iz"]].to_numpy().squeeze()
+    jHat = gfa_row[["jx", "jy", "jz"]].to_numpy().squeeze()
+    kHat = gfa_row[["kx", "ky", "kz"]].to_numpy().squeeze()
+
+    xt, yt, _ = wokToTangent(xwok, ywok, zwok, b, iHat, jHat, kHat)
+    x_ccd, y_ccd = tangentToGuide(xt, yt)
+
+    return x_ccd, y_ccd
 
 
 def umeyama(X, Y):
@@ -265,6 +348,107 @@ def umeyama(X, Y):
     t = my - c * numpy.dot(R, mx)
 
     return c, R, t
+
+
+def cross_match(
+    measured_xy: numpy.ndarray,
+    reference_xy: numpy.ndarray,
+    reference_radec: numpy.ndarray,
+    x_size: int,
+    y_size: int,
+    cross_corrlation_shift: bool = True,
+    blur: float = 5,
+    distance_upper_bound: int = 10,
+    **kwargs,
+):
+    """Determines the shift between two sets of points using cross-correlation.
+
+    Constructs 2D images from reference and measured data sets and calculates
+    the image shift using cross-correlation registration. It then associated
+    reference to measured detections using nearest neighbours and builds a
+    WCS using the reference on-sky positions.
+
+    Parameters
+    ----------
+    measured_xy
+        A 2D array with the x and y coordinates of each measured point.
+    reference_xy
+        A 2D array with the x and y coordinates of each reference point.
+    reference_radec
+        A 2D array with the ra and dec coordinates of each reference point.
+    x_size
+        Size of the image for 2D cross-correlation.
+    y_size
+        Size of the image for 2D cross-correlation.
+    blur
+        The sigma, in pixels, of the Gaussian kernel used to convolve the images.
+    distance_upper_bound
+        Maximum distance, in pixels, for KD tree nearest neighbours.
+    kwargs
+        Other arguments to pass to ``skimage.registration.phase_cross_correlation``.
+
+    Returns
+    -------
+    wcs
+        A tuple with the WCS of the solution and the translation invariant normalized
+        RMS error between reference and moving image (see ``phase_cross_correlation``).
+
+    """
+
+    # Create and blur the reference and measured images.
+    ref_image = numpy.zeros((y_size, x_size), numpy.float32)
+    ref_image[reference_xy.astype(int)[:, 1], reference_xy.astype(int)[:, 0]] = 1
+    if blur > 0:
+        ref_image = scipy.ndimage.gaussian_filter(ref_image, blur)
+
+    meas_image = numpy.zeros((y_size, x_size), numpy.float32)
+    meas_image[measured_xy.astype(int)[:, 1], measured_xy.astype(int)[:, 0]] = 1
+    if blur > 0:
+        meas_image = scipy.ndimage.gaussian_filter(meas_image, blur)
+
+    # Calculate the shift and error.
+    error: float
+    if cross_corrlation_shift:
+        shift, error, _ = phase_cross_correlation(ref_image, meas_image, **kwargs)
+    else:
+        shift = numpy.array([0.0, 0.0])
+        error = numpy.nan
+
+    # Apply shift.
+    measured_shift = measured_xy + shift[::-1]
+
+    # Associate measured to reference using KD tree.
+    tree = KDTree(reference_xy)
+    dd, ii = tree.query(measured_shift, k=1, distance_upper_bound=distance_upper_bound)
+
+    # Reject measured objects without a close neighbour.
+    # KDTree.query() assigns an index larger than the initial set of points when
+    # the closest neighbour has distance > distance_upper_bound.
+    valid = dd < len(reference_xy)
+    ii_valid = ii[valid]
+
+    # Select valid measured object and their corresponding RA/Dec references.
+    measured_xy_valid = measured_xy[valid]
+    reference_radec_valid = reference_radec[ii_valid, :]
+
+    if len(reference_radec_valid) < 3 or len(measured_xy_valid) < 3:
+        return None, 0
+
+    # Build the WCS.
+    reference_skycoord_valid = SkyCoord(
+        ra=reference_radec_valid[:, 0],
+        dec=reference_radec_valid[:, 1],
+        unit="deg",
+    )
+
+    wcs = fit_wcs_from_points(
+        (measured_xy_valid[:, 0], measured_xy_valid[:, 1]),
+        reference_skycoord_valid,
+    )
+
+    assert isinstance(wcs, WCS)
+
+    return wcs, error
 
 
 @dataclass
@@ -340,7 +524,15 @@ class GuiderFitter:
 
         return df
 
-    def add_astro(self, camera: str | int, ra: float, dec: float, obstime: float):
+    def add_astro(
+        self,
+        camera: str | int,
+        ra: float,
+        dec: float,
+        obstime: float,
+        x_pixel: float,
+        y_pixel: float,
+    ):
         """Adds an astrometric measurement."""
 
         if isinstance(camera, str):
@@ -349,28 +541,46 @@ class GuiderFitter:
                 raise CoordIOError(f"Cannot understand camera {camera!r}.")
             camera = int(match.group(1))
 
-        new_data = (camera, ra, dec, obstime)
+        new_data = (camera, ra, dec, obstime, x_pixel, y_pixel)
 
         if self.astro_data is None:
             self.astro_data = pandas.DataFrame(
                 [new_data],
-                columns=["gfa_id", "ra", "dec", "obstime"],
+                columns=["gfa_id", "ra", "dec", "obstime", "x", "y"],
             )
-            self.astro_data.set_index("gfa_id", inplace=True)
         else:
-            self.astro_data.loc[camera] = new_data[1:]  # type: ignore
+            self.astro_data.loc[len(self.astro_data.index)] = new_data
 
-    def add_wcs(self, camera: str | int, wcs: WCS, obstime: float):
+    def add_wcs(
+        self,
+        camera: str | int,
+        wcs: WCS,
+        obstime: float,
+        pixels: numpy.ndarray | None = None,
+    ):
         """Adds a camera measurement from a WCS solution."""
 
-        coords: Any = wcs.pixel_to_world(*self.reference_pixel)
+        if pixels is None:
+            coords: Any = wcs.pixel_to_world(*self.reference_pixel)
 
-        ra = coords.ra.value
-        dec = coords.dec.value
+            ra = coords.ra.value
+            dec = coords.dec.value
 
-        self.add_astro(camera, ra, dec, obstime)
+            self.add_astro(camera, ra, dec, obstime, *self.reference_pixel)
 
-    def add_gimg(self, path: str | pathlib.Path):
+        else:
+            ras, decs = wcs.all_pix2world(pixels[:, 0], pixels[:, 1], 0)
+            for ii in range(len(ras)):
+                self.add_astro(
+                    camera,
+                    ras[ii],
+                    decs[ii],
+                    obstime,
+                    pixels[ii, 0],
+                    pixels[ii, 1],
+                )
+
+    def add_gimg(self, path: str | pathlib.Path, pixels: numpy.ndarray | None = None):
         """Processes a raw GFA image, runs astrometry.net, adds the solution."""
 
         data = fits.getdata(str(path))
@@ -411,11 +621,15 @@ class GuiderFitter:
 
         obstime = Time(header["DATE-OBS"], format="iso").jd
 
-        self.add_wcs(camera_id, wcs, obstime)
+        self.add_wcs(camera_id, wcs, obstime, pixels=pixels)
 
         return wcs
 
-    def add_proc_gimg(self, path: str | pathlib.Path):
+    def add_proc_gimg(
+        self,
+        path: str | pathlib.Path,
+        pixels: numpy.ndarray | None = None,
+    ):
         """Adds an astrometric solution from a ``proc-gimg`` image."""
 
         hdu = fits.open(str(path))
@@ -435,7 +649,7 @@ class GuiderFitter:
         wcs = WCS(header)
         obstime = Time(header["DATE-OBS"], format="iso").jd
 
-        self.add_wcs(header["CAMNAME"], wcs, obstime)
+        self.add_wcs(header["CAMNAME"], wcs, obstime, pixels=pixels)
 
     def fit(
         self,
@@ -484,11 +698,13 @@ class GuiderFitter:
 
         for d in self.astro_data.itertuples():
 
-            camera_id: int = d.Index
+            camera_id: int = d.gfa_id
 
             camera_ids.append(camera_id)
-            xwok_gfa.append(self.gfa_wok_coords.loc[camera_id, "xwok"])  # type: ignore
-            ywok_gfa.append(self.gfa_wok_coords.loc[camera_id, "ywok"])  # type: ignore
+
+            x_wok, y_wok, _ = gfa_to_wok(self.observatory, d.x, d.y, camera_id)
+            xwok_gfa.append(x_wok)
+            ywok_gfa.append(y_wok)
 
             _xwok_astro, _ywok_astro, *_ = radec2wokxy(
                 [d.ra],
@@ -547,8 +763,8 @@ class GuiderFitter:
             xwok_astro = list(numpy.array(xwok_astro) / delta_scale)
             ywok_astro = list(numpy.array(ywok_astro) / delta_scale)
 
-        delta_x = (numpy.array(xwok_gfa) - numpy.array(xwok_astro)) ** 2  # type: ignore
-        delta_y = (numpy.array(ywok_gfa) - numpy.array(ywok_astro)) ** 2  # type: ignore
+        delta_x = (numpy.array(xwok_gfa) - numpy.array(xwok_astro)) ** 2
+        delta_y = (numpy.array(ywok_gfa) - numpy.array(ywok_astro)) ** 2
 
         xrms = numpy.sqrt(numpy.sum(delta_x) / len(delta_x))
         yrms = numpy.sqrt(numpy.sum(delta_y) / len(delta_y))
@@ -561,11 +777,11 @@ class GuiderFitter:
 
         astro_wok = pandas.DataFrame.from_records(
             {"gfa_id": camera_ids, "xwok": xwok_astro, "ywok": ywok_astro}
-        ).set_index("gfa_id")
+        )
 
         gfa_wok = pandas.DataFrame.from_records(
             {"gfa_id": camera_ids, "xwok": xwok_gfa, "ywok": ywok_gfa}
-        ).set_index("gfa_id")
+        )
 
         self.result = GuiderFit(
             gfa_wok,
