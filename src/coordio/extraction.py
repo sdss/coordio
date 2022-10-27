@@ -234,8 +234,8 @@ def extract_marginal(
 
     data = data.astype("f8")
 
-    sextractor_quick.pop("threshold", None)
-    sextractor_quick.pop("return_background", None)
+    sextractor_quick_options.pop("threshold", None)
+    sextractor_quick_options.pop("return_background", None)
 
     detections, back = sextractor_quick(
         data,
