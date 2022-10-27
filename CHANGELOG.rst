@@ -4,6 +4,11 @@
 Change Log
 ==========
 
+Next version
+------------
+
+* Added additional tools for extraction and fitting the marginal distribution.
+
 1.4.5 (2022-10-20)
 ------------------
 
