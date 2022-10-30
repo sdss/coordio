@@ -6,14 +6,16 @@
 # @Filename: test_sky.py
 # @License: BSD 3-clause (http://www.opensource.org/licenses/BSD-3-Clause)
 
+import sys
+
 import astropy.time
 import numpy
+import pytest
 from astropy import units as u
 from astropy.coordinates import AltAz, Distance, EarthLocation, SkyCoord
 
-from coordio import ICRS, Observed, Site, CoordIOError
+from coordio import ICRS, CoordIOError, Observed, Site
 
-import pytest
 
 wavelength = 7000
 
@@ -61,8 +63,12 @@ def test_to_epoch():
                                             icrs_2020[:, 1],
                                             decimal=6)
 
-    astropy_pm_ra_cosdec = (new_astropy_icrs.pm_ra.value *
-                            numpy.cos(numpy.radians(new_astropy_icrs.dec.deg)))
+    if sys.version_info < (3, 8):
+        cos_dec = numpy.cos(numpy.radians(new_astropy_icrs.dec.deg))
+        astropy_pm_ra_cosdec = new_astropy_icrs.pm_ra.value * cos_dec
+    else:
+        astropy_pm_ra_cosdec = new_astropy_icrs.pm_ra_cosdec.value
+
     numpy.testing.assert_array_almost_equal(astropy_pm_ra_cosdec,
                                             icrs_2020.pmra,
                                             decimal=6)

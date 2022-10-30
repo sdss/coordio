@@ -297,6 +297,7 @@ def observedToField(alt, az, altCenter, azCenter, pa):
 
     coords = rotTheta.dot(coords.T).T
 
+
     # rotate the xyz coordinate system about the x axis
     # such that +z points to the field center.
 
@@ -308,6 +309,7 @@ def observedToField(alt, az, altCenter, azCenter, pa):
         [0, -sinPhi, cosPhi]
     ])
     coords = rotPhi.dot(coords.T).T
+
     # return coords
 
     # finally rotate about z by the parallactic angle
@@ -321,6 +323,7 @@ def observedToField(alt, az, altCenter, azCenter, pa):
     ])
 
     coords = rotQ.dot(coords.T).T
+
 
     x = coords[:, 0]
     y = coords[:, 1]
@@ -475,7 +478,7 @@ def focalToField(xFocal, yFocal, zFocal, site, waveCat):
 def focalToWok(
     xFocal, yFocal, zFocal, positionAngle=0,
     xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0,
-    fpScale=defaults.FOCAL_SCALE, projectFlat=True
+    fpScale=1, projectFlat=True
 ):
     """Convert xyz focal coordinates in mm to xyz wok coordinates in mm.
 
@@ -612,7 +615,7 @@ def focalToWok(
 def wokToFocal(
     xWok, yWok, zWok, positionAngle=0,
     xOffset=0, yOffset=0, zOffset=0, tiltX=0, tiltY=0,
-    fpScale=defaults.FOCAL_SCALE,
+    fpScale=1,
     b=None, R=None
 ):
     """Convert xyz wok coordinates in mm to xyz focal coordinates in mm.

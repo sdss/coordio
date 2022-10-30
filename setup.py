@@ -18,9 +18,11 @@ from distutils.core import Extension
 
 LIBSOFA_PATH = 'cextern/sofa'
 LIBCOORDIO_PATH = 'cextern/conv.cpp'
+LIBDIMAGE_PATH = 'cextern/dimage'
 
 
 extra_compile_args = ['-c', '-pedantic', '-Wall', '-W', '-O']
+dimg_compile_args = ['-arch x86_64', '-O2', '-fPIC', '-dynamic', '-fno-common', '-D_REENTRANT', '-DCHECK_LEAKS']
 extra_link_args = []
 
 
@@ -41,6 +43,7 @@ class getPybindInclude(object):
 
 
 sofa_sources = glob.glob(LIBSOFA_PATH + '/*.c')
+dimage_sources = glob.glob(LIBDIMAGE_PATH + '/*.c')
 includes = [
     'include',
     'src/coordio/include',
@@ -55,7 +58,7 @@ extra_link_args2 = None
 if sys.platform == 'darwin':
     extra_compile_args2 += ['-stdlib=libc++', '-mmacosx-version-min=10.9']
     extra_link_args2 = ["-v", '-mmacosx-version-min=10.9']
-
+    # dimg_compile_args += []
     from distutils import sysconfig
     vars = sysconfig.get_config_vars()
     vars['LDSHARED'] = vars['LDSHARED'].replace('-bundle', '-dynamiclib')
@@ -78,6 +81,16 @@ ext_modules = [
         include_dirs=includes,
         extra_compile_args=extra_compile_args2,
         extra_link_args=extra_link_args2,
+        optional=False),
+    Extension(
+        'coordio.libdimage',
+        sources=dimage_sources,
+        include_dirs=[], #[LIBDIMAGE_PATH],
+        libraries=[],
+        define_macros=[],
+        extra_compile_args=extra_compile_args, #dimg_compile_args,
+        extra_link_args=extra_link_args,
+        language='c',
         optional=False),
 ]
 

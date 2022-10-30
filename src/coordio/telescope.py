@@ -247,7 +247,12 @@ class FocalPlane(Coordinate3D):
 
         fpScale = kwargs.get("fpScale", None)
         if fpScale is None:
-            kwargs["fpScale"] = defaults.FOCAL_SCALE
+            if kwargs["site"].name == "APO":
+                kwargs["fpScale"] = defaults.SITE_TO_SCALE["APO"]
+            elif kwargs["site"].name == "LCO":
+                kwargs["fpScale"] = defaults.SITE_TO_SCALE["LCO"]
+            else:
+                kwargs["fpScale"] = 1
 
         if isinstance(value, Coordinate):
             if value.coordSysName == "Field":

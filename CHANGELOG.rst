@@ -4,10 +4,53 @@
 Change Log
 ==========
 
-1.3.2
------
+Next version
+------------
 
+* Added additional tools for extraction and fitting the marginal distribution.
+
+1.4.5 (2022-10-20)
+------------------
+
+* Add guider tools for cross-matching with catalogue data.
+
+
+1.4.4 (2022-09-15)
+------------------
+
+* Add an ``only_radec`` option to ``GuiderFitter.fit()`` to only fit RA/Dec (pure translation).
+
+
+1.4.3 (2022-09-11)
+------------------
+
+* Use ``focalScale=1`` in ``GuiderFitter``.
+* Update the ``solve-field`` command options when calling ``AstrometryNet.run_async()``.
+
+
+1.4.2 (2022-09-08)
+------------------
+
+* Add default scale factors for APO and LCO for radec2wokxy and wokxy2radec
+
+
+1.4.1 (2022-08-31)
+------------------
+
+* Use astropy 5 and numpy 1.23 for Python>=3.8.
+
+
+1.4.0 (2022-08-31)
+------------------
+
+* Add dimage (Blanton's) simplexy and refinexy for centroiding if wanted
+* Add nudge option for centroiding based on CCD static distortion model
+* Default to 33 term ZB basis and nudge centroiding for FVC
 * Fix a bug in which the object epoch for an ``ICRS`` coordinate would not change when ``ICRS.to_epoch()`` was called.
+* Tweaks to ``FVCTransformLCO`` parameters based on telescope data.
+* Moved astrometry.net and guider fitting tools from ``cherno`` to ``coordio.guide``.
+* Added a ``coordio.extraction.sextractor_quick()`` function for simple extraction with background subtraction using ``sep``.
+* Change ``defaults.FOCAL_SCALE`` to 1. It may be removed in the future.
 
 
 1.3.1 (2022-04-24)
