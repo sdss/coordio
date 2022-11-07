@@ -4,10 +4,12 @@
 Change Log
 ==========
 
-Next version
-------------
+1.5.0b1 (2022-11-07)
+--------------------
 
 * Added additional tools for extraction and fitting the marginal distribution.
+* `#17 <https://github.com/sdss/coordio/pull/17>`__: implementation of the offset function.
+
 
 1.4.5 (2022-10-20)
 ------------------
