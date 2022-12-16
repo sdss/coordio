@@ -1365,8 +1365,13 @@ class FVCTransformAPO(object):
                 _yWok = _yWok + dy_zb_fit
                 keep = numpy.sqrt(_xWok**2+_yWok**2) < 100
                 dx_zb_fit2, dy_zb_fit2 = getZhaoBurgeXY(
-                    self.polids, self.zbCoeffsFieldCenter, _xWok, _yWok
+                    self.polids, self.zbCoeffsFieldCenter,
+                    _xWok[keep], _yWok[keep]
                 )
+                # dx2 = numpy.zeros(len(_xWok))
+                # dy2 = numpy.zeros(len(_xWok))
+                # dx2[keep] = dx_zb_fit2
+                # dy2[keep] = dy_zb_fit2
                 dx_zb_fit[keep] += dx_zb_fit2
                 dy_zb_fit[keep] += dy_zb_fit2
 
