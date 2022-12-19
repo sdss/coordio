@@ -778,7 +778,7 @@ def design_matrix(xs, ys):
     return Xbig[:, i2plusj2 <= IMAX ** 2]
 
 
-def updateCCDMeas(x,y, dxythresh=0.75):
+def updateCCDMeas(x, y, dxythresh=0.75, beta_x=beta_x, beta_y=beta_y):
     X = design_matrix(x,y)
     dx = X @ beta_x
     dy = X @ beta_y
@@ -1000,6 +1000,8 @@ class FVCTransformAPO(object):
         simpleSigma=1,
         simpleBoxSize=19,
         ccdRotCenXY=numpy.array([4115, 3092]),
+        beta_x=None,
+        beta_y=None
     ):
         """
         Find centroids in the fvc image, stores result in
@@ -1056,7 +1058,10 @@ class FVCTransformAPO(object):
 
         # update based on CCD distortion model the "true location"
         # of the fibers
-        xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"])
+        if beta_x is None:
+            xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"])
+        else:
+            xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"], beta_x=beta_x, beta_y=beta_y)
 
         # don't fit anything with an absolute correction > 0.75 pixels
         # rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
