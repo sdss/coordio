@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+1.5.0 (2022-12-26)
+------------------
+
+* No major changes since 1.5.0b1. Tagging as full release.
+
+
 1.5.0b1 (2022-11-07)
 --------------------
 
