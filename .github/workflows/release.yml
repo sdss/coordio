@@ -1,7 +1,7 @@
 on:
   push:
     tags:
-      - "*"
+      - '*'
 
 name: Create Release
 
@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-version: ['3.7', '3.8', '3.9', '3.10']
 
     steps:
       - name: Checkout code
@@ -72,7 +72,7 @@ jobs:
       - name: Build wheels
         uses: RalfG/python-wheels-manylinux-build@v0.4.2
         with:
-          python-versions: "cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310"
+          python-versions: 'cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310'
 
       - name: Remove non-manylinux wheels
         run: |
