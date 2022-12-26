@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+1.5.1 (2022-12-26)
+------------------
+
+* Make ``seaborn`` a dependency since it's needed by some of the extraction routines.
+
+
 1.5.0 (2022-12-26)
 ------------------
 
