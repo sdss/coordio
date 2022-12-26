@@ -64,7 +64,7 @@ jobs:
 
       - name: Install test dependencies
         run: |
-          pip install .[dev]
+          pip install pytest pytest-cov pytest-mock pytest-sugar
 
       - name: Test with pytest
         run: |
