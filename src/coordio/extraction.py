@@ -340,6 +340,7 @@ def _plot_one_page(
     box_size: int,
     n_rows: int,
 ):
+    """Plots one page of marginal distributions."""
 
     figure, ax = plt.subplots(n_rows, 2, figsize=(8.5, 11))
 
