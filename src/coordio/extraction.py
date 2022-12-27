@@ -298,6 +298,7 @@ def extract_marginal(
                     origin="lower",
                     vmin=sub.mean() - sub.std(),
                     vmax=sub.mean() + sub.std(),
+                    cmap="gray",
                 )
                 ax.scatter(
                     detections.x1,
