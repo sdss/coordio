@@ -262,6 +262,10 @@ def extract_marginal(
     back = sep.Background(data)
     sub = data - back.back()
 
+    # Add new columns. If there are no detections at least the columns will exist
+    # on an empty data frame and the overall shape won't change.
+    detections[["x1", "xstd", "xrms", "y1", "ystd", "yrms"]] = numpy.nan
+
     for axis in [1, 0]:
         ax = "x" if axis == 1 else "y"
 
@@ -300,20 +304,22 @@ def extract_marginal(
                     vmax=sub.mean() + sub.std(),
                     cmap="gray",
                 )
-                ax.scatter(
-                    detections.x1,
-                    detections.y1,
-                    marker="x",  # type:ignore
-                    c="r",
-                )
 
-                for reg, row in detections.iterrows():
-                    ax.annotate(
-                        str(reg),
-                        (row.x1 + 15, row.y1 + 15),
-                        fontsize=10,
-                        color="k",
+                if len(detections) > 0:
+                    ax.scatter(
+                        detections.x1,
+                        detections.y1,
+                        marker="x",  # type:ignore
+                        c="r",
                     )
+
+                    for reg, row in detections.iterrows():
+                        ax.annotate(
+                            str(reg),
+                            (row.x1 + 15, row.y1 + 15),
+                            fontsize=10,
+                            color="k",
+                        )
 
                 ax.set_title(plot_title or "", fontsize=15, pad=20)
 
