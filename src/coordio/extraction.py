@@ -262,29 +262,31 @@ def extract_marginal(
     back = sep.Background(data)
     sub = data - back.back()
 
-    # Add new columns. If there are no detections at least the columns will exist
-    # on an empty data frame and the overall shape won't change.
-    detections[["x1", "xstd", "xrms", "y1", "ystd", "yrms"]] = numpy.nan
+    if len(detections) > 0:
+        for axis in [1, 0]:
+            ax = "x" if axis == 1 else "y"
 
-    for axis in [1, 0]:
-        ax = "x" if axis == 1 else "y"
-
-        fit_df = detections.apply(
-            lambda d: pandas.Series(
-                fit_gaussian_to_marginal(
-                    sub,
-                    d.x,
-                    d.y,
-                    box_size,
-                    axis=axis,
-                    sigma_0=sigma_0,
+            fit_df = detections.apply(
+                lambda d: pandas.Series(
+                    fit_gaussian_to_marginal(
+                        sub,
+                        d.x,
+                        d.y,
+                        box_size,
+                        axis=axis,
+                        sigma_0=sigma_0,
+                    ),
+                    index=[f"{ax}1", f"{ax}std", f"{ax}rms"],
                 ),
-                index=[f"{ax}1", f"{ax}std", f"{ax}rms"],
-            ),
-            axis=1,
-        )
+                axis=1,
+            )
 
-        detections = pandas.concat([detections, fit_df], axis=1)
+            detections = pandas.concat([detections, fit_df], axis=1)
+
+    else:
+        # Add new columns. If there are no detections at least the columns will exist
+        # on an empty data frame and the overall shape won't change.
+        detections[["x1", "xstd", "xrms", "y1", "ystd", "yrms"]] = numpy.nan
 
     if plot is not None:
         if not isinstance(plot, pathlib.Path) and not isinstance(plot, str):
@@ -364,7 +366,7 @@ def _plot_one_page(
                 axis=0 if axis == "y" else 1,
             )
 
-            xx = numpy.arange(data.size)
+            xx = numpy.arange(marginal.size)
             ax[ii][col_ax].plot(
                 xx,
                 marginal,
@@ -381,7 +383,7 @@ def _plot_one_page(
                 rms = row.yrms
                 stddev = row.ystd
 
-            mean = pos - int(pos) + data.size // 2
+            mean = pos - int(pos) + marginal.size // 2
 
             model = Gaussian1D(1, mean, stddev)
             ax[ii][col_ax].plot(
