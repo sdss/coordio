@@ -356,8 +356,6 @@ def _plot_one_page(
 
         for col_ax, axis in enumerate(["x", "y"]):
 
-            xx = numpy.arange(box_size)
-
             marginal = get_marginal(
                 data,
                 row.x1,
@@ -365,6 +363,8 @@ def _plot_one_page(
                 box_size,
                 axis=0 if axis == "y" else 1,
             )
+
+            xx = numpy.arange(data.size)
             ax[ii][col_ax].plot(
                 xx,
                 marginal,
@@ -381,7 +381,7 @@ def _plot_one_page(
                 rms = row.yrms
                 stddev = row.ystd
 
-            mean = pos - int(pos) + box_size // 2
+            mean = pos - int(pos) + data.size // 2
 
             model = Gaussian1D(1, mean, stddev)
             ax[ii][col_ax].plot(
