@@ -4,6 +4,16 @@
 Change Log
 ==========
 
+1.5.2 (2023-01-02)
+------------------
+
+Several changes to ``extraction.extract_marginal()``:
+
+* Fix a potential problem in plot box.
+* Deal with no detections in ``extract_marginal()``.
+* Use gray colourmap in ``extract_marginal()`` plotting.
+
+
 1.5.1 (2022-12-26)
 ------------------
 
