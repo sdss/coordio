@@ -23,10 +23,7 @@ except ModuleNotFoundError:
 
 # Are we building in RTD?
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
-
-# Sphinx template selected in cookiecutter and whether to use releases
 sphinx_template = 'alabaster'
-use_releases = 'yes'
 
 # Importing matplotlib here with agg to prevent tkinter error in readthedocs
 # import matplotlib
@@ -231,11 +228,3 @@ texinfo_documents = [
      author, project, 'One line description of project.',
      'Miscellaneous'),
 ]
-
-if use_releases == 'yes':
-
-    extensions += ['sdsstools.releases']
-
-    releases_github_path = 'sdss/coordio'
-    releases_document_name = ['CHANGELOG']
-    releases_unstable_prehistory = True
