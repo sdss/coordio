@@ -4,6 +4,13 @@
 Change Log
 ==========
 
+1.6.0 (2023-01-05)
+------------------
+
+* Implement ``zbplus2`` FVC transform.
+* Handle Hogg coefficients by loading from the first ``wokcalib`` dir on path.
+
+
 1.5.2 (2023-01-02)
 ------------------
 
