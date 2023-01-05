@@ -745,9 +745,14 @@ def alphaBetaFromMetMeas(fullTable, newInvKin=True):
 
 IMAX = 32 # maximum integer wave number
 DELTAK = 2. * numpy.pi / 10000.0 # wave number spacing in inverse pixels
-with open(os.path.join(os.environ.get('WOKCALIB_DIR'), "beta_x.npy"), "rb") as f:
+_wcd = os.environ.get('WOKCALIB_DIR')
+### BIG WARNING ### if two wok calib dirs are present just take the first one
+### should eventually move this to calibrations for better handling
+if ":" in _wcd:
+    _wcd = _wcd.split(":")[0]
+with open(os.path.join(_wcd, "beta_x.npy"), "rb") as f:
     beta_x = numpy.load(f)
-with open(os.path.join(os.environ.get('WOKCALIB_DIR'), "beta_y.npy"), "rb") as f:
+with open(os.path.join(_wcd, "beta_y.npy"), "rb") as f:
     beta_y = numpy.load(f)
 
 
