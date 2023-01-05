@@ -813,9 +813,20 @@ class FVCTransformAPO(object):
         -1.05007864e-06, 2.48271534e-07, -9.28099433e-10, 6.13172886e-10,
         -1.31799608e-09
     ])
+    zbCoeffsFieldCenter = numpy.array([
+        -7.25143224e-02,  -3.89886320e-02,   1.21470501e-02,  -4.36545180e-04,
+       5.77221153e-05,  -6.80419618e-06,   3.47687303e-06,  -7.22841296e-06,
+       3.36246434e-07,  -7.10874816e-07,   9.00745018e-09,   2.40442049e-08,
+       1.67481779e-08,   4.90264973e-09,   1.75289911e-11,   2.59249932e-10,
+      -8.03748666e-11,   2.04240068e-10,  -9.05440334e-11,   2.60323630e-10,
+       1.12381521e-11,  -8.56685856e-14,  -1.37273897e-13,   1.03610076e-14,
+      -6.97673027e-13,   1.77283795e-12,   6.96794275e-13,  -5.97070297e-04,
+       1.01954593e-06,  -2.25406706e-06,   2.50511002e-08,  -9.82154214e-09,
+      -4.41479884e-09
+    ])
     telRotAngRef = 135.4
     rotAngDir = 1
-    centType = "zbplus"
+    centType = "zbplus2"
     telescopePlateScale = 0.060 # mm/arcsec
 
     def __init__(
@@ -1161,7 +1172,7 @@ class FVCTransformAPO(object):
         Parameters
         -----------
         centType : str
-            one of "zbplus", "zbminus", sep", "winpos", "nudge" or "simple", default is "nudge"
+            one of "zbplus2", zbplus", "zbminus", sep", "winpos", "nudge" or "simple", default is "nudge"
         maxRoughDist : float
             Max distance for an outer fiducial match (rough mm)
         maxMidDist : float
@@ -1183,7 +1194,7 @@ class FVCTransformAPO(object):
 
         if self.centroids is None:
             raise CoordIOError("Must run extractCentroids before fit")
-        if self.centType not in ["zbplus", "zbminus", "sep", "winpos", "nudge", "simple"]:
+        if self.centType not in ["zbplus2", "zbplus", "zbminus", "sep", "winpos", "nudge", "simple"]:
             raise CoordIOError("unknown centType: %s"%str(self.centType))
 
         xyMetFiber = self._fullTable[
@@ -1201,7 +1212,7 @@ class FVCTransformAPO(object):
         elif self.centType == "simple":
             xyCCDRot = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
             xyCCD = self.centroids[["xSimple", "ySimple"]].to_numpy()
-        elif self.centType in ["nudge", "zbplus", "zbminus"]:
+        elif self.centType in ["nudge", "zbplus", "zbminus", "zbplus2"]:
             xyCCDRot = self.centroids[["xNudgeRot", "yNudgeRot"]].to_numpy()
             xyCCD = self.centroids[["xNudge", "yNudge"]].to_numpy()
         else:
@@ -1342,18 +1353,36 @@ class FVCTransformAPO(object):
 
         #### apply zb corrections if centype is zbplus or zbminus
         if self.centType.startswith("zb") and self.zbCoeffs is not None:
+            _xWok = positionerMeas.xWokMeasMetrology.to_numpy()
+            _yWok = positionerMeas.yWokMeasMetrology.to_numpy()
             dx_zb_fit, dy_zb_fit = getZhaoBurgeXY(
-                self.polids, self.zbCoeffs,
-                positionerMeas.xWokMeasMetrology.to_numpy(),
-                positionerMeas.yWokMeasMetrology.to_numpy()
+                self.polids, self.zbCoeffs, _xWok, _yWok
             )
             # multiply by scale (arcsec to mm)
-            dx_zb_fit *= self.telescopePlateScale
-            dy_zb_fit *= self.telescopePlateScale
 
             if self.centType == "zbminus":
                 dx_zb_fit *= -1
                 dy_zb_fit *= -1
+            elif self.centType == "zbplus2":
+                # fit the inner region rWok < 100 mm with another
+                # set of zb coeffs determined from dither analysis
+                _xWok = _xWok + dx_zb_fit
+                _yWok = _yWok + dy_zb_fit
+                keep = numpy.sqrt(_xWok**2+_yWok**2) < 100
+                dx_zb_fit2, dy_zb_fit2 = getZhaoBurgeXY(
+                    self.polids, self.zbCoeffsFieldCenter,
+                    _xWok[keep], _yWok[keep]
+                )
+                # dx2 = numpy.zeros(len(_xWok))
+                # dy2 = numpy.zeros(len(_xWok))
+                # dx2[keep] = dx_zb_fit2
+                # dy2[keep] = dy_zb_fit2
+                dx_zb_fit[keep] += dx_zb_fit2
+                dy_zb_fit[keep] += dy_zb_fit2
+
+            dx_zb_fit *= self.telescopePlateScale
+            dy_zb_fit *= self.telescopePlateScale
+
         else:
             dx_zb_fit = numpy.zeros(len(positionerMeas))
             dy_zb_fit = numpy.zeros(len(positionerMeas))
@@ -1426,7 +1455,7 @@ class FVCTransformAPO(object):
             self.positionerTableMeas, angleType="Meas", doMetrology=False
         )
 
-        if self.centType in ["nudge", "zbplus", "zbminus"]:
+        if self.centType in ["nudge", "zbplus", "zbminus", "zbplus2"]:
             self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xNudge"]
             self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yNudge"]
             self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xNudge"]
@@ -1453,6 +1482,7 @@ class FVCTransformLCO(FVCTransformAPO):
 
     # polids = numpy.arange(33)
     zbCoeffs = None
+    zbCoeffsFieldCenter = None
     telRotAngRef = 89 # rotator angle that puts xyWok aligned with xyCCD on FVC image
     rotAngDir = -1
     centType = "nudge"
