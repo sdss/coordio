@@ -342,8 +342,8 @@ def extract_marginal(
 
                 if len(detections) > 0:
                     ax.scatter(
-                        detections.x1,
-                        detections.y1,
+                        detections.x,
+                        detections.y,
                         marker="x",  # type:ignore
                         c="r",
                     )
@@ -351,7 +351,7 @@ def extract_marginal(
                     for reg, row in detections.iterrows():
                         ax.annotate(
                             str(reg),
-                            (row.x1 + 15, row.y1 + 15),
+                            (row.x + 15, row.y + 15),
                             fontsize=10,
                             color="k",
                         )
@@ -393,13 +393,13 @@ def _plot_one_page(
 
             marginal = get_marginal(
                 data,
-                row.x1,
-                row.y1,
+                row.x,
+                row.y,
                 box_size,
                 axis=0 if axis == "y" else 1,
             )
 
-            xx = numpy.arange(marginal.size)
+            xx = numpy.arange(marginal.size) + row[axis] - box_size // 2
             ax[ii][col_ax].plot(
                 xx,
                 marginal,
@@ -408,15 +408,13 @@ def _plot_one_page(
             )
 
             if axis == "x":
-                pos = row.x1
+                mean = row.x1
                 rms = row.xrms
                 stddev = row.xstd
             else:
-                pos = row.y1
+                mean = row.y1
                 rms = row.yrms
                 stddev = row.ystd
-
-            mean = pos - int(pos) + marginal.size // 2
 
             model = Gaussian1D(1, mean, stddev)
             ax[ii][col_ax].plot(
@@ -429,7 +427,7 @@ def _plot_one_page(
             title = ""
             if axis == "x":
                 title += f"Region {region}: "
-            title += rf"$\overline{{{axis}}}={pos:.1f},\ $"
+            title += rf"$\overline{{{axis}}}={mean:.1f},\ $"
             title += rf"$\sigma_{axis}={stddev:.2f},\ $"
             title += f"RMS={rms:.3f}"
 
