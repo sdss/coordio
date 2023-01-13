@@ -81,7 +81,14 @@ def sextractor_quick(
     return df
 
 
-def get_marginal(data: NDArray, x: int, y: int, box_size: int, axis: int = 0):
+def get_marginal(
+    data: NDArray,
+    x: int,
+    y: int,
+    box_size: int,
+    axis: int = 0,
+    normalise: bool | float = True,
+):
     """Returns the marginal distribution around a point.
 
     Parameters
@@ -98,6 +105,9 @@ def get_marginal(data: NDArray, x: int, y: int, box_size: int, axis: int = 0):
         odd number or the closes odd number will be used.
     axis
         The axis of ``data`` along which to collapse the image.
+    normalise
+        Whether to normalise the marginal distribution. If a number, the
+        amount by which to normalise.
 
     Returns
     -------
@@ -119,7 +129,12 @@ def get_marginal(data: NDArray, x: int, y: int, box_size: int, axis: int = 0):
         x - box_size // 2 : x + box_size // 2 + 1,
     ]
     marginal = marginal.sum(axis=axis)
-    marginal /= marginal.max()
+
+    if normalise is not False:
+        if normalise is True:
+            marginal /= marginal[box_size // 2 - 3 : box_size // 2 + 3].max()
+        else:
+            marginal /= normalise
 
     return marginal
 
