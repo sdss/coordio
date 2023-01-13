@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import pathlib
+import warnings
 
 import numpy
 import pandas
@@ -221,6 +222,7 @@ def extract_marginal(
     threshold: float = 5.0,
     box_size: int = 51,
     sigma_0: float | None = None,
+    max_detections: int | None = None,
     exclude_border: bool = True,
     sextractor_quick_options: dict = {},
     plot: pathlib.Path | str | None = None,
@@ -240,6 +242,10 @@ def extract_marginal(
         odd number or the closes odd number will be used.
     sigma_0
         An initial estimate of the sigma of the Gaussian to fit.
+    max_detections
+        If passed, the maximum number of detections to fit. If the number
+        of SExtractor detections is larger than ``max_detections`` the top
+        ones, sorted by flux, will be used.
     exclude_border
         Reject regions that are closer to the border of the image than
         ``box_size``.
@@ -290,6 +296,10 @@ def extract_marginal(
             & (detections.y < data.shape[0] - box_size // 2),
             :,
         ]
+
+    detections.sort_values("flux", ascending=False, inplace=True)
+    if max_detections and len(detections) > max_detections:
+        detections = detections.head(max_detections)
 
     back = sep.Background(data)
     sub = data - back.back()
