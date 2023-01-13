@@ -145,6 +145,7 @@ def fit_gaussian_to_marginal(
     y: int,
     box_size: int,
     axis: int = 0,
+    peak: float | None = None,
     sigma_0: float | None = None,
 ):
     """Fits the marginal distribution with a 1D Gaussian.
@@ -163,6 +164,8 @@ def fit_gaussian_to_marginal(
         odd number or the closes odd number will be used.
     axis
         The axis of ``data`` along which to collapse the image.
+    peak
+        The peak of the detection. If passed, used for normalisation.
     sigma_0
         An initial estimate of the sigma of the Gaussian to fit.
 
@@ -181,13 +184,27 @@ def fit_gaussian_to_marginal(
     x = int(x)
     y = int(y)
 
-    marginal = get_marginal(data, x, y, box_size, axis=axis)
+    marginal = get_marginal(
+        data,
+        x,
+        y,
+        box_size,
+        axis=axis,
+        normalise=True if peak is None else peak,
+    )
     xx = numpy.arange(marginal.size)
 
     fitter = LevMarLSQFitter()
     model = Gaussian1D(2, box_size / 2, sigma_0)
+    model.amplitude.bounds = (0.1, 1.1)
 
-    gg = fitter(model, xx, marginal)
+    valid = 1
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        gg = fitter(model, xx, marginal)
+
+        if fitter.fit_info["cov_x"] is None:
+            valid = 0
 
     rms = numpy.sqrt(numpy.sum((marginal - gg(xx)) ** 2) / (len(xx) - 1))
 
@@ -196,7 +213,7 @@ def fit_gaussian_to_marginal(
     else:
         mean = x + gg.mean - box_size // 2
 
-    return (mean, gg.stddev.value, rms)
+    return (mean, gg.stddev.value, rms, valid)
 
 
 def extract_marginal(
@@ -291,7 +308,7 @@ def extract_marginal(
                         axis=axis,
                         sigma_0=sigma_0,
                     ),
-                    index=[f"{ax}1", f"{ax}std", f"{ax}rms"],
+                    index=[f"{ax}1", f"{ax}std", f"{ax}rms", f"{ax}fitvalid"],
                 ),
                 axis=1,
             )
@@ -301,7 +318,8 @@ def extract_marginal(
     else:
         # Add new columns. If there are no detections at least the columns will exist
         # on an empty data frame and the overall shape won't change.
-        detections[["x1", "xstd", "xrms", "y1", "ystd", "yrms"]] = numpy.nan
+        cols = ["x1", "xstd", "xrms", "y1", "ystd", "yrms"]
+        detections[cols] = numpy.nan
 
     if plot is not None:
         if not isinstance(plot, pathlib.Path) and not isinstance(plot, str):
