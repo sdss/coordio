@@ -328,7 +328,7 @@ def extract_marginal(
     else:
         # Add new columns. If there are no detections at least the columns will exist
         # on an empty data frame and the overall shape won't change.
-        cols = ["x1", "xstd", "xrms", "y1", "ystd", "yrms"]
+        cols = ["x1", "xstd", "xrms", "y1", "ystd", "yrms", "xfitvalid", "yfitvalid"]
         detections[cols] = numpy.nan
 
     if plot is not None:
