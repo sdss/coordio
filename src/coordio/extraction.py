@@ -76,6 +76,8 @@ def sextractor_quick(
         filter = (df.cpeak < 60000) & (df.ecc < 0.8) & (df.ecc > 0.05)
         df = df.loc[filter]
 
+    df = df.loc[df.tnpix > minarea]
+
     if return_background:
         return df, background
 
