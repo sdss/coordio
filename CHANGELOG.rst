@@ -4,6 +4,16 @@
 Change Log
 ==========
 
+1.6.1 (2023-01-15)
+------------------
+
+* In ``get_marginal()`` allow to normalise the distribution using an input value. Otherwise use a narrow regions around the centre of the box.
+* Several improvements to Gaussian fitting in ``fit_gaussian_to_marginal()``. Mark marginal fit as bad if the fit is unsuccessful.
+* Improve plotting of detections in ``extract_marginal()``
+* Sort detections by flux and allow to cap the number of sources returned.
+* Require that ``tnpix`` be larger than ``minarea`` in ``sextractor_quick()``
+
+
 1.6.0 (2023-01-05)
 ------------------
 
