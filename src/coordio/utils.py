@@ -725,15 +725,13 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
             # linear portion in transition area
             r_trans = ((mag_limit + safety_factor) - mag - 4.5) / 0.25
             # core area
-            # do dark core for apogee or dark
-            if lunation == 'bright' or waveName == 'Apogee':
-                if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
-                    fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
-                    r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
-                else:
-                    r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
+            if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
+                fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
+                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
             else:
-                r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
+                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
+            # tom's old conservative core function
+            # r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
             r = numpy.nanmax([r_wings, r_trans, r_core])
         else:
@@ -773,18 +771,15 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         # linear portion in transition area
         r_trans[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 4.5) / 0.25
         # core area
-        # core area
-        # do dark core for apogee or dark
-        if lunation == 'bright' or waveName == 'Apogee':
-            if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
-                fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
-                r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
-                                             FWHM)
-            else:
-                r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
-                                             FWHM)
+        if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
+            fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
+            r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
+                                         FWHM)
         else:
-            r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
+            r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
+                                         FWHM)
+        # tom's old conservative core function
+        # r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
         r = numpy.nanmax(numpy.column_stack((r_wings,
                                              r_trans,
