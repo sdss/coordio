@@ -628,7 +628,8 @@ class Moffat2dInterp(object):
 
 def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
                       safety_factor=0., beta=5, FWHM=1.7, skybrightness=None,
-                      offset_min_skybrightness=None, can_offset=None):
+                      offset_min_skybrightness=None, can_offset=None,
+                      use_type='bright_neigh', mag_limit_ind=None):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit.
@@ -685,6 +686,16 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         offset. Only set if
         want to check for offset_flag NO_CAN_OFFSET (16).
 
+    use_type: str
+        Defines type for definition use. 'bright_neigh' is for bright
+        neighbor check and auto sets mag_limit from mag_limits array.
+        'offfset' is for offsetting and the index from mag_limits array
+        is set by mag_limit_ind.
+
+    mag_limit_ind: int
+        when used with use_type='offfset', then this sets what index
+        from mag_limits array is set as the magnitude limit.
+
     Returns
     -------
     r: float or numpy.array
@@ -710,15 +721,18 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
     else:
         offset_bright_limit = 1.
     # set magntiude limit for instrument and lunation
-    if waveName == 'Apogee':
-        # 2MASS H
-        mag_limit = mag_limits[8]
-    elif lunation == 'bright':
-        # Gaia G
-        mag_limit = mag_limits[5]
+    if use_type == 'bright_neigh':
+        if waveName == 'Apogee':
+            # 2MASS H
+            mag_limit = mag_limits[8]
+        elif lunation == 'bright':
+            # Gaia G
+            mag_limit = mag_limits[5]
+        else:
+            # SDSS r
+            mag_limit = mag_limits[1]
     else:
-        # SDSS r
-        mag_limit = mag_limits[1]
+        mag_limit = mag_limits[mag_limit_ind]
     # get magloss function
     if fmagloss is None:
         fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
