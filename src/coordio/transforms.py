@@ -828,6 +828,7 @@ class FVCTransformAPO(object):
     rotAngDir = 1
     centType = "zbplus2"
     telescopePlateScale = 0.060 # mm/arcsec
+    nudgeOffX = 1000 # fix nudge model after FVC resize
 
     def __init__(
         self,
@@ -1061,7 +1062,8 @@ class FVCTransformAPO(object):
 
         # update based on CCD distortion model the "true location"
         # of the fibers
-        xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"])
+        xNudge, yNudge = updateCCDMeas(objects["x"]+self.nudgeOffX, objects["y"])
+        xNudge = xNudge - self.nudgeOffX
 
         # don't fit anything with an absolute correction > 0.75 pixels
         # rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
@@ -1148,7 +1150,6 @@ class FVCTransformAPO(object):
 
         # objects["xNudgeRot"] = xyRot[:, 0]
         # objects["yNudgeRot"] = xyRot[:, 1]
-
 
         objects["centroidID"] = list(range(len(objects)))
 
@@ -1478,14 +1479,15 @@ class FVCTransformAPO(object):
 
 
 class FVCTransformLCO(FVCTransformAPO):
-    polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults, best so far
+    # polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults, best so far
 
-    # polids = numpy.arange(33)
+    polids = numpy.arange(33)
     zbCoeffs = None
     zbCoeffsFieldCenter = None
     telRotAngRef = 89 # rotator angle that puts xyWok aligned with xyCCD on FVC image
     rotAngDir = -1
     centType = "nudge"
     telescopePlateScale = 0.092 # mm/arcsec
+    nudgeOffX = 1250 # fix nudge model after FVC resize
 
 
