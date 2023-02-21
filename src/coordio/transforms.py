@@ -1055,10 +1055,10 @@ class FVCTransformAPO(object):
         objects = objects[objects["npix"] > centroidMinNpix]
         # remove detections near edges of chip
         # (causes issues for unlucky winpos detections)
-        objects = objects[objects["x"] > 500]
-        objects = objects[objects["x"] < 7500]
-        objects = objects[objects["y"] > 30]
-        objects = objects[objects["y"] < 5970]
+        # objects = objects[objects["x"] > 500]
+        # objects = objects[objects["x"] < 7500]
+        # objects = objects[objects["y"] > 30]
+        # objects = objects[objects["y"] < 5970]
 
         # update based on CCD distortion model the "true location"
         # of the fibers
