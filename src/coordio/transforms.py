@@ -1145,33 +1145,6 @@ class FVCTransformAPO(object):
             objects[_centType[0]+"Rot"] = xyRot[:,0]
             objects[_centType[1]+"Rot"] = xyRot[:,1]
 
-        # xy = objects[["x", "y"]].to_numpy()
-        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
-
-        # objects["xRot"] = xyRot[:, 0]
-        # objects["yRot"] = xyRot[:, 1]
-
-        # # rotate winpos centroids by rotator angle
-        # xy = objects[["xWinpos", "yWinpos"]].to_numpy()
-        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
-
-        # objects["xWinposRot"] = xyRot[:, 0]
-        # objects["yWinposRot"] = xyRot[:, 1]
-
-        # # rotate simple centroids by rotator angle
-        # xy = objects[["xSimple", "ySimple"]].to_numpy()
-        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
-
-        # objects["xSimpleRot"] = xyRot[:, 0]
-        # objects["ySimpleRot"] = xyRot[:, 1]
-
-        # # rotate nudged centroids by rotator angle
-        # xy = objects[["xNudge", "yNudge"]].to_numpy()
-        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
-
-        # objects["xNudgeRot"] = xyRot[:, 0]
-        # objects["yNudgeRot"] = xyRot[:, 1]
-
         objects["centroidID"] = list(range(len(objects)))
 
         self.centroids = objects
@@ -1228,7 +1201,7 @@ class FVCTransformAPO(object):
         # if self.centType == "winpos":
         #     xyCCDRot = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
         #     xyCCD = self.centroids[["xWinpos", "yWinpos"]].to_numpy()
-        elif self.centType == "sep":
+        if self.centType == "sep":
             xyCCDRot = self.centroids[["xRot", "yRot"]].to_numpy()
             xyCCD = self.centroids[["x", "y"]].to_numpy()
         # elif self.centType == "simple":
