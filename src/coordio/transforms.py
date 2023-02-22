@@ -752,12 +752,12 @@ beta_x_apo = None
 beta_y_apo = None
 beta_x_lco = None
 beta_y_lco = None
-for path in _wcd.split(":"):
-    with open(os.path.join(_wcd, "beta_x.npy"), "rb") as f:
+for _path in _wcd.split(":"):
+    with open(os.path.join(_path, "beta_x.npy"), "rb") as f:
         beta_x = numpy.load(f)
-    with open(os.path.join(_wcd, "beta_y.npy"), "rb") as f:
+    with open(os.path.join(_path, "beta_y.npy"), "rb") as f:
         beta_y = numpy.load(f)
-    if "/lco/" in path:
+    if "/lco/" in _path:
         beta_x_lco = beta_x.copy()
         beta_y_lco = beta_y.copy()
     else:
