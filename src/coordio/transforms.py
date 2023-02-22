@@ -856,7 +856,8 @@ class FVCTransformAPO(object):
         wokCoords=calibration.wokCoords,
         fiducialCoords=calibration.fiducialCoords,
         telRotAngRef=None,
-        polids=None
+        polids=None,
+        nudgeAdjust=True
     ):
         """
         Parameters
@@ -891,6 +892,7 @@ class FVCTransformAPO(object):
             list of integers for selecting zhaoburge basis polynomials.
             Default is supplied by class attribute polids
         """
+        self.nudgeAdjust = nudgeAdjust
 
         self.fvcImgData = numpy.array(fvcImgData, dtype=numpy.float32)
         # apply rough bias/background subtraction
@@ -1078,7 +1080,7 @@ class FVCTransformAPO(object):
 
         # update based on CCD distortion model the "true location"
         # of the fibers
-        if self.data_sub.shape[1] < 8000:
+        if self.data_sub.shape[1] < 8000 and self.nudgeAdjust:
             # ccd was trimmed
             xNudge, yNudge = updateCCDMeas(objects["x"]+self.nudgeOffX, objects["y"], site=self.site)
             xNudge = xNudge - self.nudgeOffX
