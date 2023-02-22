@@ -1062,8 +1062,13 @@ class FVCTransformAPO(object):
 
         # update based on CCD distortion model the "true location"
         # of the fibers
-        xNudge, yNudge = updateCCDMeas(objects["x"]+self.nudgeOffX, objects["y"])
-        xNudge = xNudge - self.nudgeOffX
+        if self.data_sub.shape[1] < 8000:
+            # ccd was trimmed
+            xNudge, yNudge = updateCCDMeas(objects["x"]+self.nudgeOffX, objects["y"])
+            xNudge = xNudge - self.nudgeOffX
+        else:
+            xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"])
+
 
         # don't fit anything with an absolute correction > 0.75 pixels
         # rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
