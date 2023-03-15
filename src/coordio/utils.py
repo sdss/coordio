@@ -902,17 +902,17 @@ def object_offset(mags, mag_limits, lunation, waveName, fmagloss=None,
     if len(mags.shape) == 1:
         for i in range(len(mag_limits)):
             if mag_limits[i] != -999.:
-                delta_ras[:, i], offset_flags[:, i] = offset_definition(mags[i], mag_limits, lunation, waveName,
-                                                                        fmagloss=fmagloss,
-                                                                        safety_factor=safety_factor, beta=beta,
-                                                                        FWHM=FWHM, skybrightness=skybrightness,
-                                                                        offset_min_skybrightness=offset_min_skybrightness,
-                                                                        can_offset=can_offset,
-                                                                        use_type='offset', mag_limit_ind=i)
+                delta_ras[i], offset_flags[i] = offset_definition(mags[i], mag_limits, lunation, waveName,
+                                                                  fmagloss=fmagloss,
+                                                                  safety_factor=safety_factor, beta=beta,
+                                                                  FWHM=FWHM, skybrightness=skybrightness,
+                                                                  offset_min_skybrightness=offset_min_skybrightness,
+                                                                  can_offset=can_offset,
+                                                                  use_type='offset', mag_limit_ind=i)
             else:
                 # make artificially less than 0 so this doesnt get chosen
                 # for max when setting offset_flag
-                delta_ras[:, i] = numpy.zeros(len(mags[:, i])) - 1.
+                delta_ras[i] = -1.
         # use max offset
         delta_ra = numpy.max(delta_ras)
         ind_max = numpy.argmax(delta_ras)
