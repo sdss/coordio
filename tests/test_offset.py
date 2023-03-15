@@ -34,9 +34,9 @@ def test_all_flags():
             can_off_arr = None
         else:
             can_off_arr = numpy.array([can_off])
-        delta_ra, delta_dec, offset_flag = object_offset(numpy.array([mag]), mag_limits, lunation,
-                                                         waveName, fmagloss=fmagloss,
-                                                         skybrightness=sky,
+        delta_ra, delta_dec, offset_flag = object_offset(numpy.vstack((mag, mag)), mag_limits, lunation,
+                                                         waveName, fmagloss=fmagloss, safety_factor=0.1,
+                                                         beta=5, FWHM=1.7, skybrightness=sky,
                                                          offset_min_skybrightness=offset_min_skybrightness,
                                                          can_offset=can_off_arr)
         assert numpy.all(offset_flag == flag)
