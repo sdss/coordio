@@ -33,7 +33,7 @@ def test_all_flags():
         if can_off is None:
             can_off_arr = None
         else:
-            can_off_arr = numpy.array([can_off])
+            can_off_arr = numpy.array([can_off, can_off])
         delta_ra, delta_dec, offset_flag = object_offset(numpy.vstack((mag, mag)), mag_limits, lunation,
                                                          waveName, fmagloss=fmagloss, safety_factor=0.1,
                                                          beta=5, FWHM=1.7, skybrightness=sky,
