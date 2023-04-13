@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+Next version
+------------
+
+* Added binding for the SOFA ``iauRefco`` function.
+
+
 1.6.1 (2023-01-15)
 ------------------
 
