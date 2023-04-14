@@ -264,7 +264,7 @@ class FocalPlane(Coordinate3D):
                 wls = numpy.zeros(len(value)) + float(wls)
 
             valid_wls = numpy.array(list(defaults.VALID_WAVELENGTHS))
-            nearest = wls[abs(wls[None, :] - valid_wls[:, None]).argmin(axis=0)]
+            nearest = valid_wls[abs(wls[None, :] - valid_wls[:, None]).argmin(axis=0)]
             kwargs['wavelength'] = nearest
 
         verifyWavelength(
