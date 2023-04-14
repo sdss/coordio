@@ -349,3 +349,32 @@ def test_invalid_site():
     site = Site("APO") # time not specified
     with pytest.raises(CoordIOError):
         fc = Observed([[80, 120]], site=site)
+
+
+def test_focal_plane_closest_wavelength():
+    site = apoSite
+    thetaField = numpy.random.uniform(0, 360, size=1)
+    phiField = numpy.random.uniform(0, 1, size=1)
+    coordArr = numpy.array([thetaField, phiField]).T
+
+    fc = Observed([[80, 120]], site=site)
+    field = Field(coordArr, field_center=fc)
+    wls = 100
+    fp = FocalPlane(field, wavelength=wls, site=site, use_closest_wavelength=True)
+
+    assert numpy.allclose(fp.wavelength, [5400.0])
+
+
+def test_focal_plane_closest_wavelength_array():
+    site = apoSite
+    nCoords = 3
+    thetaField = numpy.random.uniform(0, 360, size=nCoords)
+    phiField = numpy.random.uniform(0, 1, size=nCoords)
+    coordArr = numpy.array([thetaField, phiField]).T
+
+    fc = Observed([[80, 120]], site=site)
+    field = Field(coordArr, field_center=fc)
+    wls = numpy.array([100, 6500, 8000])
+    fp = FocalPlane(field, wavelength=wls, site=site, use_closest_wavelength=True)
+
+    assert numpy.allclose(fp.wavelength, [5400.0, 6231.0, 6231.0])
