@@ -233,7 +233,7 @@ class FocalPlane(Coordinate3D):
         boolean array indicating suspect conversions from large field angles
     """
 
-    __extra_params__ = ["site", "fpScale"]
+    __extra_params__ = ["site", "fpScale", "use_closest_wavelength"]
     __extra_arrays__ = ["wavelength"]
     __computed_arrays__ = ["b", "R"]
     __warn_arrays__ = ["field_warn"]
@@ -263,7 +263,7 @@ class FocalPlane(Coordinate3D):
                 # single value passed
                 wls = numpy.zeros(len(value)) + float(wls)
 
-            valid_wls = numpy.array(defaults.VALID_WAVELENGTHS)
+            valid_wls = numpy.array(list(defaults.VALID_WAVELENGTHS))
             nearest = wls[abs(wls[None, :] - valid_wls[:, None]).argmin(axis=0)]
             kwargs['wavelength'] = nearest
 
