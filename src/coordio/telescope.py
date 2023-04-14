@@ -6,8 +6,13 @@ import numpy
 
 from . import conv, defaults
 from .conv import cart2FieldAngle, sph2Cart
-from .coordinate import (Coordinate, Coordinate2D, Coordinate3D,
-                         verifySite, verifyWavelength)
+from .coordinate import (
+    Coordinate,
+    Coordinate2D,
+    Coordinate3D,
+    verifySite,
+    verifyWavelength
+)
 from .exceptions import CoordIOError
 
 
@@ -212,6 +217,9 @@ class FocalPlane(Coordinate3D):
         Multiplicative scale factor to apply between wok and focal
         coords.  An adjustment to the focal plane model.  Defaults to
         coordio.defaults.FOCAL_SCALE.
+    use_closest_wavelength : bool
+        If `True`, uses the ZEMAX model with the closes wavelength to the
+        input wavelength.
 
     Attributes
     -----------
@@ -236,13 +244,33 @@ class FocalPlane(Coordinate3D):
     wavelength: numpy.ndarray
     site: Site
     fpScale: float
+    use_closest_wavelength: bool
 
     def __new__(cls, value, **kwargs):
 
         verifySite(kwargs)
 
+        use_closest_wavelength = kwargs.get('use_closest_wavelength', False)
+
+        # If using the closes wavelength, override the wavelength entry in kwargs
+        # with an array with the closest valid wavelength for each input wavelength.
+        wls = kwargs.get('wavelength', None)
+        if wls is not None and use_closest_wavelength:
+            if hasattr(wls, "__len__"):
+                # array passed
+                wls = numpy.array(wls, dtype=numpy.float64)
+            else:
+                # single value passed
+                wls = numpy.zeros(len(value)) + float(wls)
+
+            valid_wls = numpy.array(defaults.VALID_WAVELENGTHS)
+            nearest = wls[abs(wls[None, :] - valid_wls[:, None]).argmin(axis=0)]
+            kwargs['wavelength'] = nearest
+
         verifyWavelength(
-            kwargs, len(value), strict=True
+            kwargs,
+            len(value),
+            strict=True,
         )
 
         fpScale = kwargs.get("fpScale", None)
