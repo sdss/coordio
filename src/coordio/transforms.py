@@ -748,12 +748,23 @@ DELTAK = 2. * numpy.pi / 10000.0 # wave number spacing in inverse pixels
 _wcd = os.environ.get('WOKCALIB_DIR')
 ### BIG WARNING ### if two wok calib dirs are present just take the first one
 ### should eventually move this to calibrations for better handling
-if ":" in _wcd:
-    _wcd = _wcd.split(":")[0]
-with open(os.path.join(_wcd, "beta_x.npy"), "rb") as f:
-    beta_x = numpy.load(f)
-with open(os.path.join(_wcd, "beta_y.npy"), "rb") as f:
-    beta_y = numpy.load(f)
+beta_x_apo = None
+beta_y_apo = None
+beta_x_lco = None
+beta_y_lco = None
+for _path in _wcd.split(":"):
+    with open(os.path.join(_path, "beta_x.npy"), "rb") as f:
+        beta_x = numpy.load(f)
+    with open(os.path.join(_path, "beta_y.npy"), "rb") as f:
+        beta_y = numpy.load(f)
+    if "/lco/" in _path:
+        beta_x_lco = beta_x.copy()
+        beta_y_lco = beta_y.copy()
+    else:
+        beta_x_apo = beta_x.copy()
+        beta_y_apo = beta_y.copy()
+beta_x = None
+beta_y = None
 
 
 # functions to set up design matrices
@@ -783,10 +794,14 @@ def design_matrix(xs, ys):
     return Xbig[:, i2plusj2 <= IMAX ** 2]
 
 
-def updateCCDMeas(x,y, dxythresh=0.75):
+def updateCCDMeas(x,y,dxythresh=0.75,site="APO"):
     X = design_matrix(x,y)
-    dx = X @ beta_x
-    dy = X @ beta_y
+    if site == "APO":
+        dx = X @ beta_x_apo
+        dy = X @ beta_y_apo
+    else:
+        dx = X @ beta_x_lco
+        dy = X @ beta_y_lco
 
     rejectInds = (numpy.abs(dx) > dxythresh) | (numpy.abs(dy) > dxythresh)
 
@@ -828,6 +843,8 @@ class FVCTransformAPO(object):
     rotAngDir = 1
     centType = "zbplus2"
     telescopePlateScale = 0.060 # mm/arcsec
+    nudgeOffX = 1000 # fix nudge model after FVC resize
+    site = "APO"
 
     def __init__(
         self,
@@ -839,7 +856,8 @@ class FVCTransformAPO(object):
         wokCoords=calibration.wokCoords,
         fiducialCoords=calibration.fiducialCoords,
         telRotAngRef=None,
-        polids=None
+        polids=None,
+        nudgeAdjust=True
     ):
         """
         Parameters
@@ -874,6 +892,7 @@ class FVCTransformAPO(object):
             list of integers for selecting zhaoburge basis polynomials.
             Default is supplied by class attribute polids
         """
+        self.nudgeAdjust = nudgeAdjust
 
         self.fvcImgData = numpy.array(fvcImgData, dtype=numpy.float32)
         # apply rough bias/background subtraction
@@ -1054,65 +1073,71 @@ class FVCTransformAPO(object):
         objects = objects[objects["npix"] > centroidMinNpix]
         # remove detections near edges of chip
         # (causes issues for unlucky winpos detections)
-        objects = objects[objects["x"] > 500]
-        objects = objects[objects["x"] < 7500]
-        objects = objects[objects["y"] > 30]
-        objects = objects[objects["y"] < 5970]
+        # objects = objects[objects["x"] > 500]
+        # objects = objects[objects["x"] < 7500]
+        # objects = objects[objects["y"] > 30]
+        # objects = objects[objects["y"] < 5970]
 
         # update based on CCD distortion model the "true location"
         # of the fibers
-        xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"])
+        if self.data_sub.shape[1] < 8000 and self.nudgeAdjust:
+            # ccd was trimmed
+            xNudge, yNudge = updateCCDMeas(objects["x"]+self.nudgeOffX, objects["y"], site=self.site)
+            xNudge = xNudge - self.nudgeOffX
+        else:
+            xNudge, yNudge = updateCCDMeas(objects["x"], objects["y"], site=self.site)
+
 
         # don't fit anything with an absolute correction > 0.75 pixels
         # rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
 
 
         # create mask and re-extract using winpos algorithm
-        maskArr = numpy.ones(self.data_sub.shape, dtype=bool)
-        boxRad = numpy.floor(winposBoxSize/2)
-        boxSteps = numpy.arange(-boxRad, boxRad+1, dtype=int)
+        # maskArr = numpy.ones(self.data_sub.shape, dtype=bool)
+        # boxRad = numpy.floor(winposBoxSize/2)
+        # boxSteps = numpy.arange(-boxRad, boxRad+1, dtype=int)
 
-        for ii in range(len(objects)):
-            _xm = objects["xcpeak"][ii]
-            _ym = objects["ycpeak"][ii]
-            for xstep in boxSteps:
-                for ystep in boxSteps:
-                    maskArr[_ym + ystep, _xm + xstep] = False
+        # for ii in range(len(objects)):
+        #     _xm = objects["xcpeak"][ii]
+        #     _ym = objects["ycpeak"][ii]
+        #     for xstep in boxSteps:
+        #         for ystep in boxSteps:
+        #             maskArr[_ym + ystep, _xm + xstep] = False
 
-        xNew, yNew, flags = sep.winpos(
-            self.data_sub,
-            objects["xcpeak"],
-            objects["ycpeak"],
-            sig=winposSigma,
-            mask=maskArr
-        )
-
-
-        off = 1022  # trim the LR edges refinexy needs square
-        im = self.data_sub[:, off:-off].copy()
-
-        xSimple, ySimple = refinexy(
-            im, xNew-off, yNew,
-            psf_sigma=self.simpleSigma, cutout=self.simpleBoxSize
-        )
+        # xNew, yNew, flags = sep.winpos(
+        #     self.data_sub,
+        #     objects["xcpeak"],
+        #     objects["ycpeak"],
+        #     sig=winposSigma,
+        #     mask=maskArr
+        # )
 
 
-        xSimple = xSimple + off
+        # off = 1022  # trim the LR edges refinexy needs square
+        # im = self.data_sub[:, off:-off].copy()
+
+        # xSimple, ySimple = refinexy(
+        #     im, xNew-off, yNew,
+        #     psf_sigma=self.simpleSigma, cutout=self.simpleBoxSize
+        # )
+
+
+        # xSimple = xSimple + off
 
         objects = pandas.DataFrame(objects)
 
-        objects["xWinpos"] = xNew
-        objects["yWinpos"] = yNew
-        objects["xSimple"] = xSimple
-        objects["ySimple"] = ySimple
+        # objects["xWinpos"] = xNew
+        # objects["yWinpos"] = yNew
+        # objects["xSimple"] = xSimple
+        # objects["ySimple"] = ySimple
         objects["xNudge"] = xNudge
         objects["yNudge"] = yNudge
 
         # rotate raw centroids by rotator angle
         _centTypes = [
             ["x", "y"],
-            ["xWinpos", "yWinpos"],
-            ["xSimple", "ySimple"],
+            # ["xWinpos", "yWinpos"],
+            # ["xSimple", "ySimple"],
             ["xNudge", "yNudge"]
         ]
 
@@ -1121,34 +1146,6 @@ class FVCTransformAPO(object):
             xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
             objects[_centType[0]+"Rot"] = xyRot[:,0]
             objects[_centType[1]+"Rot"] = xyRot[:,1]
-
-        # xy = objects[["x", "y"]].to_numpy()
-        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
-
-        # objects["xRot"] = xyRot[:, 0]
-        # objects["yRot"] = xyRot[:, 1]
-
-        # # rotate winpos centroids by rotator angle
-        # xy = objects[["xWinpos", "yWinpos"]].to_numpy()
-        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
-
-        # objects["xWinposRot"] = xyRot[:, 0]
-        # objects["yWinposRot"] = xyRot[:, 1]
-
-        # # rotate simple centroids by rotator angle
-        # xy = objects[["xSimple", "ySimple"]].to_numpy()
-        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
-
-        # objects["xSimpleRot"] = xyRot[:, 0]
-        # objects["ySimpleRot"] = xyRot[:, 1]
-
-        # # rotate nudged centroids by rotator angle
-        # xy = objects[["xNudge", "yNudge"]].to_numpy()
-        # xyRot = (self.rotMat @ (xy - ccdRotCenXY).T).T + ccdRotCenXY
-
-        # objects["xNudgeRot"] = xyRot[:, 0]
-        # objects["yNudgeRot"] = xyRot[:, 1]
-
 
         objects["centroidID"] = list(range(len(objects)))
 
@@ -1172,7 +1169,7 @@ class FVCTransformAPO(object):
         Parameters
         -----------
         centType : str
-            one of "zbplus2", zbplus", "zbminus", sep", "winpos", "nudge" or "simple", default is "nudge"
+            one of "zbplus2", zbplus", "zbminus", "sep", or "nudge", default is "nudge"
         maxRoughDist : float
             Max distance for an outer fiducial match (rough mm)
         maxMidDist : float
@@ -1194,7 +1191,7 @@ class FVCTransformAPO(object):
 
         if self.centroids is None:
             raise CoordIOError("Must run extractCentroids before fit")
-        if self.centType not in ["zbplus2", "zbplus", "zbminus", "sep", "winpos", "nudge", "simple"]:
+        if self.centType not in ["zbplus2", "zbplus", "zbminus", "sep", "nudge"]:
             raise CoordIOError("unknown centType: %s"%str(self.centType))
 
         xyMetFiber = self._fullTable[
@@ -1203,15 +1200,15 @@ class FVCTransformAPO(object):
 
         xyWokFIF = self.fiducialCoords[["xWok", "yWok"]].to_numpy()
 
-        if self.centType == "winpos":
-            xyCCDRot = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
-            xyCCD = self.centroids[["xWinpos", "yWinpos"]].to_numpy()
-        elif self.centType == "sep":
+        # if self.centType == "winpos":
+        #     xyCCDRot = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
+        #     xyCCD = self.centroids[["xWinpos", "yWinpos"]].to_numpy()
+        if self.centType == "sep":
             xyCCDRot = self.centroids[["xRot", "yRot"]].to_numpy()
             xyCCD = self.centroids[["x", "y"]].to_numpy()
-        elif self.centType == "simple":
-            xyCCDRot = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
-            xyCCD = self.centroids[["xSimple", "ySimple"]].to_numpy()
+        # elif self.centType == "simple":
+        #     xyCCDRot = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
+        #     xyCCD = self.centroids[["xSimple", "ySimple"]].to_numpy()
         elif self.centType in ["nudge", "zbplus", "zbminus", "zbplus2"]:
             xyCCDRot = self.centroids[["xNudgeRot", "yNudgeRot"]].to_numpy()
             xyCCD = self.centroids[["xNudge", "yNudge"]].to_numpy()
@@ -1460,16 +1457,16 @@ class FVCTransformAPO(object):
             self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yNudge"]
             self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xNudge"]
             self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["yNudge"]
-        elif self.centType == "winpos":
-            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xWinpos"]
-            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yWinpos"]
-            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xWinpos"]
-            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["yWinpos"]
-        elif self.centType == "simple":
-            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xSimple"]
-            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["ySimple"]
-            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xSimple"]
-            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["ySimple"]
+        # elif self.centType == "winpos":
+        #     self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xWinpos"]
+        #     self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yWinpos"]
+        #     self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xWinpos"]
+        #     self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["yWinpos"]
+        # elif self.centType == "simple":
+        #     self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xSimple"]
+        #     self.positionerTableMeas["yFVC"] = self.positionerTableMeas["ySimple"]
+        #     self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xSimple"]
+        #     self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["ySimple"]
         elif self.centType == "sep":
             self.positionerTableMeas["xFVC"] = self.positionerTableMeas["x"]
             self.positionerTableMeas["yFVC"] = self.positionerTableMeas["y"]
@@ -1478,14 +1475,15 @@ class FVCTransformAPO(object):
 
 
 class FVCTransformLCO(FVCTransformAPO):
-    polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults, best so far
+    # polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults, best so far
 
-    # polids = numpy.arange(33)
+    polids = numpy.arange(33)
     zbCoeffs = None
     zbCoeffsFieldCenter = None
     telRotAngRef = 89 # rotator angle that puts xyWok aligned with xyCCD on FVC image
     rotAngDir = -1
     centType = "nudge"
     telescopePlateScale = 0.092 # mm/arcsec
-
+    nudgeOffX = 1250 # fix nudge model after FVC resize
+    site = "LCO"
 
