@@ -4,10 +4,12 @@
 Change Log
 ==========
 
-Next version
-------------
+1.7.0 (2023-04-15)
+------------------
 
+* Adjust nudge model for new FVC frame sizes at APO and LCO.
 * Added binding for the SOFA ``iauRefco`` function.
+* Allow to call ``FocalPlane()`` with ``use_closest_wavelength`` and an arbitrary wavelength to use the ZEMAX model with the closest wavelength.
 
 
 1.6.1 (2023-01-15)
