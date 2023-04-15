@@ -192,7 +192,11 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 
     obs = Observed(icrs, site=site, wavelength=wavelength)
     field = Field(obs, field_center=obsCen)
-    focal = FocalPlane(field, wavelength=wavelength, site=site, fpScale=focalScale)
+    focal = FocalPlane(field,
+                       wavelength=wavelength,
+                       site=site,
+                       fpScale=focalScale,
+                       use_closest_wavelength=True)
     wok = Wok(focal, site=site, obsAngle=obsAngle)
 
     output = (
@@ -308,7 +312,11 @@ def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
     wok = Wok(xyzWok, site=site, obsAngle=obsAngle)
     if focalScale is None:
         focalScale = defaults.SITE_TO_SCALE[obsSite]
-    focal = FocalPlane(wok, wavelength=wavelength, site=site, fpScale=focalScale)
+    focal = FocalPlane(wok,
+                       wavelength=wavelength,
+                       site=site,
+                       fpScale=focalScale,
+                       use_closest_wavelength=True)
     field = Field(focal, field_center=obsCen)
     obs = Observed(field, site=site, wavelength=wavelength)
     icrs = ICRS(obs, epoch=obsTime)
