@@ -84,8 +84,13 @@ ARGTYPES = [
     # Earth rotation angle
     # sum of the arguments should be jd in the UT1 scale
     # args: double jd, double 0
-    ('iauEra00', (c_double, c_double))
+    ('iauEra00', (c_double, c_double)),
 
+    # Determine the constants A and B in the atmospheric refraction model
+    # dZ = A tan Z + B tan^3 Z.
+    # args: double phpa, double tc, double rh, double wl, double *refa, double *refb
+    ('iauRefco', (c_double, c_double, c_double, c_double,
+                  POINTER(c_double), POINTER(c_double)))
 ]
 
 
