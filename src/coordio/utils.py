@@ -801,7 +801,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
 
 
 def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
-                  safety_factor=0.5, beta=5, FWHM=1.7, skybrightness=None,
+                  safety_factor=None, beta=5, FWHM=1.7, skybrightness=None,
                   offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
@@ -877,6 +877,11 @@ def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
                   (offset_bright_limit is G = 6 for Boss and
                    H = 1 for Apogee).
     """
+    if safety_factor is None:
+        if lunation == 'bright':
+            safety_factor = 0.5
+        else:
+            safety_factor = 1.0
     delta_ra, offset_flag = offset_definition(mag, mag_limits, lunation, waveName,
                                               fmagloss=fmagloss,
                                               safety_factor=safety_factor, beta=beta,
