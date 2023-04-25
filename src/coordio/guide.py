@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy
+import numpy.typing as nt
 import pandas
 import scipy.ndimage
 from astropy.coordinates import SkyCoord
@@ -14,6 +15,7 @@ from astropy.io import fits
 from astropy.time import Time
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import fit_wcs_from_points
+from matplotlib import pyplot as plt
 from scipy.spatial import KDTree
 from skimage.registration import phase_cross_correlation
 
@@ -77,7 +79,6 @@ class Guide(Coordinate2D):
     guide_warn: numpy.ndarray
 
     def __new__(cls, value, **kwargs):
-
         xBin = kwargs.get("xBin", None)
         if xBin is None:
             kwargs["xBin"] = 1
@@ -219,8 +220,7 @@ def gfa_to_radec(
     if icrs is False:
         return (observed.ra[0], observed.dec[0])
     else:
-        icrs = ICRS(observed)
-        return icrs[0]
+        return ICRS(observed)[0]
 
 
 def radec_to_gfa(
@@ -455,8 +455,10 @@ def cross_match(
 class GuiderFit:
     """Results of a guider data fit."""
 
+    cameras: list[int]
     gfa_wok: pandas.DataFrame
     astro_wok: pandas.DataFrame
+    coeffs: list[float]
     delta_ra: float
     delta_dec: float
     delta_rot: float
@@ -464,6 +466,9 @@ class GuiderFit:
     xrms: float
     yrms: float
     rms: float
+    rms_data: pandas.DataFrame
+    fit: pandas.DataFrame
+    fit_rms: pandas.DataFrame
     only_radec: bool = False
 
 
@@ -471,7 +476,6 @@ class GuiderFitter:
     """Fits guider data, returning the measured offsets."""
 
     def __init__(self, observatory: str):
-
         self.observatory = observatory.upper()
 
         self.plate_scale = defaults.PLATE_SCALE[self.observatory]
@@ -505,7 +509,6 @@ class GuiderFitter:
         wok_coords = {}
 
         for gfa_id in range(1, 7):
-
             camera_coords: pandas.DataFrame = gfaCoords.loc[gfa_id]
 
             b = camera_coords[["xWok", "yWok", "zWok"]].to_numpy().squeeze()
@@ -633,12 +636,11 @@ class GuiderFitter:
         """Adds an astrometric solution from a ``proc-gimg`` image."""
 
         hdu = fits.open(str(path))
+        header = hdu[1].header
 
-        is_proc = len(hdu) > 1 and "SOLVED" in hdu[1].header
+        is_proc = len(hdu) > 1 and "SOLVED" in header
         if not is_proc:
             raise CoordIOError(f"{path!s} is not a proc-gimg image.")
-
-        header = hdu[1].header
 
         if header["OBSERVAT"] != self.observatory:
             raise CoordIOError("GFA image is from a different observatory.")
@@ -659,6 +661,7 @@ class GuiderFitter:
         offset: tuple[float, float, float] | numpy.ndarray = (0.0, 0.0, 0.0),
         scale_rms: bool = False,
         only_radec: bool = False,
+        cameras: list[int] | None = None,
     ):
         """Performs the fit and returns a `.GuiderFit` object.
 
@@ -695,10 +698,13 @@ class GuiderFitter:
         ywok_gfa: list[float] = []
         xwok_astro: list[float] = []
         ywok_astro: list[float] = []
+        use_detections: list[bool] = []
+        used_cameras: set[int] = set([])
 
         for d in self.astro_data.itertuples():
-
-            camera_id: int = d.gfa_id
+            camera_id: int = int(d.gfa_id)
+            if cameras is None or camera_id in cameras:
+                used_cameras.add(camera_id)
 
             camera_ids.append(camera_id)
 
@@ -722,13 +728,17 @@ class GuiderFitter:
             xwok_astro += _xwok_astro.tolist()
             ywok_astro += _ywok_astro.tolist()
 
-        # X: GFA to wok coordinates as a 2D array
-        # Y: ICRS to wok coordinates as a 2D array
-        X = numpy.array([xwok_gfa, ywok_gfa])
-        Y = numpy.array([xwok_astro, ywok_astro])
+            # Use these detections fit unless we are excluding the camera.
+            use_detections.append(cameras is None or camera_id in cameras)
+
+        # Create arrays with all detections, then with only selected ones.
+        X_all: nt.NDArray[numpy.float32] = numpy.array([xwok_gfa, ywok_gfa])
+        Y_all: nt.NDArray[numpy.float32] = numpy.array([xwok_astro, ywok_astro])
+        X_fit = X_all[:, use_detections]  # GFA to wok coordinates as a 2D array
+        Y_fit = Y_all[:, use_detections]  # ICRS to wok coordinates as a 2D array
 
         try:
-            c, R, t = umeyama(X, Y)
+            c, R, t = umeyama(X_fit, Y_fit)
         except ValueError:
             if only_radec is True:
                 warnings.warn(
@@ -737,12 +747,15 @@ class GuiderFitter:
                 )
                 c = 1.0
                 R = numpy.array([[1, 0], [1, 0]])
+                t = numpy.array([0.0, 0.0])
             else:
                 return False
 
         if only_radec is True:
             # Override the translation component with a simple average translation
-            t = (Y - X).mean(axis=1).T
+            t = (Y_fit - X_fit).mean(axis=1).T
+
+        coeffs = [c, R, t]
 
         # delta_x and delta_y only align with RA/Dec if PA=0. Otherwise we need to
         # project using the PA.
@@ -759,41 +772,204 @@ class GuiderFitter:
 
         delta_scale = float(numpy.round(c, 6))
 
-        if scale_rms:
-            xwok_astro = list(numpy.array(xwok_astro) / delta_scale)
-            ywok_astro = list(numpy.array(ywok_astro) / delta_scale)
-
-        delta_x = (numpy.array(xwok_gfa) - numpy.array(xwok_astro)) ** 2
-        delta_y = (numpy.array(ywok_gfa) - numpy.array(ywok_astro)) ** 2
-
-        xrms = numpy.sqrt(numpy.sum(delta_x) / len(delta_x))
-        yrms = numpy.sqrt(numpy.sum(delta_y) / len(delta_y))
-        rms = numpy.sqrt(numpy.sum(delta_x + delta_y) / len(delta_x))
-
-        # Convert to arcsec and round up
-        xrms = float(numpy.round(xrms / self.plate_scale * 3600.0, 3))
-        yrms = float(numpy.round(yrms / self.plate_scale * 3600.0, 3))
-        rms = float(numpy.round(rms / self.plate_scale * 3600.0, 3))
+        detection_id = numpy.arange(len(xwok_astro)) + 1
 
         astro_wok = pandas.DataFrame.from_records(
-            {"gfa_id": camera_ids, "xwok": xwok_astro, "ywok": ywok_astro}
+            {
+                "gfa_id": camera_ids,
+                "detection_id": detection_id,
+                "xwok": xwok_astro.copy(),
+                "ywok": ywok_astro.copy(),
+                "selected": numpy.array(use_detections).astype(int),
+            },
+            index=["gfa_id", "detection_id"],
         )
 
         gfa_wok = pandas.DataFrame.from_records(
-            {"gfa_id": camera_ids, "xwok": xwok_gfa, "ywok": ywok_gfa}
+            {
+                "gfa_id": camera_ids,
+                "detection_id": detection_id,
+                "xwok": xwok_gfa.copy(),
+                "ywok": ywok_gfa.copy(),
+                "selected": numpy.array(use_detections).astype(int),
+            },
+            index=["gfa_id", "detection_id"],
         )
 
+        rms_df = self.calculate_rms(gfa_wok, astro_wok, scale=c if scale_rms else 1)
+
+        fit_data = c * R @ X_all + t[numpy.newaxis].T
+        fit_df = pandas.DataFrame.from_records(
+            {
+                "gfa_id": camera_ids,
+                "detection_id": detection_id,
+                "xwok": fit_data[0, :],
+                "ywok": fit_data[1, :],
+                "selected": numpy.array(use_detections).astype(int),
+            },
+            index=["gfa_id", "detection_id"],
+        )
+        fit_rms_df = self.calculate_rms(fit_df, astro_wok)
+
         self.result = GuiderFit(
+            list(used_cameras),
             gfa_wok,
             astro_wok,
+            coeffs,
             delta_ra,
             delta_dec,
             delta_rot,
             delta_scale,
-            xrms,
-            yrms,
-            rms,
+            rms_df.loc[0].xrms,
+            rms_df.loc[0].yrms,
+            rms_df.loc[0].rms,
+            rms_df,
+            fit_df,
+            fit_rms_df,
             only_radec=only_radec,
         )
 
         return self.result
+
+    def calculate_rms(
+        self,
+        gfa_wok: pandas.DataFrame,
+        astro_wok: pandas.DataFrame,
+        scale: float = 1,
+    ):
+        """Calculates the RMS of the measurements.
+
+        Parameters
+        ----------
+        gfa_wok
+            GFA to wok coordinates data. The data frame contains three columns:
+            ``gfa_id``, ``xwok``, and ``ywok``.
+        astro_wok
+            Astrometric solution to wok coordinates data. The data frame contains
+            three columns: ``gfa_id``, ``xwok``, and ``ywok``.
+        scale
+            Factor by which to scale coordinates.
+
+        Returns
+        -------
+        rms
+            A data frame with columns ``gfa_id``, ``xrms``, ``yrms``, ``rms``
+            for the x, y, and combined RMS measurements for each camera. An
+            additional ``gfa_id=0`` is added with the RMS measurements for all
+            GFA cameras combined. RMS values are returned in mm on wok coordinates.
+
+        """
+
+        def calc_rms(gfa_cam: pandas.DataFrame):
+            gfa_id = gfa_cam.index.values[0][0]
+            astro_cam = astro_wok.loc[gfa_id]
+
+            delta = gfa_cam - astro_cam
+            xrms = numpy.sqrt(numpy.mean(delta.xwok**2))
+            yrms = numpy.sqrt(numpy.mean(delta.ywok**2))
+            rms = numpy.sqrt(numpy.mean(delta.xwok**2 + delta.ywok**2))
+
+            return pandas.Series([xrms, yrms, rms], index=["xrms", "yrms", "rms"])
+
+        astro_wok = astro_wok.copy()
+        gfa_wok = gfa_wok.copy()
+        gfa_wok.loc[:, ["xwok", "ywok"]] *= scale
+
+        rms_df = gfa_wok.groupby("gfa_id").apply(calc_rms)
+
+        delta = gfa_wok - astro_wok
+        xrms = numpy.sqrt(numpy.mean(delta.xwok**2))
+        yrms = numpy.sqrt(numpy.mean(delta.ywok**2))
+        rms = numpy.sqrt(numpy.mean(delta.xwok**2 + delta.ywok**2))
+
+        rms_df.loc[0, :] = (xrms, yrms, rms)
+
+        return rms_df
+
+    def plot_fit(self, filename: str | pathlib.Path):
+        """Plot the fit results."""
+
+        if self.result is None:
+            raise RuntimeError("fit() needs to be run before plot_fit().")
+
+        fig, ax = plt.subplots(2, 3)
+        fig.tight_layout()
+
+        iax = 0
+        jax = 0
+        direction = 1
+        for cam_id in range(1, 7):
+            one_arcsec = self.plate_scale / 3600.0
+
+            camera_note = None
+            color = "k"
+
+            if cam_id in self.result.fit.index:
+                X = self.result.fit.loc[cam_id].xwok
+                Y = self.result.fit.loc[cam_id].ywok
+
+                U = self.result.astro_wok.loc[cam_id].xwok
+                V = self.result.astro_wok.loc[cam_id].ywok
+                U = U - X
+                V = V - Y
+
+                rms_mm = float(self.result.fit_rms.loc[cam_id].rms)
+                rms = numpy.round(rms_mm / self.plate_scale * 3600, 4)
+
+                if self.result.cameras and cam_id not in self.result.cameras:
+                    camera_note = "Not fit"
+                    color = "r"
+
+            else:
+                X = Y = U = V = []
+                rms = -999
+                camera_note = "Disabled / not solved"
+                color = "r"
+
+            q = ax[iax][jax].quiver(
+                X,
+                Y,
+                U,
+                V,
+                color=color,
+                units="xy",
+                angles="xy",
+                scale_units="inches",
+                scale=0.15,
+            )
+
+            if cam_id == 1:
+                ax[iax][jax].quiverkey(q, 0.2, 0.9, one_arcsec, label="1 arcsec")
+
+            text1 = ax[iax][jax].text(
+                0.5,
+                0.95,
+                f"RMS: {rms}",
+                color=color,
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=ax[iax][jax].transAxes,
+            )
+            text1.set_bbox(dict(facecolor="white", alpha=1, edgecolor="none"))
+
+            if camera_note:
+                text2 = ax[iax][jax].text(
+                    0.5,
+                    0.90,
+                    camera_note,
+                    color=color,
+                    horizontalalignment="center",
+                    verticalalignment="center",
+                    transform=ax[iax][jax].transAxes,
+                )
+                text2.set_bbox(dict(facecolor="white", alpha=1, edgecolor="none"))
+
+            ax[iax][jax].set_title(f"GFA{cam_id}", color=color)
+
+            jax += direction
+            if jax == 3:
+                jax = -1
+                iax = 1
+                direction = -1
+
+        fig.savefig(str(filename))
