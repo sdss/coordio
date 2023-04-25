@@ -4,6 +4,13 @@
 Change Log
 ==========
 
+1.7.1 (2023-04-25)
+------------------
+
+* Update default ``safety_factor`` for bright and dark time.
+* Calculate guider fit RMS.
+
+
 1.7.0 (2023-04-15)
 ------------------
 
