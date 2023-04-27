@@ -809,7 +809,7 @@ class GuiderFitter:
             },
             index=["gfa_id", "detection_id"],
         )
-        fit_rms_df = self.calculate_rms(fit_df, astro_wok)
+        fit_rms_df = self.calculate_rms(fit_df, astro_wok, cameras=cameras)
 
         self.result = GuiderFit(
             list(used_cameras),
@@ -836,6 +836,7 @@ class GuiderFitter:
         gfa_wok: pandas.DataFrame,
         astro_wok: pandas.DataFrame,
         scale: float = 1,
+        cameras: list[int] | None = None,
     ):
         """Calculates the RMS of the measurements.
 
@@ -849,6 +850,8 @@ class GuiderFitter:
             three columns: ``gfa_id``, ``xwok``, and ``ywok``.
         scale
             Factor by which to scale coordinates.
+        cameras
+            The cameras to use to calculate the global RMS.
 
         Returns
         -------
@@ -877,7 +880,10 @@ class GuiderFitter:
 
         rms_df = gfa_wok.groupby("gfa_id").apply(calc_rms)
 
-        delta = gfa_wok - astro_wok
+        if cameras is None:
+            delta = gfa_wok - astro_wok
+        else:
+            delta = gfa_wok.loc[cameras] - astro_wok.loc[cameras]
         xrms = numpy.sqrt(numpy.mean(delta.xwok**2))
         yrms = numpy.sqrt(numpy.mean(delta.ywok**2))
         rms = numpy.sqrt(numpy.mean(delta.xwok**2 + delta.ywok**2))

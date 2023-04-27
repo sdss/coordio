@@ -4,6 +4,9 @@
 Change Log
 ==========
 
+* Calculate global fit RMS using only cameras that were used for the fit.
+
+
 1.7.1 (2023-04-25)
 ------------------
 
