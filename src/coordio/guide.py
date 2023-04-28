@@ -796,7 +796,12 @@ class GuiderFitter:
             index=["gfa_id", "detection_id"],
         )
 
-        rms_df = self.calculate_rms(gfa_wok, astro_wok, scale=c if scale_rms else 1)
+        rms_df = self.calculate_rms(
+            gfa_wok,
+            astro_wok,
+            scale=c if scale_rms else 1,
+            cameras=cameras,
+        )
 
         fit_data = c * R @ X_all + t[numpy.newaxis].T
         fit_df = pandas.DataFrame.from_records(
