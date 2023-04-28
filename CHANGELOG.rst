@@ -4,6 +4,9 @@
 Change Log
 ==========
 
+1.7.3 (2023-04-28)
+------------------
+
 * Also calculate measured RMS using only cameras that were used for the fit.
 
 
