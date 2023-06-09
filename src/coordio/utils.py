@@ -649,7 +649,7 @@ class Moffat2dInterp(object):
         r: float or numpy.array
             The offset to get the desired magloss in arcseconds.
         """
-        r = self.fmagloss[observatory][FWHM](magloss)
+        r = self.fmagloss[obsSite][FWHM](magloss)
         return r
 
 
