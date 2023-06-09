@@ -596,7 +596,9 @@ class MoffatLossProfile(object):
 class Moffat2dInterp(object):
     """
     Create the dict of 1D interpolations function
-    for a moffat profile offset for various FWHMs
+    for a moffat profile offset for various FWHMs.
+    Object returned includes two dicts, one for APO
+    and one for LCO for the various fiber sizes.
     """
     def __init__(self, Noffset=None, FWHM=None, beta=None):
         if Noffset is None:
@@ -605,6 +607,7 @@ class Moffat2dInterp(object):
             FWHM = [1.3, 1.5, 1.7, 1.9]
         if beta is None:
             beta = 5
+        rfibers = {'APO': 1., 'LCO': 1.33 / 2}
         offsets = numpy.zeros((len(FWHM), Noffset))
         FWHMs = numpy.zeros((len(FWHM), Noffset))
         for i, f in enumerate(FWHM):
@@ -614,15 +617,39 @@ class Moffat2dInterp(object):
         magloss = numpy.zeros((FWHMs.shape[0], Noffset))
 
         fmagloss = {}
-        for i, f in enumerate(FWHMs[:, 0]):
-            magloss[i, :] = MoffatLossProfile(offsets[i, :], beta, f).func_magloss()
-            fmagloss[f] = interp1d(magloss[i, :], offsets[i, :])
+        for obs, rfiber in zip(rfibers.keys(), rfibers.values()):
+            fmagloss[obs] = {}
+            for i, f in enumerate(FWHMs[:, 0]):
+                magloss[i, :] = MoffatLossProfile(offsets[i, :], beta, f, rfiber=rfiber).func_magloss()
+                fmagloss[obs][f] = interp1d(magloss[i, :], offsets[i, :])
         self.fmagloss = fmagloss
         self.beta_interp2d = beta
         self.FWHM_interp2d = FWHM
 
-    def __call__(self, magloss, FWHM):
-        r = self.fmagloss[FWHM](magloss)
+    def __call__(self, magloss, FWHM, obsSite):
+        """
+        The cal to return the offset value based on the desired
+        magloss.
+
+        Parameters
+        -----------
+        magloss: float or numpy.array
+            The desired magnitude loss for the object(s)
+
+        FWHM: float
+            The FWHM for the moffat profile that has been calculated
+            on the init of the object
+
+        obsSite: str
+            The observatory of the observation. Should either be
+            'APO' or 'LCO'.
+
+        Returns
+        -------
+        r: float or numpy.array
+            The offset to get the desired magloss in arcseconds.
+        """
+        r = self.fmagloss[observatory][FWHM](magloss)
         return r
 
 
