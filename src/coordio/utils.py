@@ -653,7 +653,7 @@ class Moffat2dInterp(object):
         return r
 
 
-def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
+def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=None,
                       safety_factor=0., beta=5, FWHM=1.7, skybrightness=None,
                       offset_min_skybrightness=None, can_offset=None,
                       use_type='bright_neigh', mag_limit_ind=None):
@@ -684,6 +684,10 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
     waveName: str
         Instrument for the fibers offset definition being applied
         to. Either 'Boss' or 'Apogee'.
+
+    obsSite: str
+        The observatory of the observation. Should either be
+        'APO' or 'LCO'.
 
     fmagloss: object
         Moffat2dInterp class with the lookup table
@@ -776,9 +780,9 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
             # core area
             if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
                 fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
-                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
+                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM, obsSite)
             else:
-                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
+                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM, obsSite)
             # tom's old conservative core function
             # r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
@@ -823,10 +827,10 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
             fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
             r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
-                                         FWHM)
+                                         FWHM, obsSite)
         else:
             r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
-                                         FWHM)
+                                         FWHM, obsSite)
         # tom's old conservative core function
         # r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
@@ -841,7 +845,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
     return r, offset_flag
 
 
-def object_offset(mags, mag_limits, lunation, waveName, fmagloss=None,
+def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
                   safety_factor=None, beta=5, FWHM=1.7, skybrightness=None,
                   offset_min_skybrightness=None, can_offset=None):
     """
@@ -871,6 +875,10 @@ def object_offset(mags, mag_limits, lunation, waveName, fmagloss=None,
     waveName: str
         Instrument for the fibers offset definition being applied
         to. Either 'Boss' or 'Apogee'.
+
+    obsSite: str
+        The observatory of the observation. Should either be
+        'APO' or 'LCO'.
 
     fmagloss: object
         Moffat2dInterp class with the lookup table
@@ -930,7 +938,7 @@ def object_offset(mags, mag_limits, lunation, waveName, fmagloss=None,
         for i in range(len(mag_limits)):
             if mag_limits[i] != -999.:
                 delta_ras[i], offset_flags[i] = offset_definition(mags[i], mag_limits, lunation, waveName,
-                                                                  fmagloss=fmagloss,
+                                                                  obsSite, fmagloss=fmagloss,
                                                                   safety_factor=safety_factor, beta=beta,
                                                                   FWHM=FWHM, skybrightness=skybrightness,
                                                                   offset_min_skybrightness=offset_min_skybrightness,
@@ -949,7 +957,7 @@ def object_offset(mags, mag_limits, lunation, waveName, fmagloss=None,
         for i in range(len(mag_limits)):
             if mag_limits[i] != -999.:
                 delta_ras[:, i], offset_flags[:, i] = offset_definition(mags[:, i], mag_limits, lunation, waveName,
-                                                                        fmagloss=fmagloss,
+                                                                        obsSite, fmagloss=fmagloss,
                                                                         safety_factor=safety_factor, beta=beta,
                                                                         FWHM=FWHM, skybrightness=skybrightness,
                                                                         offset_min_skybrightness=offset_min_skybrightness,
