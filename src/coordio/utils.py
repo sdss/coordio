@@ -604,7 +604,7 @@ class Moffat2dInterp(object):
         if Noffset is None:
             Noffset = 1000
         if FWHM is None:
-            FWHM = [1.3, 1.5, 1.7, 1.9]
+            FWHM = [1., 1.3, 1.5, 1.7, 1.9]
         if beta is None:
             beta = 5
         rfibers = {'APO': 1., 'LCO': 1.33 / 2}
@@ -654,7 +654,7 @@ class Moffat2dInterp(object):
 
 
 def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=None,
-                      safety_factor=0., beta=5, FWHM=1.7, skybrightness=None,
+                      safety_factor=0., beta=5, FWHM=None, skybrightness=None,
                       offset_min_skybrightness=None, can_offset=None,
                       use_type='bright_neigh', mag_limit_ind=None):
     """
@@ -767,6 +767,14 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
     # get magloss function
     if fmagloss is None:
         fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
+    # assign correct FWHM
+    if FWHM is None:
+        if obsSite == 'APO':
+            FWHM = 1.7
+        elif obsSite == 'LCO':
+            FWHM = 1.
+        else:
+            raise ValueError('obsSite must be APO or LCO.')
     if isinstance(mag, float) or isinstance(mag, int):
         # make can_offset always True if not supplied
         if can_offset is None:
@@ -846,7 +854,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
 
 
 def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
-                  safety_factor=None, beta=5, FWHM=1.7, skybrightness=None,
+                  safety_factor=None, beta=5, FWHM=None, skybrightness=None,
                   offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
@@ -932,6 +940,13 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
             safety_factor = 0.5
         else:
             safety_factor = 1.0
+    if FWHM is None:
+        if obsSite == 'APO':
+            FWHM = 1.7
+        elif obsSite == 'LCO':
+            FWHM = 1.
+        else:
+            raise ValueError('obsSite must be APO or LCO.')
     delta_ras = numpy.zeros(mags.shape)
     offset_flags = numpy.zeros(mags.shape)
     if len(mags.shape) == 1:
