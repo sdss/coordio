@@ -606,7 +606,7 @@ class Moffat2dInterp(object):
         if FWHM is None:
             FWHM = [1., 1.3, 1.5, 1.7, 1.9]
         if beta is None:
-            beta = 5
+            beta = {'APO': 5., 'LCO': 2.}
         rfibers = {'APO': 1., 'LCO': 1.33 / 2}
         offsets = numpy.zeros((len(FWHM), Noffset))
         FWHMs = numpy.zeros((len(FWHM), Noffset))
@@ -619,8 +619,12 @@ class Moffat2dInterp(object):
         fmagloss = {}
         for obs, rfiber in zip(rfibers.keys(), rfibers.values()):
             fmagloss[obs] = {}
+            if isinstance(beta, dict):
+                b = beta[obs]
+            else:
+                b = beta
             for i, f in enumerate(FWHMs[:, 0]):
-                magloss[i, :] = MoffatLossProfile(offsets[i, :], beta, f, rfiber=rfiber).func_magloss()
+                magloss[i, :] = MoffatLossProfile(offsets[i, :], b, f, rfiber=rfiber).func_magloss()
                 fmagloss[obs][f] = interp1d(magloss[i, :], offsets[i, :])
         self.fmagloss = fmagloss
         self.beta_interp2d = beta
