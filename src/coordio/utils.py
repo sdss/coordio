@@ -658,7 +658,7 @@ class Moffat2dInterp(object):
 
 
 def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=None,
-                      safety_factor=0., beta=5, FWHM=None, skybrightness=None,
+                      safety_factor=0., beta=None, FWHM=None, skybrightness=None,
                       offset_min_skybrightness=None, can_offset=None,
                       use_type='bright_neigh', mag_limit_ind=None):
     """
@@ -703,10 +703,10 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
         bright neighbor checks (i.e. remain at default).
 
     beta: float
-        Power index of the Moffat profile
+        Power index of the Moffat profile. If None, default set in code.
 
     FWHM: float
-        seeing for the Moffat profile
+        seeing for the Moffat profile. If None, default set in code.
 
     skybrightness: float
         Sky brightness for the field cadence. Only set if
@@ -729,7 +729,8 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
 
     mag_limit_ind: int
         when used with use_type='offfset', then this sets what index
-        from mag_limits array is set as the magnitude limit.
+        from mag_limits array is set as the magnitude limit. Otherwise,
+        for bright neighbor check this is set in code.
 
     Returns
     -------
@@ -779,6 +780,8 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
             FWHM = 1.
         else:
             raise ValueError('obsSite must be APO or LCO.')
+    if beta is None:
+        beta = {'APO': 5., 'LCO': 2.}
     if isinstance(mag, float) or isinstance(mag, int):
         # make can_offset always True if not supplied
         if can_offset is None:
@@ -858,7 +861,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
 
 
 def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
-                  safety_factor=None, beta=5, FWHM=None, skybrightness=None,
+                  safety_factor=None, beta=None, FWHM=None, skybrightness=None,
                   offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
@@ -898,13 +901,13 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
         then table is calculated at function call.
 
     safety_factor: float
-        Factor to add to mag_limit.
+        Factor to add to mag_limit. If None, default set in code.
 
     beta: float
-        Power index of the Moffat profile
+        Power index of the Moffat profile. If None, default set in code.
 
     FWHM: float
-        seeing for the Moffat profile
+        seeing for the Moffat profile. If None, default set in code.
 
     skybrightness: float
         Sky brightness for the field cadence. Only set if
@@ -951,6 +954,8 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
             FWHM = 1.
         else:
             raise ValueError('obsSite must be APO or LCO.')
+    if beta is None:
+        beta = {'APO': 5., 'LCO': 2.}
     delta_ras = numpy.zeros(mags.shape)
     offset_flags = numpy.zeros(mags.shape)
     if len(mags.shape) == 1:
