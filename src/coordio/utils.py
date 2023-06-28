@@ -871,7 +871,7 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
     Parameters
     ----------
     mags: numpy.array
-        The magniutdes of the objects. Should be a Nx10 array, where
+        The magniutdes of the objects. Should be a 2D, Nx10 array, where
         N is number of objects and length of 10 index should correspond
         to magntidues: [g, r, i, z, bp, gaia_g, rp, J, H, K].
 
@@ -924,14 +924,17 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
 
     Returns
     -------
-    delta_ra: float or numpy.array
-        offset in RA in arcseconds around object(s)
+    delta_ra: numpy.array
+        offset in RA in arcseconds around object(s) in
+        numpy array of length N
 
-    delta_dec: float or numpy.array
-        offset in Decl. in arcseconds around object(s)
+    delta_dec: numpy.array
+        offset in Decl. in arcseconds around object(s) in
+        numpy array of length N
 
-    offset_flag: int or numpy.array
-        bitmask for how offset was set. Flags are:
+    offset_flag: numpy.array
+        bitmask for how offset was set in
+        numpy array of length N. Flags are:
             - 0: offset applied normally (i.e. when mag <= mag_limit)
             - 1: no offset applied because mag > mag_limit
             - 2: no offset applied because magnitude was null value.
@@ -942,6 +945,12 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
                   (offset_bright_limit is G = 6 for Boss and
                    H = 1 for Apogee).
     """
+    # check if 2D array
+    if len(mags.shape) != 2:
+        raise ValueError('mags must be a 2D numpy.array of shape (N, 10)')
+    if mags.shape[1] != 10:
+        raise ValueError('mags must be a 2D numpy.array of shape (N, 10)')
+    # add default values for offset function if None supplied
     if safety_factor is None:
         if lunation == 'bright':
             safety_factor = 0.5
@@ -958,45 +967,25 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
         beta = {'APO': 5., 'LCO': 2.}
     delta_ras = numpy.zeros(mags.shape)
     offset_flags = numpy.zeros(mags.shape)
-    if len(mags.shape) == 1:
-        for i in range(len(mag_limits)):
-            if mag_limits[i] != -999.:
-                delta_ras[i], offset_flags[i] = offset_definition(mags[i], mag_limits, lunation, waveName,
-                                                                  obsSite, fmagloss=fmagloss,
-                                                                  safety_factor=safety_factor, beta=beta,
-                                                                  FWHM=FWHM, skybrightness=skybrightness,
-                                                                  offset_min_skybrightness=offset_min_skybrightness,
-                                                                  can_offset=can_offset,
-                                                                  use_type='offset', mag_limit_ind=i)
-            else:
-                # make artificially less than 0 so this doesnt get chosen
-                # for max when setting offset_flag
-                delta_ras[i] = -1.
-        # use max offset
-        delta_ra = numpy.max(delta_ras)
-        ind_max = numpy.argmax(delta_ras)
-        offset_flag = offset_flags[ind_max]
-        delta_dec = 0.
-    else:
-        for i in range(len(mag_limits)):
-            if mag_limits[i] != -999.:
-                delta_ras[:, i], offset_flags[:, i] = offset_definition(mags[:, i], mag_limits, lunation, waveName,
-                                                                        obsSite, fmagloss=fmagloss,
-                                                                        safety_factor=safety_factor, beta=beta,
-                                                                        FWHM=FWHM, skybrightness=skybrightness,
-                                                                        offset_min_skybrightness=offset_min_skybrightness,
-                                                                        can_offset=can_offset,
-                                                                        use_type='offset', mag_limit_ind=i)
-            else:
-                # make artificially less than 0 so this doesnt get chosen
-                # for max when setting offset_flag
-                delta_ras[:, i] = numpy.zeros(len(mags[:, i])) - 1.
-        # use max offset
-        delta_ra = numpy.max(delta_ras, axis=1)
-        ind_max = numpy.argmax(delta_ras, axis=1)
-        offset_flag = numpy.array([offset_flags[i, j] for i, j in enumerate(ind_max)],
-                                  dtype=int)
-        delta_dec = numpy.zeros(len(delta_ra))
+    for i in range(len(mag_limits)):
+        if mag_limits[i] != -999.:
+            delta_ras[:, i], offset_flags[:, i] = offset_definition(mags[:, i], mag_limits, lunation, waveName,
+                                                                    obsSite, fmagloss=fmagloss,
+                                                                    safety_factor=safety_factor, beta=beta,
+                                                                    FWHM=FWHM, skybrightness=skybrightness,
+                                                                    offset_min_skybrightness=offset_min_skybrightness,
+                                                                    can_offset=can_offset,
+                                                                    use_type='offset', mag_limit_ind=i)
+        else:
+            # make artificially less than 0 so this doesnt get chosen
+            # for max when setting offset_flag
+            delta_ras[:, i] = numpy.zeros(len(mags[:, i])) - 1.
+    # use max offset
+    delta_ra = numpy.max(delta_ras, axis=1)
+    ind_max = numpy.argmax(delta_ras, axis=1)
+    offset_flag = numpy.array([offset_flags[i, j] for i, j in enumerate(ind_max)],
+                              dtype=int)
+    delta_dec = numpy.zeros(len(delta_ra))
     return delta_ra, delta_dec, offset_flag
 
 def _offset_radec(ra=None, dec=None, delta_ra=0., delta_dec=0.):
