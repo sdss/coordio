@@ -18,37 +18,27 @@ fmagloss = Moffat2dInterp()
 def test_all_flags():
     def  test_flags(flag, mag, mag_limits, lunation, waveName,
                     sky, offset_min_skybrightness, can_off):
-        # test APO
-        delta_ra, delta_dec, offset_flag = object_offset(mag, mag_limits, lunation,
-                                                         waveName, 'APO', fmagloss=fmagloss,
-                                                         skybrightness=sky,
-                                                         offset_min_skybrightness=offset_min_skybrightness,
-                                                         can_offset=can_off)
-        assert offset_flag == flag
-        assert delta_dec == 0.
-        if flag > 0:
-            assert delta_ra == 0.
-        else:
-            assert delta_ra > 0.
+        # test APO fails with 1D array
+        with pytest.raises(ValueError, match='mags must be a 2D numpy.array of shape \\(N, 10\\)'):
+            delta_ra, delta_dec, offset_flag = object_offset(mag, mag_limits, lunation,
+                                                             waveName, 'APO', fmagloss=fmagloss,
+                                                             skybrightness=sky,
+                                                             offset_min_skybrightness=offset_min_skybrightness,
+                                                             can_offset=can_off)
 
-        # test LCO
-        delta_ra, delta_dec, offset_flag = object_offset(mag, mag_limits, lunation,
-                                                         waveName, 'LCO', fmagloss=fmagloss,
-                                                         skybrightness=sky,
-                                                         offset_min_skybrightness=offset_min_skybrightness,
-                                                         can_offset=can_off)
-        assert offset_flag == flag
-        assert delta_dec == 0.
-        if flag > 0:
-            assert delta_ra == 0.
-        else:
-            assert delta_ra > 0.
+        # test LCO fails with 1D array
+        with pytest.raises(ValueError, match='mags must be a 2D numpy.array of shape \\(N, 10\\)'):
+            delta_ra, delta_dec, offset_flag = object_offset(mag, mag_limits, lunation,
+                                                             waveName, 'LCO', fmagloss=fmagloss,
+                                                             skybrightness=sky,
+                                                             offset_min_skybrightness=offset_min_skybrightness,
+                                                             can_offset=can_off)
 
         if can_off is None:
             can_off_arr = None
         else:
             can_off_arr = numpy.array([can_off, can_off])
-        # test APO
+        # test APO with 2D array
         delta_ra, delta_dec, offset_flag = object_offset(numpy.vstack((mag, mag)), mag_limits, lunation,
                                                          waveName, 'APO', fmagloss=fmagloss, safety_factor=0.1,
                                                          beta=5, FWHM=1.7, skybrightness=sky,
@@ -61,7 +51,7 @@ def test_all_flags():
         else:
             assert numpy.all(delta_ra > 0.)
 
-        # test LCO
+        # test LCO with 2D array
         delta_ra, delta_dec, offset_flag = object_offset(numpy.vstack((mag, mag)), mag_limits, lunation,
                                                          waveName, 'LCO', fmagloss=fmagloss, safety_factor=0.1,
                                                          beta=5, FWHM=1.7, skybrightness=sky,
