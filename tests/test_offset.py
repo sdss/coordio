@@ -1,4 +1,4 @@
-from coordio.utils import object_offset, Moffat2dInterp
+from coordio.utils import object_offset, Moffat2dInterp, offset_definition
 import numpy
 import pytest
 
@@ -143,3 +143,27 @@ def test_all_flags():
         test_flags(flag, mag, mag_limits[lunation][waveName], lunation, waveName,
                    sky, offset_min_skybrightness, can_off)
 
+    # test bright neighbor exclusion radius for very bright stars
+    offset_min_skybrightness = 1
+    waveName = 'Boss'
+    lunation = 'bright'
+    test_mags = numpy.array([0.1 if m != -999. else m for m in mag_limits[lunation][waveName]])
+    r_exclude, _ = offset_definition(numpy.vstack((mag, mag)),
+                                     mag_limits[lunation][waveName],
+                                     lunation=lunation,
+                                     waveName=waveName,
+                                     fmagloss=fmagloss,
+                                     obsSite='APO')
+    assert numpy.all(r_exclude > 0.)
+
+    offset_min_skybrightness = 1
+    waveName = 'APOGEE'
+    lunation = 'bright'
+    test_mags = numpy.array([0.1 if m != -999. else m for m in mag_limits[lunation][waveName]])
+    r_exclude, _ = offset_definition(numpy.vstack((mag, mag)),
+                                     mag_limits[lunation][waveName],
+                                     lunation=lunation,
+                                     waveName=waveName,
+                                     fmagloss=fmagloss,
+                                     obsSite='APO')
+    assert numpy.all(r_exclude > 0.)
