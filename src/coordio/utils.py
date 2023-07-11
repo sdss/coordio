@@ -752,10 +752,6 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
     # define Null cases for targetdb.magnitude table
     cases = [-999, -9999, 999,
              0.0, numpy.nan, 99.9, None]
-    if waveName == 'Boss':
-        offset_bright_limit = 6.
-    else:
-        offset_bright_limit = 1.
     # set magntiude limit for instrument and lunation
     if use_type == 'bright_neigh':
         if waveName == 'Apogee':
@@ -767,8 +763,17 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
         else:
             # SDSS r
             mag_limit = mag_limits[1]
+
+        # for bright_neigh, need exclusion radius for all stars
+        offset_bright_limit = -9999.
     else:
         mag_limit = mag_limits[mag_limit_ind]
+
+        # only set real mag_limits for offsets
+        if waveName == 'Boss':
+            offset_bright_limit = 6.
+        else:
+            offset_bright_limit = 1.
     # get magloss function
     if fmagloss is None:
         fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
