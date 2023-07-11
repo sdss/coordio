@@ -157,7 +157,7 @@ def test_all_flags():
     assert numpy.all(r_exclude > 0.)
 
     offset_min_skybrightness = 1
-    waveName = 'APOGEE'
+    waveName = 'Apogee'
     lunation = 'bright'
     test_mags = numpy.array([0.1 if m != -999. else m for m in mag_limits[lunation][waveName]])
     r_exclude, _ = offset_definition(numpy.vstack((mag, mag)),
