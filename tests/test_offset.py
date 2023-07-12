@@ -40,8 +40,7 @@ def test_all_flags():
             can_off_arr = numpy.array([can_off, can_off])
         # test APO with 2D array
         delta_ra, delta_dec, offset_flag = object_offset(numpy.vstack((mag, mag)), mag_limits, lunation,
-                                                         waveName, 'APO', fmagloss=fmagloss, safety_factor=0.1,
-                                                         beta=5, FWHM=1.7, skybrightness=sky,
+                                                         waveName, 'APO', fmagloss=fmagloss, skybrightness=sky,
                                                          offset_min_skybrightness=offset_min_skybrightness,
                                                          can_offset=can_off_arr)
         assert numpy.all(offset_flag == flag)
@@ -53,8 +52,7 @@ def test_all_flags():
 
         # test LCO with 2D array
         delta_ra, delta_dec, offset_flag = object_offset(numpy.vstack((mag, mag)), mag_limits, lunation,
-                                                         waveName, 'LCO', fmagloss=fmagloss, safety_factor=0.1,
-                                                         beta=5, FWHM=1.7, skybrightness=sky,
+                                                         waveName, 'LCO', fmagloss=fmagloss, skybrightness=sky,
                                                          offset_min_skybrightness=offset_min_skybrightness,
                                                          can_offset=can_off_arr)
         assert numpy.all(offset_flag == flag)
@@ -90,7 +88,7 @@ def test_all_flags():
     flags_test = [0, 1, 2, 8, 16, 32]
     
     test_mags = []
-    test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
+    test_mags.append(numpy.array([m - 1 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([m + 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([-999.] * len(mag_limits[lunation][waveName])))
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))

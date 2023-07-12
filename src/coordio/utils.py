@@ -746,7 +746,8 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
                  minimum offset sky brightness
             - 16: no offsets applied because can_offset = False
             - 32: no offset applied because mag <= offset_bright_limit
-                  (offset_bright_limit is G = 6 for Boss and
+                  (offset_bright_limit is G = 6 for Boss bright time and
+                   G = 13 for Boss dark time, and
                    H = 1 for Apogee).
     """
     # define Null cases for targetdb.magnitude table
@@ -950,7 +951,8 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
                  minimum offset sky brightness
             - 16: no offsets applied because can_offset = False
             - 32: no offset applied because mag <= offset_bright_limit
-                  (offset_bright_limit is G = 6 for Boss and
+                  (offset_bright_limit is G = 6 for Boss bright time and
+                   G = 13 for Boss dark time, and
                    H = 1 for Apogee).
     """
     # check if 2D array
