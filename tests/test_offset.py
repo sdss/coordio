@@ -91,8 +91,8 @@ def test_all_flags():
     test_mags.append(numpy.array([m - 1 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([m + 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([-999.] * len(mag_limits[lunation][waveName])))
-    test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
-    test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
+    test_mags.append(numpy.array([m - 1 if m != -999. else m for m in mag_limits[lunation][waveName]]))
+    test_mags.append(numpy.array([m - 1 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([12. if m != -999. else m for m in mag_limits[lunation][waveName]]))
 
     skybrightness = [None, None, None, 0.3, None, None]
