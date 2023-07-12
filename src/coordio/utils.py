@@ -771,7 +771,10 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
 
         # only set real mag_limits for offsets
         if waveName == 'Boss':
-            offset_bright_limit = 6.
+            if lunation == 'bright':
+                offset_bright_limit = 6.
+            else:
+                offset_bright_limit = 13.
         else:
             offset_bright_limit = 1.
     # get magloss function
