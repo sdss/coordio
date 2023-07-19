@@ -602,7 +602,7 @@ class Moffat2dInterp(object):
     """
     def __init__(self, Noffset=None, FWHM=None, beta=None):
         if Noffset is None:
-            Noffset = 1000
+            Noffset = 1500
         if FWHM is None:
             FWHM = [1., 1.3, 1.5, 1.7, 1.9]
         if beta is None:
@@ -612,7 +612,7 @@ class Moffat2dInterp(object):
         FWHMs = numpy.zeros((len(FWHM), Noffset))
         for i, f in enumerate(FWHM):
             FWHMs[i, :] = f
-            offsets[i, :] = numpy.linspace(0, 20, Noffset)
+            offsets[i, :] = numpy.linspace(0, 30, Noffset)
 
         magloss = numpy.zeros((FWHMs.shape[0], Noffset))
 
