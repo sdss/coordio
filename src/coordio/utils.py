@@ -596,39 +596,71 @@ class MoffatLossProfile(object):
 class Moffat2dInterp(object):
     """
     Create the dict of 1D interpolations function
-    for a moffat profile offset for various FWHMs
+    for a moffat profile offset for various FWHMs.
+    Object returned includes two dicts, one for APO
+    and one for LCO for the various fiber sizes.
     """
     def __init__(self, Noffset=None, FWHM=None, beta=None):
         if Noffset is None:
-            Noffset = 1000
+            Noffset = 1500
         if FWHM is None:
-            FWHM = [1.3, 1.5, 1.7, 1.9]
+            FWHM = [1., 1.3, 1.5, 1.7, 1.9]
         if beta is None:
-            beta = 5
+            beta = {'APO': 5., 'LCO': 2.}
+        rfibers = {'APO': 1., 'LCO': 1.33 / 2}
         offsets = numpy.zeros((len(FWHM), Noffset))
         FWHMs = numpy.zeros((len(FWHM), Noffset))
         for i, f in enumerate(FWHM):
             FWHMs[i, :] = f
-            offsets[i, :] = numpy.linspace(0, 20, Noffset)
+            offsets[i, :] = numpy.linspace(0, 30, Noffset)
 
         magloss = numpy.zeros((FWHMs.shape[0], Noffset))
 
         fmagloss = {}
-        for i, f in enumerate(FWHMs[:, 0]):
-            magloss[i, :] = MoffatLossProfile(offsets[i, :], beta, f).func_magloss()
-            fmagloss[f] = interp1d(magloss[i, :], offsets[i, :])
+        for obs, rfiber in zip(rfibers.keys(), rfibers.values()):
+            fmagloss[obs] = {}
+            if isinstance(beta, dict):
+                b = beta[obs]
+            else:
+                b = beta
+            for i, f in enumerate(FWHMs[:, 0]):
+                magloss[i, :] = MoffatLossProfile(offsets[i, :], b, f, rfiber=rfiber).func_magloss()
+                fmagloss[obs][f] = interp1d(magloss[i, :], offsets[i, :])
         self.fmagloss = fmagloss
         self.beta_interp2d = beta
         self.FWHM_interp2d = FWHM
 
-    def __call__(self, magloss, FWHM):
-        r = self.fmagloss[FWHM](magloss)
+    def __call__(self, magloss, FWHM, obsSite):
+        """
+        The cal to return the offset value based on the desired
+        magloss.
+
+        Parameters
+        -----------
+        magloss: float or numpy.array
+            The desired magnitude loss for the object(s)
+
+        FWHM: float
+            The FWHM for the moffat profile that has been calculated
+            on the init of the object
+
+        obsSite: str
+            The observatory of the observation. Should either be
+            'APO' or 'LCO'.
+
+        Returns
+        -------
+        r: float or numpy.array
+            The offset to get the desired magloss in arcseconds.
+        """
+        r = self.fmagloss[obsSite][FWHM](magloss)
         return r
 
 
-def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
-                      safety_factor=0., beta=5, FWHM=1.7, skybrightness=None,
-                      offset_min_skybrightness=None, can_offset=None):
+def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=None,
+                      safety_factor=0., beta=None, FWHM=None, skybrightness=None,
+                      offset_min_skybrightness=None, can_offset=None,
+                      use_type='bright_neigh', mag_limit_ind=None):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit.
@@ -657,6 +689,10 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         Instrument for the fibers offset definition being applied
         to. Either 'Boss' or 'Apogee'.
 
+    obsSite: str
+        The observatory of the observation. Should either be
+        'APO' or 'LCO'.
+
     fmagloss: object
         Moffat2dInterp class with the lookup table
         for doing the moffat profile inversion. If None,
@@ -667,10 +703,10 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         bright neighbor checks (i.e. remain at default).
 
     beta: float
-        Power index of the Moffat profile
+        Power index of the Moffat profile. If None, default set in code.
 
     FWHM: float
-        seeing for the Moffat profile
+        seeing for the Moffat profile. If None, default set in code.
 
     skybrightness: float
         Sky brightness for the field cadence. Only set if
@@ -684,6 +720,17 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         can_offset value from targetdb for the target(s) to be
         offset. Only set if
         want to check for offset_flag NO_CAN_OFFSET (16).
+
+    use_type: str
+        Defines type for definition use. 'bright_neigh' is for bright
+        neighbor check and auto sets mag_limit from mag_limits array.
+        'offfset' is for offsetting and the index from mag_limits array
+        is set by mag_limit_ind.
+
+    mag_limit_ind: int
+        when used with use_type='offfset', then this sets what index
+        from mag_limits array is set as the magnitude limit. Otherwise,
+        for bright neighbor check this is set in code.
 
     Returns
     -------
@@ -699,29 +746,51 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
                  minimum offset sky brightness
             - 16: no offsets applied because can_offset = False
             - 32: no offset applied because mag <= offset_bright_limit
-                  (offset_bright_limit is G = 6 for Boss and
+                  (offset_bright_limit is G = 6 for Boss bright time and
+                   G = 13 for Boss dark time, and
                    H = 1 for Apogee).
     """
     # define Null cases for targetdb.magnitude table
     cases = [-999, -9999, 999,
              0.0, numpy.nan, 99.9, None]
-    if waveName == 'Boss':
-        offset_bright_limit = 6.
-    else:
-        offset_bright_limit = 1.
     # set magntiude limit for instrument and lunation
-    if waveName == 'Apogee':
-        # 2MASS H
-        mag_limit = mag_limits[8]
-    elif lunation == 'bright':
-        # Gaia G
-        mag_limit = mag_limits[5]
+    if use_type == 'bright_neigh':
+        if waveName == 'Apogee':
+            # 2MASS H
+            mag_limit = mag_limits[8]
+        elif lunation == 'bright':
+            # Gaia G
+            mag_limit = mag_limits[5]
+        else:
+            # SDSS r
+            mag_limit = mag_limits[1]
+
+        # for bright_neigh, need exclusion radius for all stars
+        offset_bright_limit = -9999.
     else:
-        # SDSS r
-        mag_limit = mag_limits[1]
+        mag_limit = mag_limits[mag_limit_ind]
+
+        # only set real mag_limits for offsets
+        if waveName == 'Boss':
+            if lunation == 'bright':
+                offset_bright_limit = 6.
+            else:
+                offset_bright_limit = 13.
+        else:
+            offset_bright_limit = 1.
     # get magloss function
     if fmagloss is None:
         fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
+    # assign correct FWHM
+    if FWHM is None:
+        if obsSite == 'APO':
+            FWHM = 1.7
+        elif obsSite == 'LCO':
+            FWHM = 1.
+        else:
+            raise ValueError('obsSite must be APO or LCO.')
+    if beta is None:
+        beta = {'APO': 5., 'LCO': 2.}
     if isinstance(mag, float) or isinstance(mag, int):
         # make can_offset always True if not supplied
         if can_offset is None:
@@ -735,9 +804,9 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
             # core area
             if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
                 fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
-                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
+                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM, obsSite)
             else:
-                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM)
+                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM, obsSite)
             # tom's old conservative core function
             # r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
@@ -782,10 +851,10 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
         if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
             fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
             r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
-                                         FWHM)
+                                         FWHM, obsSite)
         else:
             r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
-                                         FWHM)
+                                         FWHM, obsSite)
         # tom's old conservative core function
         # r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
@@ -800,8 +869,8 @@ def offset_definition(mag, mag_limits, lunation, waveName, fmagloss=None,
     return r, offset_flag
 
 
-def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
-                  safety_factor=None, beta=5, FWHM=1.7, skybrightness=None,
+def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
+                  safety_factor=None, beta=None, FWHM=None, skybrightness=None,
                   offset_min_skybrightness=None, can_offset=None):
     """
     Returns the offset needed for object with mag to be
@@ -810,9 +879,10 @@ def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
 
     Parameters
     ----------
-    mag: float or numpy.array
-        The magniutde(s) of the objects. For BOSS should be
-        Gaia G-band and for APOGEE should be 2MASS H-band.
+    mags: numpy.array
+        The magniutdes of the objects. Should be a 2D, Nx10 array, where
+        N is number of objects and length of 10 index should correspond
+        to magntidues: [g, r, i, z, bp, gaia_g, rp, J, H, K].
 
     mag_limits: numpy.array
         Magnitude limits for the designmode of the design.
@@ -830,19 +900,23 @@ def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
         Instrument for the fibers offset definition being applied
         to. Either 'Boss' or 'Apogee'.
 
+    obsSite: str
+        The observatory of the observation. Should either be
+        'APO' or 'LCO'.
+
     fmagloss: object
         Moffat2dInterp class with the lookup table
         for doing the moffat profile inversion. If None,
         then table is calculated at function call.
 
     safety_factor: float
-        Factor to add to mag_limit.
+        Factor to add to mag_limit. If None, default set in code.
 
     beta: float
-        Power index of the Moffat profile
+        Power index of the Moffat profile. If None, default set in code.
 
     FWHM: float
-        seeing for the Moffat profile
+        seeing for the Moffat profile. If None, default set in code.
 
     skybrightness: float
         Sky brightness for the field cadence. Only set if
@@ -859,14 +933,17 @@ def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
 
     Returns
     -------
-    delta_ra: float or numpy.array
-        offset in RA in arcseconds around object(s)
+    delta_ra: numpy.array
+        offset in RA in arcseconds around object(s) in
+        numpy array of length N
 
-    delta_dec: float or numpy.array
-        offset in Decl. in arcseconds around object(s)
+    delta_dec: numpy.array
+        offset in Decl. in arcseconds around object(s) in
+        numpy array of length N
 
-    offset_flag: int or numpy.array
-        bitmask for how offset was set. Flags are:
+    offset_flag: numpy.array
+        bitmask for how offset was set in
+        numpy array of length N. Flags are:
             - 0: offset applied normally (i.e. when mag <= mag_limit)
             - 1: no offset applied because mag > mag_limit
             - 2: no offset applied because magnitude was null value.
@@ -874,24 +951,51 @@ def object_offset(mag, mag_limits, lunation, waveName, fmagloss=None,
                  minimum offset sky brightness
             - 16: no offsets applied because can_offset = False
             - 32: no offset applied because mag <= offset_bright_limit
-                  (offset_bright_limit is G = 6 for Boss and
+                  (offset_bright_limit is G = 6 for Boss bright time and
+                   G = 13 for Boss dark time, and
                    H = 1 for Apogee).
     """
+    # check if 2D array
+    if len(mags.shape) != 2:
+        raise ValueError('mags must be a 2D numpy.array of shape (N, 10)')
+    if mags.shape[1] != 10:
+        raise ValueError('mags must be a 2D numpy.array of shape (N, 10)')
+    # add default values for offset function if None supplied
     if safety_factor is None:
         if lunation == 'bright':
             safety_factor = 0.5
         else:
             safety_factor = 1.0
-    delta_ra, offset_flag = offset_definition(mag, mag_limits, lunation, waveName,
-                                              fmagloss=fmagloss,
-                                              safety_factor=safety_factor, beta=beta,
-                                              FWHM=FWHM, skybrightness=skybrightness,
-                                              offset_min_skybrightness=offset_min_skybrightness,
-                                              can_offset=can_offset)
-    if isinstance(delta_ra, float):
-        delta_dec = 0.
-    else:
-        delta_dec = numpy.zeros(len(delta_ra))
+    if FWHM is None:
+        if obsSite == 'APO':
+            FWHM = 1.7
+        elif obsSite == 'LCO':
+            FWHM = 1.
+        else:
+            raise ValueError('obsSite must be APO or LCO.')
+    if beta is None:
+        beta = {'APO': 5., 'LCO': 2.}
+    delta_ras = numpy.zeros(mags.shape)
+    offset_flags = numpy.zeros(mags.shape)
+    for i in range(len(mag_limits)):
+        if mag_limits[i] != -999.:
+            delta_ras[:, i], offset_flags[:, i] = offset_definition(mags[:, i], mag_limits, lunation, waveName,
+                                                                    obsSite, fmagloss=fmagloss,
+                                                                    safety_factor=safety_factor, beta=beta,
+                                                                    FWHM=FWHM, skybrightness=skybrightness,
+                                                                    offset_min_skybrightness=offset_min_skybrightness,
+                                                                    can_offset=can_offset,
+                                                                    use_type='offset', mag_limit_ind=i)
+        else:
+            # make artificially less than 0 so this doesnt get chosen
+            # for max when setting offset_flag
+            delta_ras[:, i] = numpy.zeros(len(mags[:, i])) - 1.
+    # use max offset
+    delta_ra = numpy.max(delta_ras, axis=1)
+    ind_max = numpy.argmax(delta_ras, axis=1)
+    offset_flag = numpy.array([offset_flags[i, j] for i, j in enumerate(ind_max)],
+                              dtype=int)
+    delta_dec = numpy.zeros(len(delta_ra))
     return delta_ra, delta_dec, offset_flag
 
 def _offset_radec(ra=None, dec=None, delta_ra=0., delta_dec=0.):
