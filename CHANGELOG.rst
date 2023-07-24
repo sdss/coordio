@@ -4,6 +4,15 @@
 Change Log
 ==========
 
+1.8.0 (2023-07-24)
+------------------
+
+* Update offset functions to include following functionalities:
+  * New defaults for offset function parameters
+  * Observatory dependent offsetting as default
+  * Offsets are calculated using all magnitudes for a source and the maximum is used as the returned offset
+
+
 1.7.3 (2023-04-28)
 ------------------
 
