@@ -149,13 +149,16 @@ def normalizeArea(noll):
 def getZ(noll, x, y):
     return normalizeArea(noll) * getZernFuncXY(convertNolltoBW(noll), x, y)
 
-def getZhaoBurgeXY(polids, coeffs, x, y):
+def getZhaoBurgeXY(polids, coeffs, x, y, normFactor=1):
     """
     Args:
         coeffs: array of coefficients
         x,y : locations at which to evaluate
     returns dx, dy arrays
     """
+    x = x / normFactor
+    y = y / normFactor
+
     dx = np.zeros(len(x))
     dy = np.zeros(len(y))
     for polid, coeff in zip(polids,coeffs):
@@ -163,7 +166,7 @@ def getZhaoBurgeXY(polids, coeffs, x, y):
         dx += coeff*zbx
         dy += coeff*zby
 
-    return dx, dy
+    return dx*normFactor, dy*normFactor
 
 def getZhaoBurgeTerm(polid, x, y):
 
@@ -309,7 +312,13 @@ def fit_scale_rotation_offset(x, y, xp, yp, fitzb=False, zbpolids=None, zbcoeffs
     else:
         return scale, rotation, offset_x, offset_y
 
-def fitZhaoBurge(x, y, xp, yp, polids=None):
+
+def fitZhaoBurge(x, y, xp, yp, polids=None, normFactor=1):
+    x = x / normFactor
+    y = y / normFactor
+    xp = xp / normFactor
+    yp = yp / normFactor
+
     dx = xp-x
     dy = yp-y
 

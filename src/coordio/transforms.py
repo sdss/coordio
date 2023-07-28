@@ -459,7 +459,7 @@ class ZhaoBurgeTransform(object):
     2D vector polynomials.
     """
 
-    def __init__(self, xyCCD, xyWok, polids=None):
+    def __init__(self, xyCCD, xyWok, polids=None, normFactor=1):
         """ Compute a transformation between xyCCD and xyWok using
         Zhao-Burge polynomials
 
@@ -474,6 +474,11 @@ class ZhaoBurgeTransform(object):
         polids : numpy.ndarray or None
             Mx1 array of integers specifying the ZB basis vectors to use.
             If not passed a default basis vector set is used.
+        normFactor : float
+            Scale xyWok coordinates by this factor.  Intended
+            use is for moving coordinates to unit circle. 330 is a good
+            choice, but default is 1 to remain backwards compatible
+            (no normalization)
 
         Attributes
         -------------
@@ -482,6 +487,8 @@ class ZhaoBurgeTransform(object):
         coeffs : numpy.ndarray
             1D float array containing the fit coefficient values for each
             polid in the ZB transform
+        normFactor : float
+            normalization factor used
         simTrans : skimage.transform.SimilarityTransform
             similarity transform fit between xyCCD and xyWok
         unbiasedErrs : numpy.ndarray
@@ -504,6 +511,11 @@ class ZhaoBurgeTransform(object):
             )
         else:
             self.polids = numpy.array(polids, dtype=numpy.int16)
+
+        if normFactor < 1:
+            raise CoordIOError("normFactor must >= 1")
+
+        self.normFactor = normFactor
 
         # First fit a transrotscale model
         self.simTrans = SimilarityTransform()
@@ -529,9 +541,16 @@ class ZhaoBurgeTransform(object):
                 _xyWok[:, 0],
                 _xyWok[:, 1],
                 polids=self.polids,
+                normFactor=self.normFactor
             )
 
-            dx, dy = getZhaoBurgeXY(polids, coeffs, fitCheck[:, 0], fitCheck[:, 1])
+            dx, dy = getZhaoBurgeXY(
+                polids,
+                coeffs,
+                fitCheck[:, 0],
+                fitCheck[:, 1],
+                normFactor=self.normFactor
+            )
             zxfit = fitCheck[:, 0] + dx
             zyfit = fitCheck[:, 1] + dy
             zxyfit = numpy.array([zxfit, zyfit]).T
@@ -548,6 +567,7 @@ class ZhaoBurgeTransform(object):
             xyWok[:, 0],
             xyWok[:, 1],
             polids=self.polids,
+            normFactor=self.normFactor
         )
 
         dx, dy = getZhaoBurgeXY(
@@ -555,6 +575,7 @@ class ZhaoBurgeTransform(object):
             self.coeffs,
             xySimTransFit[:, 0],
             xySimTransFit[:, 1],
+            normFactor=self.normFactor
         )
 
         xWokFit = xySimTransFit[:, 0] + dx
@@ -592,6 +613,7 @@ class ZhaoBurgeTransform(object):
                 self.coeffs,
                 xySimTransFit[:, 0],
                 xySimTransFit[:, 1],
+                normFactor=self.normFactor
             )
             xWokFit = xySimTransFit[:, 0] + dx
             yWokFit = xySimTransFit[:, 1] + dy
@@ -857,7 +879,8 @@ class FVCTransformAPO(object):
         fiducialCoords=calibration.fiducialCoords,
         telRotAngRef=None,
         polids=None,
-        nudgeAdjust=True
+        nudgeAdjust=True,
+        zbNormFactor=330
     ):
         """
         Parameters
@@ -891,8 +914,14 @@ class FVCTransformAPO(object):
         polids : 1D array or None
             list of integers for selecting zhaoburge basis polynomials.
             Default is supplied by class attribute polids
+        nudgeAdjust : boolean
+            if True, apply nudge correction to CCD detections
+        zbNormFactor : float
+            scale wok coordinates by this factor for unit circle
+            normalization when fitting ZhaoBurge transform.
         """
         self.nudgeAdjust = nudgeAdjust
+        self.zbNormFactor = zbNormFactor
 
         self.fvcImgData = numpy.array(fvcImgData, dtype=numpy.float32)
         # apply rough bias/background subtraction
@@ -1004,7 +1033,8 @@ class FVCTransformAPO(object):
             ("FVC_SCL", self.fullTransform.simTrans.scale, "FVC model fit scale"),
             ("FVC_TRAX", self.fullTransform.simTrans.translation[0], "FVC model fit X translation"),
             ("FVC_TRAY", self.fullTransform.simTrans.translation[1], "FVC model fit Y translation"),
-            ("FVC_ROT", numpy.degrees(self.fullTransform.simTrans.rotation), "FVC model fit rotation (deg)")
+            ("FVC_ROT", numpy.degrees(self.fullTransform.simTrans.rotation), "FVC model fit rotation (deg)"),
+            ("FVC_ZNRM", self.zbNormFactor, "ZB normilization factor")
         ]
 
         # add in ZB coeffs
@@ -1297,7 +1327,8 @@ class FVCTransformAPO(object):
         self.fullTransform = ZhaoBurgeTransform(
             xyCCDFIF,
             _xyWokFIF,
-            polids=self.polids
+            polids=self.polids,
+            normFactor=self.zbNormFactor
         )
 
         xyWokMeas = self.fullTransform.apply(xyCCD)
