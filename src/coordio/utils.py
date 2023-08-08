@@ -75,7 +75,7 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, focalScale=None, pmra=None, pmdec=None, parallax=None,
                 radVel=None, pressure=None, relativeHumidity=0.5,
                 temperature=10):
-    r"""
+    """
     Convert from ra, dec ICRS coords to a flat-wok XY in mm.  At obsAngle=0
     wok +y is a aligned with +dec, and wok +x is aligned with +ra
 
@@ -209,7 +209,7 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, focalScale=None, pressure=None, relativeHumidity=0.5,
                 temperature=10):
-    r"""
+    """
     Convert from flat-wok XY (mm) to ra, dec ICRS coords (deg)
 
     Question for José, do we need to enforce a time scale?  I think everything
@@ -954,6 +954,7 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
                   (offset_bright_limit is G = 6 for Boss bright time and
                    G = 13 for Boss dark time, and
                    H = 1 for Apogee).
+            - 64: no offset applied because no valid magnitude limits
     """
     # check if 2D array
     if len(mags.shape) != 2:
@@ -989,7 +990,8 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
         else:
             # make artificially less than 0 so this doesnt get chosen
             # for max when setting offset_flag
-            delta_ras[:, i] = numpy.zeros(len(mags[:, i])) - 1.
+            delta_ras[:, i] = numpy.zeros(len(mags[:, i]))
+            offset_flags[:, i] = numpy.zeros(len(mags[:, i])) + 64
     # use max offset
     delta_ra = numpy.max(delta_ras, axis=1)
     ind_max = numpy.argmax(delta_ras, axis=1)
