@@ -66,6 +66,7 @@ def test_all_flags():
     waveName = 'Boss'
     lunation = 'bright'
     flags_test = [0, 1, 2, 8, 16, 32]
+    flags_test = [f if f == 0 else f + 64 for f in flags_test]
 
     test_mags = []
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
@@ -86,6 +87,7 @@ def test_all_flags():
     waveName = 'Boss'
     lunation = 'dark'
     flags_test = [0, 1, 2, 8, 16, 32]
+    flags_test = [f if f == 0 else f + 64 for f in flags_test]
     
     test_mags = []
     test_mags.append(numpy.array([m - 1 if m != -999. else m for m in mag_limits[lunation][waveName]]))
@@ -106,6 +108,7 @@ def test_all_flags():
     waveName = 'Apogee'
     lunation = 'bright'
     flags_test = [0, 1, 2, 8, 16, 32]
+    flags_test = [f if f == 0 else f + 64 for f in flags_test]
     
     test_mags = []
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
@@ -126,6 +129,7 @@ def test_all_flags():
     waveName = 'Apogee'
     lunation = 'dark'
     flags_test = [0, 1, 2, 8, 16, 32]
+    flags_test = [f if f == 0 else f + 64 for f in flags_test]
     
     test_mags = []
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
@@ -163,6 +167,7 @@ def test_all_flags():
     waveName = 'Boss'
     lunation = 'bright'
     flags_test = [1 + 32]
+    flags_test = [f if f == 0 else f + 64 for f in flags_test]
 
     test_mags = []
     test_mags.append(numpy.array([m + 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
