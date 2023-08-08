@@ -992,6 +992,22 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
             # for max when setting offset_flag
             delta_ras[:, i] = numpy.zeros(len(mags[:, i]))
             offset_flags[:, i] = numpy.zeros(len(mags[:, i])) + 64
+    # retain all flags when delta_ra = 0 for all checks
+    def unique_offset_flags(flags):
+        unq_flags = []
+        poss_flags = [1, 2, 8, 16, 32, 64]
+        for f in flags:
+            for pf in poss_flags:
+                if pf & int(f):
+                  unq_flags.append(pf)
+        total_flags = numpy.sum(numpy.unique(unq_flags))
+        return numpy.zeros(flags.shape) + total_flags
+    try:
+        offset_flags[numpy.all(delta_ras == 0., 1)] = numpy.apply_along_axis(unique_offset_flags,
+                                                                             1,
+                                                                             offset_flags[numpy.all(delta_ras == 0., 1)])
+    except ValueError:
+        pass
     # use max offset
     delta_ra = numpy.max(delta_ras, axis=1)
     ind_max = numpy.argmax(delta_ras, axis=1)
