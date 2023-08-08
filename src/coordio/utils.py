@@ -999,7 +999,7 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
         for f in flags:
             for pf in poss_flags:
                 if pf & int(f):
-                  unq_flags.append(pf)
+                    unq_flags.append(pf)
         total_flags = numpy.sum(numpy.unique(unq_flags))
         return numpy.zeros(flags.shape) + total_flags
     try:
