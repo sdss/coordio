@@ -4,6 +4,11 @@
 Change Log
 ==========
 
+1.8.1 (2023-07-28)
+------------------
+
+* Add ZB normalization factor option for FVC fitting.  Defaults to 330 mm in FVC transform classes.
+
 1.8.0 (2023-07-24)
 ------------------
 
