@@ -1515,6 +1515,6 @@ class FVCTransformLCO(FVCTransformAPO):
     rotAngDir = -1
     centType = "nudge"
     telescopePlateScale = 0.092 # mm/arcsec
-    nudgeOffX = 1250 # fix nudge model after FVC resize
+    nudgeOffX = 0 # fix nudge model after FVC resize
     site = "LCO"
 
