@@ -850,13 +850,20 @@ def applyNudgeModel(
     dx = X @ beta_x
     dy = X @ beta_y
 
-    rejectInds = (numpy.abs(dx) > dxythresh) | (numpy.abs(dy) > dxythresh)
+    # clip dxs and dys at thresh value
+    dx[dx>dxythresh] = dxythresh
+    dy[dy>dxythresh] = dxythresh
+
+    dx[dx<-dxythresh] = -dxythresh
+    dy[dy<-dxythresh] = -dxythresh
+
+    # rejectInds = (numpy.abs(dx) > dxythresh) | (numpy.abs(dy) > dxythresh)
 
     newX = x - dx
     newY = y - dy
 
-    newX[rejectInds] = x[rejectInds]
-    newY[rejectInds] = y[rejectInds]
+    # newX[rejectInds] = x[rejectInds]
+    # newY[rejectInds] = y[rejectInds]
 
     return newX, newY
 
@@ -890,7 +897,7 @@ class FVCTransformAPO(object):
     rotAngDir = 1
     centType = "zbplus2"
     telescopePlateScale = 0.060 # mm/arcsec
-    nudgeOffX = 1000 # fix nudge model after FVC resize
+    nudgeOffX = 0 #1000 # fix nudge model after FVC resize
     site = "APO"
     centroidMinNpix = 100
 
@@ -1176,7 +1183,6 @@ class FVCTransformAPO(object):
         clipDim = numpy.argmax(self.data_sub.shape)
 
         if clipDim == 0:
-            print("slicing y")
             yOff = int((self.data_sub.shape[0]-self.data_sub.shape[1])/2)
             im = self.data_sub[yOff:-yOff, :].copy()
 
@@ -1186,7 +1192,6 @@ class FVCTransformAPO(object):
             )
             ySimple = ySimple + yOff
         else:
-            print("slicing x")
             xOff = int((self.data_sub.shape[1]-self.data_sub.shape[0])/2)
             im = self.data_sub[:, xOff:-xOff].copy()
 
