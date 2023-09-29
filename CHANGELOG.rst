@@ -4,6 +4,11 @@
 Change Log
 ==========
 
+1.9.0 (2023-09-29)
+-------------------
+* Change nudge x offset back to zero.  fps_calibrations now has new nudge models in place built from trimmed FVC images.
+* Modify nudge model clipping behavior, currently all corrections with abs(corr)>.75 pixels will be applied with corrections clipped at +/- 0.75
+
 1.8.1 (2023-07-28)
 ------------------
 
