@@ -12,6 +12,7 @@ import pandas
 import scipy
 import sep
 from skimage.transform import SimilarityTransform
+from astroscrappy import detect_cosmics
 
 from .conv import positionerToTangent, tangentToWok, wokToTangent
 from .defaults import POSITIONER_HEIGHT, calibration
@@ -957,6 +958,8 @@ class FVCTransformAPO(object):
         self.zbNormFactor = zbNormFactor
 
         self.fvcImgData = numpy.array(fvcImgData, dtype=numpy.float32)
+        # remove cosmics and hot pixels
+        self.crmask, self.fvcImgData = detect_cosmics(self.fvcImgData)
 
         # self.fvcImgData = self.fvcImgData[100:-100,:].copy()
 
