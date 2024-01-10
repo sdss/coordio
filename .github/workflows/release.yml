@@ -68,7 +68,7 @@ jobs:
       - name: Build wheels
         uses: RalfG/python-wheels-manylinux-build@v0.6.0
         with:
-          python-versions: 'cp38-cp38 cp39-cp39 cp310-cp310 cp310-cp310 cp311-cp311'
+          python-versions: 'cp38-cp38 cp39-cp39 cp310-cp310 cp310-cp310 cp311-cp311 cp312-cp312'
 
       - name: List files
         run: |
