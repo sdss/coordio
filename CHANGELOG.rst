@@ -4,6 +4,10 @@
 Change Log
 ==========
 
+1.9.1b1 (2024-01-10)
+--------------------
+* Change to use the ``sdss-sep`` package and wheels.
+
 1.9.0 (2023-09-29)
 -------------------
 * Change nudge x offset back to zero.  fps_calibrations now has new nudge models in place built from trimmed FVC images.
