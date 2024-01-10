@@ -1,15 +1,16 @@
-import numpy
-import pandas
 import ctypes
 import importlib
 import os
+
+import numpy
+import pandas
 from scipy.interpolate import interp1d
 
+from . import defaults
+from .site import Site
 from .sky import ICRS, Observed
 from .telescope import Field, FocalPlane
 from .wok import Wok
-from .site import Site
-from . import defaults
 
 # Get simplexy C function
 mod_path = os.path.join(os.path.dirname(__file__), 'libdimage')
@@ -75,7 +76,7 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, focalScale=None, pmra=None, pmdec=None, parallax=None,
                 radVel=None, pressure=None, relativeHumidity=0.5,
                 temperature=10):
-    """
+    r"""
     Convert from ra, dec ICRS coords to a flat-wok XY in mm.  At obsAngle=0
     wok +y is a aligned with +dec, and wok +x is aligned with +ra
 
@@ -209,7 +210,7 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 def wokxy2radec(xWok, yWok, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, focalScale=None, pressure=None, relativeHumidity=0.5,
                 temperature=10):
-    """
+    r"""
     Convert from flat-wok XY (mm) to ra, dec ICRS coords (deg)
 
     Question for José, do we need to enforce a time scale?  I think everything
