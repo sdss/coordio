@@ -40,10 +40,10 @@ def test_iers(tmpdir, clear_iers_instance):
     assert iers_file.exists
 
 
-# def test_is_valid(iers_data_path):
+def test_is_valid(iers_data_path):
 
-#     iers = IERS(iers_data_path)
-#     assert iers.is_valid(2458863.0)
+    iers = IERS(iers_data_path)
+    assert iers.is_valid(2458863.0)
 
 
 def test_is_valid_out_of_range():
