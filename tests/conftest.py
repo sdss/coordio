@@ -14,31 +14,31 @@ import pytest
 from coordio import config
 
 
-@pytest.fixture(autouse=True)
-def hack_config(tmpdir):
+# @pytest.fixture(autouse=True)
+# def hack_config(tmpdir):
 
-    orig_config = config.copy()
+#     orig_config = config.copy()
 
-    config['iers']['path'] = str(tmpdir)
+#     config['iers']['path'] = str(tmpdir)
 
-    yield
+#     yield
 
-    config.update(orig_config)
-
-
-@pytest.fixture
-def iers_data_path():
-
-    tmp_path = pathlib.Path(__file__).parent / 'data'
-
-    yield tmp_path
+#     config.update(orig_config)
 
 
-@pytest.fixture(autouse=True)
-def mock_iers(mocker, iers_data_path):
+# @pytest.fixture
+# def iers_data_path():
 
-    iers_data_file = iers_data_path / 'finals2000A.data.csv'
+#     tmp_path = pathlib.Path(__file__).parent / 'data'
 
-    # Mock urllib.request.urlopen so that tests work offline and faster.
-    mocker.patch.object(urllib.request, 'urlopen',
-                        return_value=open(iers_data_file, 'rb'))
+#     yield tmp_path
+
+
+# @pytest.fixture(autouse=True)
+# def mock_iers(mocker, iers_data_path):
+
+#     iers_data_file = iers_data_path / 'finals2000A.data.csv'
+
+#     # Mock urllib.request.urlopen so that tests work offline and faster.
+#     mocker.patch.object(urllib.request, 'urlopen',
+#                         return_value=open(iers_data_file, 'rb'))
