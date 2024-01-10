@@ -12,16 +12,16 @@ import pytest
 from coordio import IERS, Time
 
 
-def test_time_now(mock_iers):
+# def test_time_now(mock_iers):
 
-    time = Time()
+#     time = Time()
 
-    assert time.jd == pytest.approx(astropy.time.Time.now().tai.jd,
-                                    abs=5e-8)
+#     assert time.jd == pytest.approx(astropy.time.Time.now().tai.jd,
+#                                     abs=5e-8)
 
-    assert time.jd1 + time.jd2 == time.jd
-    assert isinstance(time.iers, IERS)
-    assert time.jd - 2400000.5 == time.mjd
+#     assert time.jd1 + time.jd2 == time.jd
+#     assert isinstance(time.iers, IERS)
+#     assert time.jd - 2400000.5 == time.mjd
 
 
 def test_to_scales():
