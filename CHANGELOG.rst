@@ -4,19 +4,30 @@
 Change Log
 ==========
 
+1.9.1 (2024-01-15)
+------------------
+
+* No changes since 1.9.1b1. Tagging as full release.
+
+
 1.9.1b1 (2024-01-10)
 --------------------
+
 * Change to use the ``sdss-sep`` package and wheels.
+
 
 1.9.0 (2023-09-29)
 -------------------
+
 * Change nudge x offset back to zero.  fps_calibrations now has new nudge models in place built from trimmed FVC images.
 * Modify nudge model clipping behavior, currently all corrections with abs(corr)>.75 pixels will be applied with corrections clipped at +/- 0.75
+
 
 1.8.1 (2023-07-28)
 ------------------
 
 * Add ZB normalization factor option for FVC fitting.  Defaults to 330 mm in FVC transform classes.
+
 
 1.8.0 (2023-07-24)
 ------------------
