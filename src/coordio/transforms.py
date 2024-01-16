@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import time
 
 import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
@@ -784,24 +783,25 @@ def alphaBetaFromMetMeas(fullTable, newInvKin=True):
 
 IMAX = 32 # maximum integer wave number
 DELTAK = 2. * numpy.pi / 10000.0 # wave number spacing in inverse pixels
-_wcd = os.environ.get('WOKCALIB_DIR')
+_wcd = os.environ.get('WOKCALIB_DIR', None)
 ### BIG WARNING ### if two wok calib dirs are present just take the first one
 ### should eventually move this to calibrations for better handling
 beta_x_apo = None
 beta_y_apo = None
 beta_x_lco = None
 beta_y_lco = None
-for _path in _wcd.split(":"):
-    with open(os.path.join(_path, "beta_x.npy"), "rb") as f:
-        beta_x = numpy.load(f)
-    with open(os.path.join(_path, "beta_y.npy"), "rb") as f:
-        beta_y = numpy.load(f)
-    if "/lco/" in _path:
-        beta_x_lco = beta_x.copy()
-        beta_y_lco = beta_y.copy()
-    else:
-        beta_x_apo = beta_x.copy()
-        beta_y_apo = beta_y.copy()
+if _wcd is not None:
+    for _path in _wcd.split(":"):
+        with open(os.path.join(_path, "beta_x.npy"), "rb") as f:
+            beta_x = numpy.load(f)
+        with open(os.path.join(_path, "beta_y.npy"), "rb") as f:
+            beta_y = numpy.load(f)
+        if "/lco/" in _path:
+            beta_x_lco = beta_x.copy()
+            beta_y_lco = beta_y.copy()
+        else:
+            beta_x_apo = beta_x.copy()
+            beta_y_apo = beta_y.copy()
 beta_x = None
 beta_y = None
 
@@ -1572,4 +1572,3 @@ class FVCTransformLCO(FVCTransformAPO):
     nudgeOffX = 0  # fix nudge model after FVC resize
     site = "LCO"
     centroidMinNpix = 20
-

@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+1.9.2 (2024-01-15)
+------------------
+
+* Handle import of ``transforms`` if ``WOKCALIB_DIR`` has not been defined.
+
+
 1.9.1 (2024-01-15)
 ------------------
 
