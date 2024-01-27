@@ -455,12 +455,11 @@ class Observed(Coordinate2D):
 
         lat_r = numpy.radians(site.latitude)
         dec_d = coords[:, 1]
+        dec_r = numpy.radians(dec_d)
 
         if hadec is False:
             ra_d = coords[:, 0]
-
             ra_r = numpy.radians(ra_d)
-            dec_r = numpy.radians(dec_d)
 
             ut = site.time.to_ut1()
             tt = site.time.to_tt()

@@ -160,18 +160,19 @@ def test_observed_from_equatorial(hadec):
 
     ha_d = astropy_lst - ras
     if hadec:
-        eqs = numpy.vstack((ha_d, decs)).T
+        eqs = numpy.array((ha_d, decs)).T
     else:
         eqs = numpy.array([ras, decs]).T
 
-    observed = Observed.fromEquatorial(eqs, site=site, wavelength=wavelength)
+    observed = Observed.fromEquatorial(eqs, hadec=hadec, site=site,
+                                       wavelength=wavelength)
 
     assert observed.shape == (100, 2)
     assert numpy.all(observed[:, 0] > -90) and numpy.all(observed[:, 0] < 90)
     assert numpy.all(observed[:, 1] > 0) and numpy.all(observed[:, 1] < 360)
 
     # Now calculate the same using astropy and compare.
-    hadec_coords = HADec(ha=(astropy_lst - ras) * u.deg, dec=decs * u.deg,
+    hadec_coords = HADec(ha=ha_d * u.deg, dec=decs * u.deg,
                          obstime=astropy_time, location=astropy_location)
 
     astropy_altaz = hadec_coords.transform_to(AltAz(location=astropy_location,
