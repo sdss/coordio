@@ -4,8 +4,8 @@
 Change Log
 ==========
 
-Next version
-------------
+1.9.3 (2024-01-27)
+------------------
 
 * `#23 <https://github.com/sdss/coordio/pull/23>`__: added ``Observer.fromEquatorial()`` classmethod to initialise a new ``Observer`` from an array of topocentric RA and Dec coordinates. Alternatively a set to HA and Dec coordinates can be provided if ``hadec=True``.
 
