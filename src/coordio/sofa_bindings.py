@@ -155,7 +155,7 @@ class SOFA(ctypes.CDLL):
         """
 
         if date is None:
-            date = datetime.datetime.utcnow()
+            date = datetime.datetime.now(datetime.timezone.utc)
             scale = 'UTC'
 
         d1 = c_double()
