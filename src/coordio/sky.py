@@ -424,15 +424,19 @@ class Observed(Coordinate2D):
             self.ra[ii] = _ra
 
     @classmethod
-    def fromEquatorial(cls, radec, site, **kwargs):
+    def fromEquatorial(cls, coords, hadec=False, site=None, **kwargs):
         """Initialises `.Observed` coordinates  from equatorial topocentric.
 
         Parameters
         ----------
-        radec : numpy.ndarray
+        coords : numpy.ndarray
             Nx2 Numpy array with the RA and Dec coordinates of the targets.
             These must be topocentric equatorial coordinates that will be
             converted to horizontal topocentric used to initialise `.Observed`.
+            Alternatively, if ``hadec=True`` then the first column in the array
+            must be the hour angle in degrees.
+        hadec : bool
+            Whether the coordinates are HA and declination.
         site : .Site
             The site from where observations will occur, along with the time
             of the observation.  Mandatory argument.
@@ -441,26 +445,33 @@ class Observed(Coordinate2D):
 
         """
 
-        radec = numpy.array(radec)
+        coords = numpy.array(coords)
 
-        if len(radec.shape) != 2 or radec.shape[1] != 2:
-            raise CoordIOError('radec must be Nx2 array.')
+        if len(coords.shape) != 2 or coords.shape[1] != 2:
+            raise CoordIOError('coords must be Nx2 array.')
 
-        ra_d = radec[:, 0]
-        dec_d = radec[:, 1]
-
-        ra_r = numpy.radians(ra_d)
-        dec_r = numpy.radians(dec_d)
-
-        ut = site.time.to_ut1()
-        tt = site.time.to_tt()
-
-        gmst = sofa.iauGmst00(ut, 0.0, tt, 0.0)
-        lst_r = gmst + numpy.radians(site.longitude)
+        if site is None:
+            raise CoordIOError('A site must be specified.')
 
         lat_r = numpy.radians(site.latitude)
+        dec_d = coords[:, 1]
 
-        ha_r = lst_r - ra_r
+        if hadec is False:
+            ra_d = coords[:, 0]
+
+            ra_r = numpy.radians(ra_d)
+            dec_r = numpy.radians(dec_d)
+
+            ut = site.time.to_ut1()
+            tt = site.time.to_tt()
+
+            gmst = sofa.iauGmst00(ut, 0.0, tt, 0.0)
+            lst_r = gmst + numpy.radians(site.longitude)
+
+            ha_r = lst_r - ra_r
+
+        else:
+            ha_r = numpy.radians(coords[:, 0])
 
         # h = altitude, A = azimuth
         sin_h = (numpy.sin(dec_r) * numpy.sin(lat_r) +

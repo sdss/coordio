@@ -145,13 +145,24 @@ def test_icrs_obs_cycle():
     assert numpy.max(numpy.array(sep) * 3600) < 0.5
 
 
-def test_observed_from_equatorial():
+@pytest.mark.parametrize('hadec', [True, False])
+def test_observed_from_equatorial(hadec):
     time = 2451545
     site.set_time(time, scale='TAI')
 
     ras = numpy.random.uniform(0, 360, 100)
     decs = numpy.random.uniform(-90, 90, 100)
-    eqs = numpy.array([ras, decs]).T
+
+    # Get HA for cases when hadec=True
+    astropy_time = astropy.time.Time(time, format='jd', scale='tai',
+                                     location=astropy_location)
+    astropy_lst = astropy_time.sidereal_time('mean').deg
+
+    ha_d = astropy_lst - ras
+    if hadec:
+        eqs = numpy.vstack((ha_d, decs)).T
+    else:
+        eqs = numpy.array([ras, decs]).T
 
     observed = Observed.fromEquatorial(eqs, site=site, wavelength=wavelength)
 
@@ -160,10 +171,6 @@ def test_observed_from_equatorial():
     assert numpy.all(observed[:, 1] > 0) and numpy.all(observed[:, 1] < 360)
 
     # Now calculate the same using astropy and compare.
-    astropy_time = astropy.time.Time(time, format='jd', scale='tai',
-                                     location=astropy_location)
-    astropy_lst = astropy_time.sidereal_time('mean').deg
-
     hadec_coords = HADec(ha=(astropy_lst - ras) * u.deg, dec=decs * u.deg,
                          obstime=astropy_time, location=astropy_location)
 
