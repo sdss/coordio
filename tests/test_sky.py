@@ -12,7 +12,7 @@ import astropy.time
 import numpy
 import pytest
 from astropy import units as u
-from astropy.coordinates import AltAz, Distance, EarthLocation, HADec, SkyCoord
+from astropy.coordinates import AltAz, Distance, EarthLocation, SkyCoord
 from coordio import ICRS, CoordIOError, Observed, Site
 
 wavelength = 7000
@@ -145,8 +145,11 @@ def test_icrs_obs_cycle():
     assert numpy.max(numpy.array(sep) * 3600) < 0.5
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason='requires python 3.8+ for HADec')
 @pytest.mark.parametrize('hadec', [True, False])
 def test_observed_from_equatorial(hadec):
+    from astropy.coordinates import HADec
+
     time = 2451545
     site.set_time(time, scale='TAI')
 
