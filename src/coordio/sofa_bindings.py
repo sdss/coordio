@@ -16,7 +16,6 @@ import importlib
 import os
 from ctypes import POINTER, c_char_p, c_double, c_int
 
-
 # List of argument times for some of the SOFA functions.
 ARGTYPES = [
 
@@ -90,7 +89,10 @@ ARGTYPES = [
     # dZ = A tan Z + B tan^3 Z.
     # args: double phpa, double tc, double rh, double wl, double *refa, double *refb
     ('iauRefco', (c_double, c_double, c_double, c_double,
-                  POINTER(c_double), POINTER(c_double)))
+                  POINTER(c_double), POINTER(c_double))),
+    # Greenwich mean sidereal time (model consistent with IAU 2000 resolutions).
+    # args: double uta, double utb, double tta, double ttb
+    ('iauGmst00', (c_double, c_double, c_double, c_double))
 ]
 
 
@@ -135,6 +137,7 @@ class SOFA(ctypes.CDLL):
         self.iauDtdb.restype = c_double
         self.iauHd2pa.restype = c_double
         self.iauEra00.restype = c_double
+        self.iauGmst00.restype = c_double
 
     def get_internal_date(self, date=None, scale='UTC'):
         """Returns the internal representation of a date.

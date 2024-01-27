@@ -12,10 +12,8 @@ import astropy.time
 import numpy
 import pytest
 from astropy import units as u
-from astropy.coordinates import AltAz, Distance, EarthLocation, SkyCoord
-
+from astropy.coordinates import AltAz, Distance, EarthLocation, HADec, SkyCoord
 from coordio import ICRS, CoordIOError, Observed, Site
-
 
 wavelength = 7000
 
@@ -145,3 +143,32 @@ def test_icrs_obs_cycle():
     a2 = SkyCoord(ra=_icrs[:, 0] * u.deg, dec=_icrs[:, 1] * u.deg)
     sep = a1.separation(a2)
     assert numpy.max(numpy.array(sep) * 3600) < 0.5
+
+
+def test_observed_from_equatorial():
+    time = 2451545
+    site.set_time(time, scale='TAI')
+
+    ras = numpy.random.uniform(0, 360, 100)
+    decs = numpy.random.uniform(-90, 90, 100)
+    eqs = numpy.array([ras, decs]).T
+
+    observed = Observed.fromEquatorial(eqs, site=site, wavelength=wavelength)
+
+    assert observed.shape == (100, 2)
+    assert numpy.all(observed[:, 0] > -90) and numpy.all(observed[:, 0] < 90)
+    assert numpy.all(observed[:, 1] > 0) and numpy.all(observed[:, 1] < 360)
+
+    # Now calculate the same using astropy and compare.
+    astropy_time = astropy.time.Time(time, format='jd', scale='tai',
+                                     location=astropy_location)
+    astropy_lst = astropy_time.sidereal_time('mean').deg
+
+    hadec_coords = HADec(ha=(astropy_lst - ras) * u.deg, dec=decs * u.deg,
+                         obstime=astropy_time, location=astropy_location)
+
+    astropy_altaz = hadec_coords.transform_to(AltAz(location=astropy_location,
+                                                    obstime=astropy_time))
+
+    assert numpy.allclose(observed[:, 0], astropy_altaz.alt.deg, atol=1e-6)
+    assert numpy.allclose(observed[:, 1], astropy_altaz.az.deg % 360, atol=1e-6)
