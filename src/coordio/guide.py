@@ -18,7 +18,7 @@ from astropy.wcs.utils import fit_wcs_from_points
 from matplotlib import pyplot as plt
 from scipy.spatial import KDTree
 from skimage.registration import phase_cross_correlation
-from skimage.transform import SimilarityTransform
+from skimage.transform import SimilarityTransform, EuclideanTransform
 
 from coordio.conv import guideToTangent, tangentToWok
 
@@ -30,7 +30,7 @@ from .exceptions import CoordIOError, CoordIOUserWarning
 from .extraction import sextractor_quick
 from .sky import ICRS, Observed
 from .telescope import Field, FocalPlane
-from .utils import radec2wokxy
+from .utils import radec2wokxy, wokxy2radec
 from .wok import Wok
 from .transforms import arg_nearest_neighbor
 
@@ -1273,6 +1273,31 @@ class SolvePointing:
 
         ff.close()
 
+    def getGaiaSources(self, radius=0.16, magLimit=18):
+        connStr = "postgresql://sdss_user@operations.sdss.org/sdss5db"
+        xWok = []
+        yWok = []
+        for gfaNum in self.gfaHeaders.keys():
+            xw, yw = self.pix2wok(1024,1024)
+            xWok.append(xw)
+            yWok.append(yw)
+
+        ra, dec, fieldWarn = wokxy2radec(
+            xWok, yWok, "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
+            self.observatory, self.obsTimeRef.jd, focalScale=self.scaleMeas
+        )
+
+        allGaia = []
+        for _ra, _dec in zip(ra,dec):
+            query = "SELECT * FROM catalogdb.gaia_dr2_source WHERE "
+            query += "q3c_radial_query"
+            query += "(ra, dec, %.4f, %.4f, %.4f)" % (_ra, _dec, radius)
+            query += " AND phot_g_mean_mag < %.2f" % magLimit
+            allGaia.append(pandas.read_sql(query, connStr))
+
+        self.allGaia = pandas.concat(allGaia)
+        print("got", len(self.allGaia), " sources")
+
     def _matchWCS(self):
         """Note, only works if there was at least 1 wcs solution provided!
         """
@@ -1298,7 +1323,7 @@ class SolvePointing:
         output = radec2wokxy(
             matched_df.ra.to_numpy(), matched_df.dec.to_numpy(), self.GAIA_EPOCH,
             "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
-            "APO", self.obsTimeRef.jd, focalScale=self.scaleMeas,
+            self.observatory, self.obsTimeRef.jd, focalScale=self.scaleMeas,
             pmra=matched_df.pmra.to_numpy(), pmdec=matched_df.pmdec.to_numpy(),
             parallax=matched_df.parallax.to_numpy(), fullOutput=True
         )
