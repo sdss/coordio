@@ -1180,7 +1180,6 @@ class SolvePointing:
     def add_gimg(
         self,
         img_path: str | pathlib.Path,
-        gaia_candidates: pandas.DataFrame,
         centroids: pandas.DataFrame | None = None,
         wcs_path: str | pathlib.Path | None = None
     ):
@@ -1198,10 +1197,6 @@ class SolvePointing:
             sep style extracted parameters in pandas.DataFrame form.  Additionally
             if a "CENTROIDS" extension is present in the fits file, those will
             be used.  If not present, centroids are extracted from the data.
-        gaia_candidates
-            a gaia coordinates in and around the GFA's FOV.
-            expected columns are ra,dec,pmra,pmdec,parallax,phot_g_mean_mag.
-            sources will be clipped to 18th mag
         wcs_path
             path to a *.wcs file output from astrometry.net (optional)
         """
@@ -1225,17 +1220,10 @@ class SolvePointing:
                 "May not add gfa files with differing img numbers"
             )
 
-        # save gaia data
-        gaia_candidates["gfaNum"] = gfaNum
-        # remove gaia sources fainter than 18th mag
-        gaia_candidates = gaia_candidates[gaia_candidates.phot_g_mean_mag < 18]
-        gaia_candidates = gaia_candidates.dropna()
-
         if centroids is None:
             # extract centroids
             centroids = sextractor_quick(ff[1].data)
         fwhm = 2 * (numpy.log(2) * (centroids.a**2 + centroids.b**2))**0.5
-
         centroids["fwhm"] = fwhm
         centroids["gfaNum"] = gfaNum
         # remove saturated sources
@@ -1259,10 +1247,6 @@ class SolvePointing:
             centroids["raMeas"] = raDecMeas[:, 0]
             centroids["decMeas"] = raDecMeas[:, 1]
             # import pdb; pdb.set_trace()
-
-        self.allGaia = pandas.concat(
-            [self.allGaia, gaia_candidates], ignore_index=True
-        )
 
         self.allCentroids = pandas.concat(
             [self.allCentroids, centroids], ignore_index=True
