@@ -1057,6 +1057,7 @@ class SolvePointing:
         self.decCenRef = None
         self.paCenRef = None
         self.obsTimeRef = None
+        self.ipa = None
         self.imgNum = None
         self.gfaHeaders = {}
         self.gfaWCS = {}
@@ -1171,6 +1172,9 @@ class SolvePointing:
         # it better matches the telescope headers (eg for a pointing model)
         self.obsTimeRef = tStart + dt
         self.imgNum = imgNum
+        self.ipa = hdr["IPA"]
+        self.fieldCenAltReport = hdr["ALT"]
+        self.fieldCenAzReport = hdr["AZ"]
         self.initField = True
 
     def add_gimg(
