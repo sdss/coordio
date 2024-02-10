@@ -761,6 +761,18 @@ def repeat_scalar(input, n):
 
     return input
 
+def wok2mirror(x, y, ipa):
+    """Convert to "mirror coordinates" in mm
+    """
+    x = -1*x
+    radIPA = numpy.radians(ipa)
+    cosIPA = numpy.cos(radIPA)
+    sinIPA = numpy.sin(radIPA)
+
+    xm = x*cosIPA - y*sinIPA
+    ym = x*sinIPA + y*cosIPA
+    return xm, ym
+
 
 def wokToTangent(xWok, yWok, zWok, b, iHat, jHat, kHat,
                  elementHeight=defaults.POSITIONER_HEIGHT, scaleFac=1,
@@ -1534,30 +1546,40 @@ def _positionerToTangent(
     return xTangent, yTangent
 
 
-def tangentToGuide(xTangent, yTangent, xBin=1, yBin=1):
+def tangentToGuide(
+    xTangent, yTangent, xBin=1, yBin=1, x_0=0, x_1=0, y_0=0, y_1=0
+):
 
-    xPix = (1 / xBin) * (
+    xPixDist = (1 / xBin) * (
         defaults.MICRONS_PER_MM / defaults.GFA_PIXEL_SIZE * xTangent + \
         defaults.GFA_CHIP_CENTER
     )
 
-    yPix = (1 / yBin) * (
+    yPixDist = (1 / yBin) * (
         defaults.MICRONS_PER_MM / defaults.GFA_PIXEL_SIZE * yTangent + \
         defaults.GFA_CHIP_CENTER
     )
 
+    xPix = (xPixDist - x_0) / (1 + x_1)
+    yPix = (yPixDist - y_0) / (1 + y_1)
+
     return xPix, yPix
 
 
-def guideToTangent(xPix, yPix, xBin=1, yBin=1):
+def guideToTangent(
+    xPix, yPix, xBin=1, yBin=1, x_0=0, x_1=0, y_0=0, y_1=0
+):
+    xPixDist = xPix + x_0 + x_1 * xPix
+    yPixDist = yPix + y_0 + y_1 * xPix
+
     xTangent = (
-        (xPix * xBin - defaults.GFA_CHIP_CENTER)
+        (xPixDist * xBin - defaults.GFA_CHIP_CENTER)
         * defaults.GFA_PIXEL_SIZE
         / defaults.MICRONS_PER_MM
     )
 
     yTangent = (
-        (yPix * yBin - defaults.GFA_CHIP_CENTER)
+        (yPixDist * yBin - defaults.GFA_CHIP_CENTER)
         * defaults.GFA_PIXEL_SIZE
         / defaults.MICRONS_PER_MM
     )

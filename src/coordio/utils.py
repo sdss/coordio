@@ -75,7 +75,7 @@ def wokCurveLCO(r):
 def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, focalScale=None, pmra=None, pmdec=None, parallax=None,
                 radVel=None, pressure=None, relativeHumidity=0.5,
-                temperature=10):
+                temperature=10, fullOutput=False):
     r"""
     Convert from ra, dec ICRS coords to a flat-wok XY in mm.  At obsAngle=0
     wok +y is a aligned with +dec, and wok +x is aligned with +ra
@@ -139,6 +139,8 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     temperature : float
         The site temperature, in degrees Celsius. Defaults to
         :math:`10^\circ{\rm C}`.
+    fullOutput : Bool
+        If True all intermediate coords are returned
 
     Returns
     ---------
@@ -153,6 +155,26 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
         hour angle of field center in degrees
     positionAngle : float
         position angle of field center in degrees
+
+    if fullOutput=True additionally returns:
+
+    xFocal : numpy.ndarray
+        x focal coordinate, mm
+    yFocal : numpy.ndarray
+        y focal coordinate, mm
+    thetaField : numpy.ndarray
+        azimuthal field coordinate, deg +RA through +Dec
+    phiField : numpy.ndarray
+        polar field coordinate, deg off axis
+    altitude :  numpy.ndarray
+        altitude coordinate, deg
+    azimuth : numpy.ndarray
+        azimuth coordinate N=0, E=90, deg
+    altFieldCen : float
+        altitude of field center, deg
+    azFieldCen : float
+        azimuth of field center, deg
+
     """
     nCoords = len(ra)
 
@@ -204,6 +226,14 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
         wok[:, 0], wok[:, 1], focal.field_warn,
         float(obsCen.ha), float(obsCen.pa)
     )
+
+    if fullOutput:
+        output += (
+            focal[:, 0], focal[:, 1],
+            field[:, 0], field[:, 1],
+            obs[:, 0], obs[:, 1],
+            obsCen[0][0], obsCen[0][1]
+        )
     return output
 
 

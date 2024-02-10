@@ -12,12 +12,13 @@ import pandas
 import scipy.ndimage
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import fit_wcs_from_points
 from matplotlib import pyplot as plt
 from scipy.spatial import KDTree
 from skimage.registration import phase_cross_correlation
+from skimage.transform import SimilarityTransform
 
 from coordio.conv import guideToTangent, tangentToWok
 
@@ -31,6 +32,7 @@ from .sky import ICRS, Observed
 from .telescope import Field, FocalPlane
 from .utils import radec2wokxy
 from .wok import Wok
+from .transforms import arg_nearest_neighbor
 
 
 __all__ = [
@@ -984,3 +986,442 @@ class GuiderFitter:
                 direction = -1
 
         fig.savefig(str(filename))
+
+
+class SolvePointing:
+    """
+    Determines the best-fit telescope boresight pointing from a set of GFA
+    images.  Requires specifying a guess or reference pointing as a starting
+    point.  The reference pointing can be assumed from the gfa image headers.
+
+    Parameters
+    -------------
+    raCen : float | None = None
+        RA of field center in degrees.  If None, user must specify pt_source
+    decCen : float | None = None
+        Dec of field center in degrees.  If None, user must specify pt_source
+    paCen : float | None = None
+        PA of field center in degrees, If None, user must specify pt_src
+    pt_source : str | None = None
+        either "design" or "telescope".  Design will solve using robostrategy
+        intented field center, telescope will solve using the reported
+        sky position of the telescope boresight. Data pulled from gcam headers.
+        If raCen, decCen, and/or paCen are specified, those values are used
+        instead of data from image headers
+    offset_ra : float = 0
+        offset in ra to add to the supplied field center (true arcseconds)
+    offset_dec : float = 0
+        offset in dec to add to the supplied field center (arcseconds)
+    offset_pa : float = 0
+        offset in pa to subtract from supplied field angle (arcseconds)
+    scale : float = 1
+        scale factor for the field
+    """
+    def __init__(
+        self,
+        raCen: float | None = None,
+        decCen: float | None = None,
+        paCen: float | None = None,
+        scale: float = 1,
+        pt_source: str | None = None,
+        offset_ra: float = 0,
+        offset_dec: float = 0,
+        offset_pa: float = 0,
+    ):
+
+        if pt_source is None and None in [raCen, decCen, paCen]:
+            raise RuntimeError(
+                "must specify either pt_source or raCen, decCen, paCen"
+            )
+        if raCen is None or decCen is None or paCen is None:
+            if pt_source not in ["telescope", "design"]:
+                raise RuntimeError(
+                    "pt_source must be either 'telescope' or 'design'"
+                )
+
+        self._raCen = raCen
+        self._decCen = decCen
+        self._paCen = paCen
+        self.pt_source = pt_source
+        self.offset_ra = offset_ra
+        self.offset_dec = offset_dec
+        self.offset_pa = offset_pa
+        self.scale = scale
+
+        self.GAIA_EPOCH = 2457206
+
+        # populated by add_gimg
+        self.fieldInit = False
+        self.observatory = None
+        self.raCenRef = None
+        self.decCenRef = None
+        self.paCenRef = None
+        self.obsTimeRef = None
+        self.imgNum = None
+        self.gfaHeaders = {}
+        self.gfaWCS = {}
+        self.allCentroids = pandas.DataFrame()
+        self.allGaia = pandas.DataFrame()
+
+        # populated or modified by solve
+        self.skyDistThresh = None # arcseconds for a match hit
+        self.raCenMeas = None
+        self.decCenMeas = None
+        self.paCenMeas = None
+        self.scaleMeas = None
+        self.altCenMeas = None
+        self.azCenMeas = None
+        self.gfaRMS = {}
+        self.gfaFitRMS = {}
+        self.RMS = None
+        self.fitRMS = None
+        self.matchedSources = None
+
+    @property
+    def plate_scale(self):
+        # mm per deg
+        return defaults.PLATE_SCALE[self.observatory]
+
+    @property
+    def pixel_scale(self):
+        # arcsec per pixel
+        return 1.0 / self.plate_scale * defaults.GFA_PIXEL_SIZE * 3600 / 1000
+
+    @property
+    def wokDistThresh(self):
+        # mm
+        return self.skyDistThresh / 3600. * self.plate_scale
+
+    def pix2wok(self, x, y, gfaNum):
+        g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
+        zt = numpy.zeros(len(x))
+        b = g[["xWok", "yWok", "zWok"]].to_numpy()
+        iHat = g[["ix", "iy", "iz"]].to_numpy()
+        jHat = g[["jx", "jy", "jz"]].to_numpy()
+        kHat = g[["kx", "ky", "kz"]].to_numpy()
+
+        xt, yt = guideToTangent(x, y)
+
+        xw, yw, zw = tangentToWok(
+            xt, yt, zt,
+            b, iHat, jHat, kHat
+        )
+        return xw, yw
+
+    def wok2pix(self, x, y, gfaNum):
+        g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
+        zw = numpy.zeros(len(x))
+        b = g[["xWok", "yWok", "zWok"]].to_numpy()
+        iHat = g[["ix", "iy", "iz"]].to_numpy()
+        jHat = g[["jx", "jy", "jz"]].to_numpy()
+        kHat = g[["kx", "ky", "kz"]].to_numpy()
+
+        xt, yt, zt = wokToTangent(
+            x, y, zw,
+            b, iHat, jHat, kHat
+        )
+
+        xyPix = tangentToGuide(xt,yt) #,y_0=float(g.y_0), y_1=float(g.y_1))
+        return xyPix
+
+    def gfa2radec(self, gfaNum):
+        """ get the ra/dec of ccd center, if wcs is available use that """
+        import pdb; pdb.set_trace()
+
+    def initializeField(self, observatory, imgNum, hdr):
+        self.observatory = observatory
+
+        if self.pt_source == "design":
+            _raCen = hdr["RAFIELD"]
+            _decCen = hdr["DECFIELD"]
+            _paCen = hdr["FIELDPA"]
+        elif self.pt_source == "telescope":
+            # warning assumes APO for now
+            # will need to modify for LCO
+            _raCen = hdr["RA"]  # RA is ObjNetPos, RADEG is ObjPos (tcc kws)
+            _decCen = hdr["DEC"]
+            _paCen = hdr["ROTPOS"]
+
+        # if no field center was specified, use field center from
+        # header
+        if self._raCen is None:
+            self._raCen = _raCen
+        if self._decCen is None:
+            self._decCen = _decCen
+        if self._paCen is None:
+            self._paCen = _paCen
+
+        # apply offsets if specified
+        ddec = self.offset_dec / 3600.
+        self.decCenRef = self._decCen + ddec
+        dra = self.offset_ra / 3600. / numpy.cos(numpy.radians(self.decCenRef))
+        self.raCenRef = self._raCen + dra
+        self.paCenRef = self._paCen - self.offset_pa / 3600.
+
+        # initalize the starting point for the iteration at the reference
+        # pointing
+        self.raCenMeas = self.raCenRef
+        self.decCenMeas = self.decCenRef
+        self.paCenMeas = self.paCenRef
+        self.scaleMeas = self.scale
+
+        tStart = Time(hdr["DATE-OBS"], format="iso", scale="tai")
+        dt = TimeDelta(hdr["EXPTIME"], format="sec", scale="tai")
+        # choose exposure end as reference time because
+        # it better matches the telescope headers (eg for a pointing model)
+        self.obsTimeRef = tStart + dt
+        self.imgNum = imgNum
+        self.initField = True
+
+    def add_gimg(
+        self,
+        img_path: str | pathlib.Path,
+        gaia_candidates: pandas.DataFrame,
+        centroids: pandas.DataFrame | None = None,
+        wcs_path: str | pathlib.Path | None = None
+    ):
+        """
+        Add gfa data to be used in fitting.  Don't add a gfa you don't want
+        incuded in fitting.  Strict checking is done to make sure all images
+        added have the same exposure number.  Expects SDSS style naming and
+        headers, should work for both gimg*.fits and proc-gimg*.fits files.
+
+        Parameters
+        --------------
+        img_path
+            path to a gimg or proc-gimg file
+        centroids
+            sep style extracted parameters in pandas.DataFrame form.  Additionally
+            if a "CENTROIDS" extension is present in the fits file, those will
+            be used.  If not present, centroids are extracted from the data.
+        gaia_candidates
+            a gaia coordinates in and around the GFA's FOV.
+            expected columns are ra,dec,pmra,pmdec,parallax,phot_g_mean_mag.
+            sources will be clipped to 18th mag
+        wcs_path
+            path to a *.wcs file output from astrometry.net (optional)
+        """
+        ff = fits.open(str(img_path))
+        hdr = dict(ff[1].header)
+
+        tokens = img_path.strip(".fits").split("/")[-1].split("-")
+        imgNum = int(tokens[-1])
+        gfaNum = int(tokens[-2].strip("gfa").strip("n").strip("s"))
+        self.gfaHeaders[gfaNum] = hdr
+
+        if not self.fieldInit:
+            if tokens[-2].endswith("n"):
+                observatory = "APO"
+            else:
+                observatory = "LCO"
+            self.initializeField(observatory, imgNum, hdr)
+
+        if imgNum != self.imgNum:
+            raise RuntimeError(
+                "May not add gfa files with differing img numbers"
+            )
+
+        # save gaia data
+        gaia_candidates["gfaNum"] = gfaNum
+        # remove gaia sources fainter than 18th mag
+        gaia_candidates = gaia_candidates[gaia_candidates.phot_g_mean_mag < 18]
+        gaia_candidates = gaia_candidates.dropna()
+
+        if centroids is None:
+            # extract centroids
+            centroids = sextractor_quick(ff[1].data)
+        fwhm = 2 * (numpy.log(2) * (centroids.a**2 + centroids.b**2))**0.5
+
+        centroids["fwhm"] = fwhm
+        centroids["gfaNum"] = gfaNum
+        # remove saturated sources
+        centroids = centroids[centroids.peak < 55000]
+        # calculate wok coordinates for each centroid
+        xWokMeas, yWokMeas = self.pix2wok(
+            centroids.x.to_numpy(),
+            centroids.y.to_numpy(),
+            gfaNum
+        )
+        centroids["xWokMeas"] = xWokMeas
+        centroids["yWokMeas"] = yWokMeas
+
+        if wcs_path is not None:
+            wcs = WCS(open(wcs_path).read())
+            self.gfaWCS[gfaNum] = wcs
+            # use wcs to calculate on-sky locations
+            # of centroids
+            xyCents = centroids[["x", "y"]].to_numpy()
+            raDecMeas = numpy.array(wcs.pixel_to_world_values(xyCents))
+            centroids["raMeas"] = raDecMeas[:, 0]
+            centroids["decMeas"] = raDecMeas[:, 1]
+            # import pdb; pdb.set_trace()
+
+        self.allGaia = pandas.concat(
+            [self.allGaia, gaia_candidates], ignore_index=True
+        )
+
+        self.allCentroids = pandas.concat(
+            [self.allCentroids, centroids], ignore_index=True
+        )
+
+        if wcs_path is not None:
+            self.gfaWCS[gfaNum] = WCS(open(wcs_path).read())
+
+        ff.close()
+
+    def _matchWCS(self):
+        """Note, only works if there was at least 1 wcs solution provided!
+        """
+        raDecGaia = self.allGaia[["ra", "dec"]].to_numpy()
+        # na values in centroids mean no wcs soln was present, so drop them
+        cents = self.allCentroids.dropna().reset_index(drop=True)
+        raDecMeas = cents[["raMeas", "decMeas"]].to_numpy()
+        matches, indices, minDists = arg_nearest_neighbor(raDecMeas, raDecGaia)
+
+        gaiaNN = self.allGaia.iloc[indices].reset_index(drop=True)
+        matched = pandas.concat([cents, gaiaNN], axis=1)
+        matched = matched.loc[:, ~matched.columns.duplicated()].copy()
+
+        # only keep matches closer than 1 arcsecond
+        dra = (matched.ra - matched.raMeas)/numpy.cos(numpy.radians(matched.dec))
+        ddec = (matched.dec - matched.decMeas)
+        matched["dr"] = numpy.sqrt(dra**2+ddec**2)*3600
+        matched = matched[matched.dr < self.skyDistThresh]
+        print("n matched wcs", len(matched))
+        return matched
+
+    def _iter(self, matched_df):
+        output = radec2wokxy(
+            matched_df.ra.to_numpy(), matched_df.dec.to_numpy(), self.GAIA_EPOCH,
+            "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
+            "APO", self.obsTimeRef.jd, focalScale=self.scaleMeas,
+            pmra=matched_df.pmra.to_numpy(), pmdec=matched_df.pmdec.to_numpy(),
+            parallax=matched_df.parallax.to_numpy(), fullOutput=True
+        )
+
+        xPred = output[0]
+        yPred = output[1]
+        fieldWarn = output[2]
+        ha = output[3]
+        pa = output[4]
+        thetaField = output[5]
+        phiField = output[6]
+        altPred = output[7]
+        azPred = output[8]
+        self.fieldCenAltMeas = output[9]
+        self.fieldCenAzMeas = output[10]
+
+        matched_df["xWokPred"] = xPred
+        matched_df["yWokPred"] = yPred
+
+        self.matchedSources = matched_df
+        # fieldWarn = output[2]
+        # ha = output[3]
+        # pa = output[4]
+        # thetaField = output[5]
+        # phiField = output[6]
+        # altPred = output[7]
+        # azPred = output[8]
+        # fieldCenAlt = output[9]
+        # fieldCenAz = output[10]
+
+        x = matched_df.xWokMeas.to_numpy()
+        y = matched_df.yWokMeas.to_numpy()
+        dx = xPred - x
+        dy = yPred - y
+        measRMS = numpy.sqrt(numpy.mean(dx**2+dy**2))*1000
+        print("meas rms", measRMS)
+
+        # plt.figure(figsize=(8,8))
+        # plt.quiver(x,y,dx,dy,angles="xy",units="xy", width=.2)
+        # plt.axis("equal")
+        # plt.show()
+
+        st = SimilarityTransform()
+        xyMeas = matched_df[["xWokMeas", "yWokMeas"]].to_numpy()
+        xyPred = numpy.array([xPred,yPred]).T
+        st.estimate(xyPred, xyMeas)
+
+        xyFit = st(xyPred)
+        dx = xyFit[:, 0] - x
+        dy = xyFit[:, 1] - y
+        self.fitRMS = numpy.sqrt(numpy.mean(dx**2+dy**2))*1000
+        print("fit rms", self.fitRMS)
+
+        # plt.figure(figsize=(8,8))
+        # plt.quiver(x,y,dx,dy,angles="xy", units="xy", width=.2)
+        # plt.axis("equal")
+
+        # update field center
+        self.paCenMeas += numpy.degrees(st.rotation)
+        rotRad = numpy.radians(self.paCenMeas)
+        cosRot = numpy.cos(rotRad)
+        sinRot = numpy.sin(rotRad)
+        # rotate by PA to get offset directions along ra/dec
+        rotMat = numpy.array([
+            [cosRot, sinRot],
+            [-sinRot, cosRot]
+        ])
+        dra, ddec = rotMat @ st.translation
+        self.decCenMeas -= ddec / self.plate_scale
+        self.raCenMeas -= dra / self.plate_scale / numpy.cos(numpy.radians(self.decCenMeas))
+        self.scaleMeas /= st.scale
+
+        # plt.show()
+
+    def solve(
+        self,
+        skyDistThresh: float = 1,  # arcseconds
+    ):
+        self.skyDistThresh = skyDistThresh
+        # initialize field center to
+        # user supplied reference
+
+        if len(self.gfaWCS) > 0:
+            matches = self._matchWCS()
+            self._iter(matches)
+            self._iter(matches)
+
+        for ii in range(3):
+            output = radec2wokxy(
+                self.allGaia.ra.to_numpy(), self.allGaia.dec.to_numpy(), self.GAIA_EPOCH,
+                "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
+                "APO", self.obsTimeRef.jd, focalScale=self.scaleMeas,
+                pmra=self.allGaia.pmra.to_numpy(), pmdec=self.allGaia.pmdec.to_numpy(),
+                parallax=self.allGaia.parallax.to_numpy(), fullOutput=True
+            )
+
+            xPred = output[0]
+            yPred = output[1]
+            self.allGaia["xWokPred"] = xPred
+            self.allGaia["yWokPred"] = yPred
+
+            xyWokMeas = self.allCentroids[["xWokMeas", "yWokMeas"]].to_numpy()
+            xyWokPredict = self.allGaia[["xWokPred", "yWokPred"]].to_numpy()
+            matches, indices, minDists = arg_nearest_neighbor(xyWokMeas, xyWokPredict)
+
+            gaiaNN = self.allGaia.iloc[indices].reset_index(drop=True)
+            matched = pandas.concat([self.allCentroids, gaiaNN], axis=1)
+            matched = matched.loc[:, ~matched.columns.duplicated()].copy()
+
+            # reject matches above the threshold
+            matched["dx"] = matched.xWokMeas - matched.xWokPred
+            matched["dy"] = matched.yWokMeas - matched.yWokPred
+            matched["dr"] = numpy.sqrt(matched.dx**2+matched.dy**2)
+
+            # plt.figure()
+            # plt.hist(matched.dr, bins=200)
+            # plt.show()
+
+            goodMatches = matched[matched.dr < self.wokDistThresh]
+            print("nmatched gaia", len(goodMatches))
+            lastFitRMS = self.fitRMS
+            self._iter(goodMatches)
+            if numpy.abs(lastFitRMS-self.fitRMS) < 1: #
+                break
+        # import pdb; pdb.set_trace()
+
+
+
+
+
