@@ -1014,19 +1014,25 @@ class SolvePointing:
         offset in dec to add to the supplied field center (arcseconds)
     offset_pa : float = 0
         offset in pa to subtract from supplied field angle (arcseconds)
-    scale : float = 1
+    scale : float | None = None
         scale factor for the field
+    db_conn_st : str
+        connection string for the db
+    db_tab_name : str
+        table in database with gaia info
     """
     def __init__(
         self,
         raCen: float | None = None,
         decCen: float | None = None,
         paCen: float | None = None,
-        scale: float = 1,
+        scale: float | None = None,
         pt_source: str | None = None,
         offset_ra: float = 0,
         offset_dec: float = 0,
         offset_pa: float = 0,
+        db_conn_st: str = "postgresql://sdss_user@operations.sdss.org/sdss5db",
+        db_tab_name: str = "catalogdb.gaia_dr2_source"
     ):
 
         if pt_source is None and None in [raCen, decCen, paCen]:
@@ -1047,6 +1053,8 @@ class SolvePointing:
         self.offset_dec = offset_dec
         self.offset_pa = offset_pa
         self.scale = scale
+        self.db_conn_st = db_conn_st
+        self.db_tab_name = db_tab_name
 
         self.GAIA_EPOCH = 2457206
 
@@ -1062,10 +1070,10 @@ class SolvePointing:
         self.gfaHeaders = {}
         self.gfaWCS = {}
         self.allCentroids = pandas.DataFrame()
-        self.allGaia = pandas.DataFrame()
 
         # populated or modified by solve
-        self.skyDistThresh = None # arcseconds for a match hit
+        self.allGaia = pandas.DataFrame()
+        self.skyDistThresh = None  # arcseconds for a match hit
         self.raCenMeas = None
         self.decCenMeas = None
         self.paCenMeas = None
@@ -1127,7 +1135,12 @@ class SolvePointing:
 
     def gfa2radec(self, gfaNum):
         """ get the ra/dec of ccd center, if wcs is available use that """
-        import pdb; pdb.set_trace()
+        xw, yw = self.pix2wok(numpy.array([1024]), numpy.array([1024]), gfaNum)
+        ra, dec, fieldWarn = wokxy2radec(
+            numpy.array(xw), numpy.array(yw), "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
+            self.observatory, self.obsTimeRef.jd, focalScale=self.scaleMeas
+        )
+        return ra[0], dec[0]
 
     def initializeField(self, observatory, imgNum, hdr):
         self.observatory = observatory
@@ -1164,6 +1177,8 @@ class SolvePointing:
         self.raCenMeas = self.raCenRef
         self.decCenMeas = self.decCenRef
         self.paCenMeas = self.paCenRef
+        if self.scale is None:
+            self.scale = defaults.SITE_TO_SCALE[self.observatory]
         self.scaleMeas = self.scale
 
         tStart = Time(hdr["DATE-OBS"], format="iso", scale="tai")
@@ -1173,8 +1188,8 @@ class SolvePointing:
         self.obsTimeRef = tStart + dt
         self.imgNum = imgNum
         self.ipa = hdr["IPA"]
-        self.fieldCenAltReport = hdr["ALT"]
-        self.fieldCenAzReport = hdr["AZ"]
+        self.fieldCenAltRef = hdr["ALT"]
+        self.fieldCenAzRef = hdr["AZ"]
         self.initField = True
 
     def add_gimg(
@@ -1257,34 +1272,29 @@ class SolvePointing:
 
         ff.close()
 
-    def getGaiaSources(self, radius=0.16, magLimit=18):
-        connStr = "postgresql://sdss_user@operations.sdss.org/sdss5db"
-        xWok = []
-        yWok = []
-        for gfaNum in self.gfaHeaders.keys():
-            xw, yw = self.pix2wok(1024,1024)
-            xWok.append(xw)
-            yWok.append(yw)
+    def getGaiaSources(self, ra, dec, radius=0.16, magLimit=18):
+        query = "SELECT source_id, ra, dec, pmra, pmdec, parallax"
+        query += " FROM %s" % self.db_tab_name
+        query += " WHERE q3c_radial_query"
+        query += "(ra, dec, %.4f, %.4f, %.4f)" % (ra, dec, radius)
+        query += " AND phot_g_mean_mag < %.2f" % magLimit
+        df = pandas.read_sql(query, self.db_conn_st)
+        return df.dropna().reset_index(drop=True)
 
-        ra, dec, fieldWarn = wokxy2radec(
-            xWok, yWok, "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
-            self.observatory, self.obsTimeRef.jd, focalScale=self.scaleMeas
-        )
-
-        allGaia = []
-        for _ra, _dec in zip(ra,dec):
-            query = "SELECT * FROM catalogdb.gaia_dr2_source WHERE "
-            query += "q3c_radial_query"
-            query += "(ra, dec, %.4f, %.4f, %.4f)" % (_ra, _dec, radius)
-            query += " AND phot_g_mean_mag < %.2f" % magLimit
-            allGaia.append(pandas.read_sql(query, connStr))
-
-        self.allGaia = pandas.concat(allGaia)
-        print("got", len(self.allGaia), " sources")
+        # self.allGaia = pandas.concat(allGaia)
+        # print("got", len(self.allGaia), " sources")
 
     def _matchWCS(self):
         """Note, only works if there was at least 1 wcs solution provided!
         """
+        allGaia = []
+        for gfaNum, wcs in self.gfaWCS.items():
+            ra, dec = wcs.pixel_to_world_values([[1024,1024]])[0]
+            gaiaDF = self.getGaiaSources(ra,dec)
+            gaiaDF["gfaNum"] = gfaNum
+            allGaia.append(gaiaDF)
+        self.allGaia = pandas.concat(allGaia)
+
         raDecGaia = self.allGaia[["ra", "dec"]].to_numpy()
         # na values in centroids mean no wcs soln was present, so drop them
         cents = self.allCentroids.dropna().reset_index(drop=True)
@@ -1296,20 +1306,18 @@ class SolvePointing:
         matched = matched.loc[:, ~matched.columns.duplicated()].copy()
 
         # only keep matches closer than 1 arcsecond
-        dra = (matched.ra - matched.raMeas)/numpy.cos(numpy.radians(matched.dec))
+        dra = (matched.ra - matched.raMeas)
+        dra = dra / numpy.cos(numpy.radians(matched.dec))
         ddec = (matched.dec - matched.decMeas)
-        matched["dr"] = numpy.sqrt(dra**2+ddec**2)*3600
+        matched["dr"] = numpy.sqrt(dra**2 + ddec**2) * 3600
         matched = matched[matched.dr < self.skyDistThresh]
-        print("n matched wcs", len(matched))
-        return matched
 
-    def _iter(self, matched_df):
         output = radec2wokxy(
-            matched_df.ra.to_numpy(), matched_df.dec.to_numpy(), self.GAIA_EPOCH,
+            matched.ra.to_numpy(), matched.dec.to_numpy(), self.GAIA_EPOCH,
             "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
             self.observatory, self.obsTimeRef.jd, focalScale=self.scaleMeas,
-            pmra=matched_df.pmra.to_numpy(), pmdec=matched_df.pmdec.to_numpy(),
-            parallax=matched_df.parallax.to_numpy(), fullOutput=True
+            pmra=matched.pmra.to_numpy(), pmdec=matched.pmdec.to_numpy(),
+            parallax=matched.parallax.to_numpy(), fullOutput=True
         )
 
         xPred = output[0]
@@ -1324,49 +1332,102 @@ class SolvePointing:
         self.fieldCenAltMeas = output[9]
         self.fieldCenAzMeas = output[10]
 
-        matched_df["xWokPred"] = xPred
-        matched_df["yWokPred"] = yPred
+        matched["xWokPred"] = xPred
+        matched["yWokPred"] = yPred
 
-        self.matchedSources = matched_df
-        # fieldWarn = output[2]
-        # ha = output[3]
-        # pa = output[4]
-        # thetaField = output[5]
-        # phiField = output[6]
-        # altPred = output[7]
-        # azPred = output[8]
-        # fieldCenAlt = output[9]
-        # fieldCenAz = output[10]
+        self.matchedSources = matched
 
-        x = matched_df.xWokMeas.to_numpy()
-        y = matched_df.yWokMeas.to_numpy()
-        dx = xPred - x
-        dy = yPred - y
-        measRMS = numpy.sqrt(numpy.mean(dx**2+dy**2))*1000
-        print("meas rms", measRMS)
+    def _matchWok(self):
+        output = radec2wokxy(
+            self.allGaia.ra.to_numpy(), self.allGaia.dec.to_numpy(), self.GAIA_EPOCH,
+            "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
+            self.observatory, self.obsTimeRef.jd, focalScale=self.scaleMeas,
+            pmra=self.allGaia.pmra.to_numpy(), pmdec=self.allGaia.pmdec.to_numpy(),
+            parallax=self.allGaia.parallax.to_numpy(), fullOutput=True
+        )
+
+        xPred = output[0]
+        yPred = output[1]
+        fieldWarn = output[2]
+        ha = output[3]
+        pa = output[4]
+        thetaField = output[5]
+        phiField = output[6]
+        altPred = output[7]
+        azPred = output[8]
+        self.fieldCenAltMeas = output[9]
+        self.fieldCenAzMeas = output[10]
+
+        self.allGaia["xWokPred"] = xPred
+        self.allGaia["yWokPred"] = yPred
+
+        xyWokMeas = self.allCentroids[["xWokMeas", "yWokMeas"]].to_numpy()
+        xyWokPredict = self.allGaia[["xWokPred", "yWokPred"]].to_numpy()
+        matches, indices, minDists = arg_nearest_neighbor(xyWokMeas, xyWokPredict)
+
+        gaiaNN = self.allGaia.iloc[indices].reset_index(drop=True)
+        matched = pandas.concat([self.allCentroids, gaiaNN], axis=1)
+        matched = matched.loc[:, ~matched.columns.duplicated()].copy()
+
+        # reject matches above the threshold
+        matched["dx"] = matched.xWokMeas - matched.xWokPred
+        matched["dy"] = matched.yWokMeas - matched.yWokPred
+        matched["dr"] = numpy.sqrt(matched.dx**2 + matched.dy**2)
+
+        # plt.figure()
+        # plt.hist(matched.dr, bins=200)
+        # plt.show()
+        goodMatches = matched[matched.dr < self.wokDistThresh]
+        self.matchedSources = goodMatches
+
+    def _iter(self):
+        # matched_df = self.matchedSources
+
+        nGFAS = len(set(self.matchedSources.gfaNum))
+
+        # x = matched_df.xWokMeas.to_numpy()
+        # y = matched_df.yWokMeas.to_numpy()
+        # dx = xPred - x
+        # dy = yPred - y
+        # measRMS = numpy.sqrt(numpy.mean(dx**2 + dy**2)) * 1000
+        # print("meas rms", measRMS)
 
         # plt.figure(figsize=(8,8))
         # plt.quiver(x,y,dx,dy,angles="xy",units="xy", width=.2)
         # plt.axis("equal")
         # plt.show()
+        xyMeas = self.matchedSources[["xWokMeas", "yWokMeas"]].to_numpy()
+        xyPred = self.matchedSources[["xWokPred", "yWokPred"]].to_numpy()
 
-        st = SimilarityTransform()
-        xyMeas = matched_df[["xWokMeas", "yWokMeas"]].to_numpy()
-        xyPred = numpy.array([xPred,yPred]).T
-        st.estimate(xyPred, xyMeas)
+        if nGFAS > 1:
+            st = SimilarityTransform()
+            st.estimate(xyPred, xyMeas)
+            xyFit = st(xyPred)
+            dxy = xyFit - xyMeas
+            dRot = st.rotation
+            dTrans = st.translation
+            dScale = st.scale
+        else:
+            dTrans = numpy.mean(xyMeas - xyPred, axis=0)
+            dxy = xyPred + dTrans - xyMeas
+            dRot = 0
+            dScale = 1
 
-        xyFit = st(xyPred)
-        dx = xyFit[:, 0] - x
-        dy = xyFit[:, 1] - y
-        self.fitRMS = numpy.sqrt(numpy.mean(dx**2+dy**2))*1000
-        print("fit rms", self.fitRMS)
+        # print(st.translation, numpy.degrees(st.rotation), st.scale)
+
+
+
+        self.fitRMS = numpy.sqrt(
+            numpy.mean(numpy.sum(dxy**2, axis=1))
+        ) * 1000
+        print("%.1f"%self.fitRMS, len(self.matchedSources), set(self.matchedSources.gfaNum))
 
         # plt.figure(figsize=(8,8))
         # plt.quiver(x,y,dx,dy,angles="xy", units="xy", width=.2)
         # plt.axis("equal")
 
         # update field center
-        self.paCenMeas += numpy.degrees(st.rotation)
+        self.paCenMeas += numpy.degrees(dRot)
         rotRad = numpy.radians(self.paCenMeas)
         cosRot = numpy.cos(rotRad)
         sinRot = numpy.sin(rotRad)
@@ -1375,64 +1436,67 @@ class SolvePointing:
             [cosRot, sinRot],
             [-sinRot, cosRot]
         ])
-        dra, ddec = rotMat @ st.translation
+        dra, ddec = rotMat @ dTrans
         self.decCenMeas -= ddec / self.plate_scale
-        self.raCenMeas -= dra / self.plate_scale / numpy.cos(numpy.radians(self.decCenMeas))
-        self.scaleMeas /= st.scale
+        dra = dra / self.plate_scale
+        dra = dra / numpy.cos(numpy.radians(self.decCenMeas))
+        self.raCenMeas -= dra
+        self.scaleMeas /= dScale
 
         # plt.show()
 
     def solve(
         self,
-        skyDistThresh: float = 1,  # arcseconds
+        skyDistThresh: float = 3,  # arcseconds
     ):
         self.skyDistThresh = skyDistThresh
         # initialize field center to
         # user supplied reference
 
         if len(self.gfaWCS) > 0:
-            matches = self._matchWCS()
-            self._iter(matches)
-            self._iter(matches)
+            # match wcs gets gaia sources for matching based on
+            # wcs if available
+            lastRMS = None
+            for ii in range(5):
+                # maximum of 3 iters
+                self._matchWCS()
+                self._iter()
+                if lastRMS is None:
+                    lastRMS = self.fitRMS
+                    continue
+                if numpy.abs(lastRMS - self.fitRMS) < 1:
+                    # less than 1 micron difference
+                    print("breaking wcs loop")
+                    break
+                lastRMS = self.fitRMS
 
-        for ii in range(3):
-            output = radec2wokxy(
-                self.allGaia.ra.to_numpy(), self.allGaia.dec.to_numpy(), self.GAIA_EPOCH,
-                "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
-                "APO", self.obsTimeRef.jd, focalScale=self.scaleMeas,
-                pmra=self.allGaia.pmra.to_numpy(), pmdec=self.allGaia.pmdec.to_numpy(),
-                parallax=self.allGaia.parallax.to_numpy(), fullOutput=True
-            )
+        if len(self.gfaHeaders) == len(self.gfaWCS):
+            # no chip was missing a WCS exit here
+            return
 
-            xPred = output[0]
-            yPred = output[1]
-            self.allGaia["xWokPred"] = xPred
-            self.allGaia["yWokPred"] = yPred
+        # add in gfa's without WCS solution  and re-fit
+        gaiaGFAs = list(set(self.allGaia.gfaNum))
+        for gfaNum in self.gfaHeaders.keys():
+            if gfaNum in gaiaGFAs:
+                continue  # already got gaia sources for this GFA
+            ra, dec = self.gfa2radec(gfaNum)
+            gaiaDF = self.getGaiaSources(ra, dec)
+            gaiaDF["gfaNum"] = gfaNum
+            self.allGaia = pandas.concat([self.allGaia, gaiaDF])
 
-            xyWokMeas = self.allCentroids[["xWokMeas", "yWokMeas"]].to_numpy()
-            xyWokPredict = self.allGaia[["xWokPred", "yWokPred"]].to_numpy()
-            matches, indices, minDists = arg_nearest_neighbor(xyWokMeas, xyWokPredict)
-
-            gaiaNN = self.allGaia.iloc[indices].reset_index(drop=True)
-            matched = pandas.concat([self.allCentroids, gaiaNN], axis=1)
-            matched = matched.loc[:, ~matched.columns.duplicated()].copy()
-
-            # reject matches above the threshold
-            matched["dx"] = matched.xWokMeas - matched.xWokPred
-            matched["dy"] = matched.yWokMeas - matched.yWokPred
-            matched["dr"] = numpy.sqrt(matched.dx**2+matched.dy**2)
-
-            # plt.figure()
-            # plt.hist(matched.dr, bins=200)
-            # plt.show()
-
-            goodMatches = matched[matched.dr < self.wokDistThresh]
-            print("nmatched gaia", len(goodMatches))
-            lastFitRMS = self.fitRMS
-            self._iter(goodMatches)
-            if numpy.abs(lastFitRMS-self.fitRMS) < 1: #
+        lastRMS = None
+        for ii in range(100):
+            self._matchWok()
+            self._iter()
+            if lastRMS is None:
+                lastRMS = self.fitRMS
+                continue
+            if numpy.abs(lastRMS - self.fitRMS) < 1:
+                # less than 1 micron difference
+                print("breaking wok loop")
                 break
-        # import pdb; pdb.set_trace()
+            lastRMS = self.fitRMS
+
 
 
 
