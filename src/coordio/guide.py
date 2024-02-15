@@ -1181,11 +1181,13 @@ class SolvePointing:
             self.scale = defaults.SITE_TO_SCALE[self.observatory]
         self.scaleMeas = self.scale
 
-        tStart = Time(hdr["DATE-OBS"], format="iso", scale="tai")
+        self.tStart = Time(hdr["DATE-OBS"], format="iso", scale="tai")
         dt = TimeDelta(hdr["EXPTIME"], format="sec", scale="tai")
         # choose exposure end as reference time because
         # it better matches the telescope headers (eg for a pointing model)
-        self.obsTimeRef = tStart + dt
+        self.obsTimeRef = self.tStart + dt
+        dt = TimeDelta(hdr["EXPTIME"]/2., format="sec", scale="tai")
+        self.obsTimeMid = self.tStart + dt
         self.imgNum = imgNum
         self.ipa = hdr["IPA"]
         self.fieldCenAltRef = hdr["ALT"]
@@ -1325,12 +1327,14 @@ class SolvePointing:
         fieldWarn = output[2]
         ha = output[3]
         pa = output[4]
-        thetaField = output[5]
-        phiField = output[6]
-        altPred = output[7]
-        azPred = output[8]
-        self.fieldCenAltMeas = output[9]
-        self.fieldCenAzMeas = output[10]
+        xFocal = output[5]
+        yFocal = output[6]
+        thetaField = output[7]
+        phiField = output[8]
+        altPred = output[9]
+        azPred = output[10]
+        self.fieldCenAltMeas = output[11]
+        self.fieldCenAzMeas = output[12]
 
         matched["xWokPred"] = xPred
         matched["yWokPred"] = yPred
@@ -1351,12 +1355,14 @@ class SolvePointing:
         fieldWarn = output[2]
         ha = output[3]
         pa = output[4]
-        thetaField = output[5]
-        phiField = output[6]
-        altPred = output[7]
-        azPred = output[8]
-        self.fieldCenAltMeas = output[9]
-        self.fieldCenAzMeas = output[10]
+        xFocal = output[5]
+        yFocal = output[6]
+        thetaField = output[7]
+        phiField = output[8]
+        altPred = output[9]
+        azPred = output[10]
+        self.fieldCenAltMeas = output[11]
+        self.fieldCenAzMeas = output[12]
 
         self.allGaia["xWokPred"] = xPred
         self.allGaia["yWokPred"] = yPred
