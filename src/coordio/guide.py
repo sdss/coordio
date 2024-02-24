@@ -1082,9 +1082,8 @@ class SolvePointing:
         self.azCenMeas = None
         self.gfaRMS = {}
         self.gfaFitRMS = {}
-        self.RMS = None
         self.fitRMS = None
-        self.matchedSources = None
+        self.matchedSources = pandas.DataFrame()
 
     @property
     def plate_scale(self):
@@ -1100,6 +1099,29 @@ class SolvePointing:
     def wokDistThresh(self):
         # mm
         return self.skyDistThresh / 3600. * self.plate_scale
+
+    @property
+    def guideRMS(self):
+        # RMS error between stars in reference frame and measured frame
+        # the measured scale is applied to remove a scale dependence
+        # on rms
+        output = radec2wokxy(
+            self.matchedSources.ra.to_numpy(),
+            self.matchedSources.dec.to_numpy(), self.GAIA_EPOCH,
+            "GFA", self.raCenRef, self.decCenRef, self.paCenRef,
+            self.observatory, self.obsTimeRef.jd, focalScale=self.scaleMeas,
+            pmra=self.matchedSources.pmra.to_numpy(),
+            pmdec=self.matchedSources.pmdec.to_numpy(),
+            parallax=self.matchedSources.parallax.to_numpy(), fullOutput=True
+        )
+
+        xPred = output[0]
+        yPred = output[1]
+
+        xFit = self.matchedSources.xWokPred.to_numpy()
+        yFit = self.matchedSources.yWokPred.to_numpy()
+
+        return numpy.sqrt(numpy.mean((xPred-xFit)**2+(yPred-yFit)**2))
 
     def pix2wok(self, x, y, gfaNum):
         g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
@@ -1188,6 +1210,8 @@ class SolvePointing:
         self.obsTimeRef = self.tStart + dt
         dt = TimeDelta(hdr["EXPTIME"]/2., format="sec", scale="tai")
         self.obsTimeMid = self.tStart + dt
+        # tcc need this in seconds
+        self.obsTimeMid = self.obsTimeMid.mjd * 24 * 60 * 60
         self.imgNum = imgNum
         self.ipa = hdr["IPA"]
         self.fieldCenAltRef = hdr["ALT"]
@@ -1258,7 +1282,9 @@ class SolvePointing:
             wcs = WCS(open(wcs_path).read())
             self.gfaWCS[gfaNum] = wcs
             # use wcs to calculate on-sky locations
-            # of centroids
+            # of centroids note these are off by 0.5
+            # but leaving so that cherno default rotation and fudge factor
+            # don't need to change
             xyCents = centroids[["x", "y"]].to_numpy()
             raDecMeas = numpy.array(wcs.pixel_to_world_values(xyCents))
             centroids["raMeas"] = raDecMeas[:, 0]
@@ -1307,7 +1333,7 @@ class SolvePointing:
         matched = pandas.concat([cents, gaiaNN], axis=1)
         matched = matched.loc[:, ~matched.columns.duplicated()].copy()
 
-        # only keep matches closer than 1 arcsecond
+        # only keep matches closer than specified threshold
         dra = (matched.ra - matched.raMeas)
         dra = dra / numpy.cos(numpy.radians(matched.dec))
         ddec = (matched.dec - matched.decMeas)
@@ -1422,7 +1448,6 @@ class SolvePointing:
         # print(st.translation, numpy.degrees(st.rotation), st.scale)
 
 
-
         self.fitRMS = numpy.sqrt(
             numpy.mean(numpy.sum(dxy**2, axis=1))
         ) * 1000
@@ -1459,14 +1484,17 @@ class SolvePointing:
         # initialize field center to
         # user supplied reference
 
+        self.nIterWCS = 0
+        self.nIterAll = 0
         if len(self.gfaWCS) > 0:
             # match wcs gets gaia sources for matching based on
             # wcs if available
             lastRMS = None
             for ii in range(5):
-                # maximum of 3 iters
+                # maximum of 5 iters
                 self._matchWCS()
                 self._iter()
+                self.nIterWCS += 1
                 if lastRMS is None:
                     lastRMS = self.fitRMS
                     continue
@@ -1494,6 +1522,7 @@ class SolvePointing:
         for ii in range(100):
             self._matchWok()
             self._iter()
+            self.nIterAll += 1
             if lastRMS is None:
                 lastRMS = self.fitRMS
                 continue
