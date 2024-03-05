@@ -13,7 +13,7 @@ import sep
 from skimage.transform import SimilarityTransform
 
 from .conv import positionerToTangent, tangentToWok, wokToTangent
-from .defaults import POSITIONER_HEIGHT, calibration
+from .defaults import POSITIONER_HEIGHT, calibration, PLATE_SCALE
 from .exceptions import CoordIOError
 from .libcoordio import tangentToPositioner, tangentToPositioner2
 from .utils import refinexy
@@ -896,7 +896,7 @@ class FVCTransformAPO(object):
     telRotAngRef = 135.4
     rotAngDir = 1
     centType = "zbplus2"
-    telescopePlateScale = 0.060 # mm/arcsec
+    telescopePlateScale = PLATE_SCALE["APO"]/3600. # mm/arcsec
     nudgeOffX = 0 #1000 # fix nudge model after FVC resize
     site = "APO"
     centroidMinNpix = 100
@@ -1438,7 +1438,7 @@ class FVCTransformAPO(object):
             dx_zb_fit, dy_zb_fit = getZhaoBurgeXY(
                 self.polids, self.zbCoeffs, _xWok, _yWok
             )
-            # multiply by scale (arcsec to mm)
+
 
             if self.centType == "zbminus":
                 dx_zb_fit *= -1
@@ -1460,6 +1460,7 @@ class FVCTransformAPO(object):
                 dx_zb_fit[keep] += dx_zb_fit2
                 dy_zb_fit[keep] += dy_zb_fit2
 
+            # multiply by scale (arcsec to mm)
             dx_zb_fit *= self.telescopePlateScale
             dy_zb_fit *= self.telescopePlateScale
 
@@ -1563,12 +1564,17 @@ class FVCTransformLCO(FVCTransformAPO):
     # polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults, best so far
 
     polids = numpy.array([0, 1, 2, 3, 4, 5, 6, 9, 20, 27, 28, 29, 30])
-    zbCoeffs = None
+    zbCoeffs = numpy.array([
+        -7.50956452e-02,  3.60708635e-02,  1.79719754e-04, -6.85425703e-04,
+        5.32764432e-05,  5.90847955e-07, -4.29138387e-07, -7.01099993e-10,
+        -1.31245658e-15, -4.11411316e-04,  1.07508476e-06,  1.30091324e-06,
+        2.39440505e-09
+    ])
     zbCoeffsFieldCenter = None
     telRotAngRef = 89  # rotator angle that puts xyWok aligned with xyCCD on FVC image
     rotAngDir = -1
     centType = "nudge"
-    telescopePlateScale = 0.092 # mm/arcsec
+    telescopePlateScale = PLATE_SCALE["LCO"]/3600. # mm/arcsec
     nudgeOffX = 0  # fix nudge model after FVC resize
     site = "LCO"
     centroidMinNpix = 20
