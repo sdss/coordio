@@ -1080,20 +1080,46 @@ class SolvePointing:
         self.scaleMeas = None
         self.altCenMeas = None
         self.azCenMeas = None
-        self.gfaRMS = {}
-        self.gfaFitRMS = {}
-        self.fitRMS = None
+        self.fit_rms = None
         self.matchedSources = pandas.DataFrame()
+
+    def getMetadata(self):
+        """Get a list of data that can be easily stuffed in a fits
+        header.
+        """
+
+        metaDataList = [
+            ("SOL_RA", self.raCenMeas, "solved RA of pointing (deg)"),
+            ("SOL_DEC", self.decCenMeas, "solved Dec of pointing (deg)"),
+            ("SOL_PA", self.paCenMeas, "solved PA of pointing (deg)"),
+            ("SOL_SCL", self.scaleMeas, "solved scale factor"),
+            ("SOL_ALT", self.altCenMeas, "solved alt of pointing (deg)"),
+            ("SOL_AZ", self.azCenMeas, "solved az of pointing (deg)"),
+            ("SOL_GRMS", self.guide_rms, "guide rms between reference and solved (mm)"),
+            ("SOL_FRMS", self.fit_rms, "rms of fit (mm)"),
+            ("REF_RA", self.raCenRef, "reference RA (deg)"),
+            ("REF_DEC", self.decCenRef, "reference Dec (deg)"),
+            ("REF_PA", self.paCenRef, "reference PA (deg)"),
+            ("REF_SCL", self.scale, "reference scale factor"),
+            ("TAI_MID", self.obsTimeMid, "tai seconds at middle of exposure"),
+            ("N_WCS", len(self.gfaWCS), "number of GFAs with astronet solutions"),
+            ("N_STARS", len(self.matchedSources), "number of stars used in fit"),
+            ("N_GFAS", len(set(self.matchedSources.gfaNum)), "number of GFAs used in fit"),
+            ("NITR_WCS", self.nIterWCS, "number of iterations for wcs solve"),
+            ("NITER_ALL", self.nIterAll, "number of iterations for full solve")
+        ]
+
+        return metaDataList
 
     @property
     def plate_scale(self):
         # mm per deg
         return defaults.PLATE_SCALE[self.observatory]
 
-    @property
-    def pixel_scale(self):
-        # arcsec per pixel
-        return 1.0 / self.plate_scale * defaults.GFA_PIXEL_SIZE * 3600 / 1000
+    # @property
+    # def pixel_scale(self):
+    #     # arcsec per pixel
+    #     return 1.0 / self.plate_scale * defaults.GFA_PIXEL_SIZE * 3600 / 1000
 
     @property
     def wokDistThresh(self):
@@ -1101,8 +1127,8 @@ class SolvePointing:
         return self.skyDistThresh / 3600. * self.plate_scale
 
     @property
-    def guideRMS(self):
-        # RMS error between stars in reference frame and measured frame
+    def guide_rms(self):
+        # RMS error between stars in reference frame and solved frame
         # the measured scale is applied to remove a scale dependence
         # on rms
         output = radec2wokxy(
@@ -1121,7 +1147,20 @@ class SolvePointing:
         xFit = self.matchedSources.xWokPred.to_numpy()
         yFit = self.matchedSources.yWokPred.to_numpy()
 
-        return numpy.sqrt(numpy.mean((xPred-xFit)**2+(yPred-yFit)**2))
+        rms = numpy.sqrt(
+            numpy.mean((xPred - xFit)**2 + (yPred - yFit)**2)
+        )
+        return rms
+
+    @property
+    def guide_rms_sky(self):
+        # arcsec
+        return self.guide_rms / self.plate_scale * 3600
+
+    @property
+    def fit_rms_sky(self):
+        # arcsec
+        return self.fit_rms / self.plate_scale * 3600
 
     def pix2wok(self, x, y, gfaNum):
         g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
@@ -1159,8 +1198,9 @@ class SolvePointing:
         """ get the ra/dec of ccd center, if wcs is available use that """
         xw, yw = self.pix2wok(numpy.array([1024]), numpy.array([1024]), gfaNum)
         ra, dec, fieldWarn = wokxy2radec(
-            numpy.array(xw), numpy.array(yw), "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
-            self.observatory, self.obsTimeRef.jd, focalScale=self.scaleMeas
+            numpy.array(xw), numpy.array(yw), "GFA", self.raCenMeas,
+            self.decCenMeas, self.paCenMeas, self.observatory,
+            self.obsTimeRef.jd, focalScale=self.scaleMeas
         )
         return ra[0], dec[0]
 
@@ -1176,7 +1216,7 @@ class SolvePointing:
             # will need to modify for LCO
             _raCen = hdr["RA"]  # RA is ObjNetPos, RADEG is ObjPos (tcc kws)
             _decCen = hdr["DEC"]
-            _paCen = hdr["ROTPOS"]
+            _paCen = hdr["ROTPOS"] # wont work for LCO no ROTPOS header
 
         # if no field center was specified, use field center from
         # header
@@ -1189,9 +1229,9 @@ class SolvePointing:
 
         # apply offsets if specified
         ddec = self.offset_dec / 3600.
-        self.decCenRef = self._decCen + ddec
+        self.decCenRef = self._decCen - ddec
         dra = self.offset_ra / 3600. / numpy.cos(numpy.radians(self.decCenRef))
-        self.raCenRef = self._raCen + dra
+        self.raCenRef = self._raCen - dra
         self.paCenRef = self._paCen - self.offset_pa / 3600.
 
         # initalize the starting point for the iteration at the reference
@@ -1214,15 +1254,19 @@ class SolvePointing:
         self.obsTimeMid = self.obsTimeMid.mjd * 24 * 60 * 60
         self.imgNum = imgNum
         self.ipa = hdr["IPA"]
-        self.fieldCenAltRef = hdr["ALT"]
-        self.fieldCenAzRef = hdr["AZ"]
+        if self.observatory == "APO":
+            self.fieldCenAltRef = hdr["ALT"]
+            self.fieldCenAzRef = hdr["AZ"]
+        else:
+            self.fieldCenAltRef = None
+            self.fieldCenAzRef = None
         self.initField = True
 
     def add_gimg(
         self,
         img_path: str | pathlib.Path,
         centroids: pandas.DataFrame | None = None,
-        wcs_path: str | pathlib.Path | None = None
+        wcs_path: str | pathlib.Path | WCS | None = None
     ):
         """
         Add gfa data to be used in fitting.  Don't add a gfa you don't want
@@ -1235,13 +1279,22 @@ class SolvePointing:
         img_path
             path to a gimg or proc-gimg file
         centroids
-            sep style extracted parameters in pandas.DataFrame form.  Additionally
-            if a "CENTROIDS" extension is present in the fits file, those will
-            be used.  If not present, centroids are extracted from the data.
+            sep style extracted parameters in pandas.DataFrame form.
+            Additionally if a "CENTROIDS" extension is present in the fits
+            file, those will be used.  If not present, centroids are extracted
+            from the data.
         wcs_path
             path to a *.wcs file output from astrometry.net (optional)
         """
         ff = fits.open(str(img_path))
+        if centroids is None or len(centroids)==0:
+            # extract centroids
+            centroids = sextractor_quick(ff[1].data)
+        if len(centroids) == 0:
+            # no centroids found skip this gfa
+            ff.close()
+            return
+
         hdr = dict(ff[1].header)
 
         tokens = img_path.strip(".fits").split("/")[-1].split("-")
@@ -1261,9 +1314,7 @@ class SolvePointing:
                 "May not add gfa files with differing img numbers"
             )
 
-        if centroids is None:
-            # extract centroids
-            centroids = sextractor_quick(ff[1].data)
+
         fwhm = 2 * (numpy.log(2) * (centroids.a**2 + centroids.b**2))**0.5
         centroids["fwhm"] = fwhm
         centroids["gfaNum"] = gfaNum
@@ -1279,14 +1330,15 @@ class SolvePointing:
         centroids["yWokMeas"] = yWokMeas
 
         if wcs_path is not None:
-            wcs = WCS(open(wcs_path).read())
-            self.gfaWCS[gfaNum] = wcs
+            if not hasattr(wcs_path, "pixel_to_world_values"):
+                wcs_path = WCS(open(wcs_path).read())
+            self.gfaWCS[gfaNum] = wcs_path
             # use wcs to calculate on-sky locations
             # of centroids note these are off by 0.5
             # but leaving so that cherno default rotation and fudge factor
             # don't need to change
             xyCents = centroids[["x", "y"]].to_numpy()
-            raDecMeas = numpy.array(wcs.pixel_to_world_values(xyCents))
+            raDecMeas = numpy.array(wcs_path.pixel_to_world_values(xyCents))
             centroids["raMeas"] = raDecMeas[:, 0]
             centroids["decMeas"] = raDecMeas[:, 1]
             # import pdb; pdb.set_trace()
@@ -1295,8 +1347,8 @@ class SolvePointing:
             [self.allCentroids, centroids], ignore_index=True
         )
 
-        if wcs_path is not None:
-            self.gfaWCS[gfaNum] = WCS(open(wcs_path).read())
+        # if wcs_path is not None:
+        #     self.gfaWCS[gfaNum] = WCS(open(wcs_path).read())
 
         ff.close()
 
@@ -1447,11 +1499,10 @@ class SolvePointing:
 
         # print(st.translation, numpy.degrees(st.rotation), st.scale)
 
-
-        self.fitRMS = numpy.sqrt(
+        self.fit_rms = numpy.sqrt(
             numpy.mean(numpy.sum(dxy**2, axis=1))
-        ) * 1000
-        print("%.1f"%self.fitRMS, len(self.matchedSources), set(self.matchedSources.gfaNum))
+        )
+        print("%.3f"%self.fit_rms, len(self.matchedSources), set(self.matchedSources.gfaNum))
 
         # plt.figure(figsize=(8,8))
         # plt.quiver(x,y,dx,dy,angles="xy", units="xy", width=.2)
@@ -1492,17 +1543,18 @@ class SolvePointing:
             lastRMS = None
             for ii in range(5):
                 # maximum of 5 iters
+                print("wcs iter", ii)
                 self._matchWCS()
                 self._iter()
                 self.nIterWCS += 1
                 if lastRMS is None:
-                    lastRMS = self.fitRMS
+                    lastRMS = self.fit_rms
                     continue
-                if numpy.abs(lastRMS - self.fitRMS) < 1:
-                    # less than 1 micron difference
+                if numpy.abs(lastRMS - self.fit_rms) < 0.003:
+                    # less than 3 micron difference
                     print("breaking wcs loop")
                     break
-                lastRMS = self.fitRMS
+                lastRMS = self.fit_rms
 
         if len(self.gfaHeaders) == len(self.gfaWCS):
             # no chip was missing a WCS exit here
@@ -1520,17 +1572,18 @@ class SolvePointing:
 
         lastRMS = None
         for ii in range(100):
+            print("coordio iter", ii)
             self._matchWok()
             self._iter()
             self.nIterAll += 1
             if lastRMS is None:
-                lastRMS = self.fitRMS
+                lastRMS = self.fit_rms
                 continue
-            if numpy.abs(lastRMS - self.fitRMS) < 1:
-                # less than 1 micron difference
+            if numpy.abs(lastRMS - self.fit_rms) < 0.003:
+                # less than 3 micron difference
                 print("breaking wok loop")
                 break
-            lastRMS = self.fitRMS
+            lastRMS = self.fit_rms
 
 
 
