@@ -1082,6 +1082,8 @@ class SolvePointing:
         self.azCenMeas = None
         self.fit_rms = None
         self.matchedSources = pandas.DataFrame()
+        self.translation = numpy.array([0.0, 0.0])
+        self.rotation = 0.0
 
     def getMetadata(self):
         """Get a list of data that can be easily stuffed in a fits
@@ -1127,10 +1129,7 @@ class SolvePointing:
         return self.skyDistThresh / 3600. * self.plate_scale
 
     @property
-    def guide_rms(self):
-        # RMS error between stars in reference frame and solved frame
-        # the measured scale is applied to remove a scale dependence
-        # on rms
+    def xyWokPredictRef(self):
         output = radec2wokxy(
             self.matchedSources.ra.to_numpy(),
             self.matchedSources.dec.to_numpy(), self.GAIA_EPOCH,
@@ -1143,6 +1142,64 @@ class SolvePointing:
 
         xPred = output[0]
         yPred = output[1]
+        return xPred, yPred
+
+    def rms_df(self, fit=False):
+        """
+        returns rms for expected vs solved pointing
+        ----------
+        A data frame with columns ``gfa_id``, ``xrms``, ``yrms``, ``rms``
+        for the x, y, and combined RMS measurements for each camera. An
+        additional ``gfa_id=0`` is added with the RMS measurements for all
+        GFA cameras combined. RMS values are returned in mm on wok coordinates.
+        """
+        df = self.matchedSources.copy()
+        if not fit:
+            # reference rms
+            xPred, yPred = self.xyWokPredictRef
+            df["xWokPred"] = xPred
+            df["yWokPred"] = yPred
+
+        _gfa_id = []
+        _xrms = []
+        _yrms = []
+        _rms = []
+
+        for gfaNum in list(set(df.gfaNum)):
+            _df = df[df.gfaNum==gfaNum]
+            dx = _df.xWokPred - _df.xWokMeas
+            dy = _df.yWokPred - _df.yWokMeas
+
+            _gfa_id.append(gfaNum)
+            _xrms.append(numpy.sqrt(numpy.mean(dx**2)))
+            _yrms.append(numpy.sqrt(numpy.mean(dy**2)))
+            _rms.append(numpy.sqrt(numpy.mean(dx**2+dy**2)))
+
+        # finally add total rms under gfa_id = 0
+        dx = df.xWokPred - df.xWokMeas
+        dy = df.yWokPred - df.yWokMeas
+
+        _gfa_id.append(0)
+        _xrms.append(numpy.sqrt(numpy.mean(dx**2)))
+        _yrms.append(numpy.sqrt(numpy.mean(dy**2)))
+        _rms.append(numpy.sqrt(numpy.mean(dx**2+dy**2)))
+
+        out = pandas.DataFrame({
+            "gfa_id": _gfa_id,
+            "xrms": _xrms,
+            "yrms": _yrms,
+            "rms": _rms,
+        })
+        # out.set_index("gfa_id")
+
+        return out.set_index("gfa_id")
+
+    @property
+    def guide_rms(self):
+        # RMS error between stars in reference frame and solved frame
+        # the measured scale is applied to remove a scale dependence
+        # on rms
+        xPred, yPred = self.xyWokPredictRef
 
         xFit = self.matchedSources.xWokPred.to_numpy()
         yFit = self.matchedSources.yWokPred.to_numpy()
@@ -1161,6 +1218,93 @@ class SolvePointing:
     def fit_rms_sky(self):
         # arcsec
         return self.fit_rms / self.plate_scale * 3600
+
+    @property
+    def used_cameras(self):
+        gfaNums = set(self.matchedSources.gfaNum)
+        return sorted(list(gfaNums))
+        # return set(["gfa%i"%x for x in gfaNums])
+
+    @property
+    def gfa_wok(self):
+        gfa_id = self.matchedSources.gfaNum.to_numpy(),
+        detection_id = numpy.arange(len(gfa_id))
+        x_wok = self.matchedSources.xWokMeas.to_numpy(),
+        y_wok = self.matchedSources.yWokMeas.to_numpy(),
+        selected = numpy.ones(len(gfa_id))
+        df = pandas.DataFrame(
+            {
+                "gfa_id": gfa_id,
+                "detection_id": detection_id,
+                "xwok": x_wok,
+                "ywok": y_wok,
+                "selected": selected,
+            },
+            index=["gfa_id", "detection_id"],
+        )
+        return df
+
+    @property
+    def astro_wok(self):
+        gfa_id = self.matchedSources.gfaNum.to_numpy()
+        detection_id = numpy.arange(len(gfa_id))
+        x_wok, y_wok = self.xyWokPredictRef
+        selected = numpy.ones(len(gfa_id))
+        df = pandas.DataFrame.from_records(
+            {
+                "gfa_id": gfa_id,
+                "detection_id": detection_id,
+                "xwok": x_wok,
+                "ywok": y_wok,
+                "selected": selected,
+            },
+            index=["gfa_id", "detection_id"],
+        )
+        return df
+
+    @property
+    def fit_data(self):
+        gfa_id = self.matchedSources.gfaNum.to_numpy()
+        detection_id = numpy.arange(len(gfa_id))
+        x_wok = self.matchedSources.xWokPred.to_numpy()
+        y_wok = self.matchedSources.yWokPred.to_numpy()
+        selected = numpy.ones(len(gfa_id))
+        df = pandas.DataFrame.from_records(
+            {
+                "gfa_id": gfa_id,
+                "detection_id": detection_id,
+                "xwok": x_wok,
+                "ywok": y_wok,
+                "selected": selected,
+            },
+            index=["gfa_id", "detection_id"],
+        )
+        return df
+
+    @property
+    def coeffs(self):
+        rotMat = numpy.array([
+            [numpy.cos(self.rotation), -numpy.sin(self.rotation)],
+            [numpy.sin(self.rotation), numpy.cos(self.rotation)]
+        ])
+        return [self.scaleMeas, rotMat, self.translation]
+
+    @property
+    def delta_ra(self):
+        cosDec = numpy.cos(numpy.radians(self.decCenMeas))
+        return (self.raCenMeas - self.raCenRef) * 3600 * cosDec
+
+    @property
+    def delta_dec(self):
+        return (self.decCenMeas - self.decCenRef) * 3600
+
+    @property
+    def delta_rot(self):
+        return (self.paCenMeas - self.paCenRef) * 3600
+
+    @property
+    def delta_scale(self):
+        return self.scaleMeas
 
     def pix2wok(self, x, y, gfaNum):
         g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
@@ -1266,7 +1410,7 @@ class SolvePointing:
         self,
         img_path: str | pathlib.Path,
         centroids: pandas.DataFrame | None = None,
-        wcs_path: str | pathlib.Path | WCS | None = None
+        wcs: WCS | None = None
     ):
         """
         Add gfa data to be used in fitting.  Don't add a gfa you don't want
@@ -1283,10 +1427,11 @@ class SolvePointing:
             Additionally if a "CENTROIDS" extension is present in the fits
             file, those will be used.  If not present, centroids are extracted
             from the data.
-        wcs_path
-            path to a *.wcs file output from astrometry.net (optional)
+        wcs
+            a WCS object
         """
-        ff = fits.open(str(img_path))
+        img_path = str(img_path)
+        ff = fits.open(img_path)
         if centroids is None or len(centroids)==0:
             # extract centroids
             centroids = sextractor_quick(ff[1].data)
@@ -1314,12 +1459,12 @@ class SolvePointing:
                 "May not add gfa files with differing img numbers"
             )
 
+        # fwhm = 2 * (numpy.log(2) * (centroids.a**2 + centroids.b**2))**0.5
+        # centroids["fwhm"] = fwhm
 
-        fwhm = 2 * (numpy.log(2) * (centroids.a**2 + centroids.b**2))**0.5
-        centroids["fwhm"] = fwhm
         centroids["gfaNum"] = gfaNum
         # remove saturated sources
-        centroids = centroids[centroids.peak < 55000]
+        centroids = centroids[centroids.peak < 55000].reset_index(drop=True)
         # calculate wok coordinates for each centroid
         xWokMeas, yWokMeas = self.pix2wok(
             centroids.x.to_numpy(),
@@ -1329,16 +1474,14 @@ class SolvePointing:
         centroids["xWokMeas"] = xWokMeas
         centroids["yWokMeas"] = yWokMeas
 
-        if wcs_path is not None:
-            if not hasattr(wcs_path, "pixel_to_world_values"):
-                wcs_path = WCS(open(wcs_path).read())
-            self.gfaWCS[gfaNum] = wcs_path
+        if wcs is not None:
+            self.gfaWCS[gfaNum] = wcs
             # use wcs to calculate on-sky locations
             # of centroids note these are off by 0.5
             # but leaving so that cherno default rotation and fudge factor
             # don't need to change
             xyCents = centroids[["x", "y"]].to_numpy()
-            raDecMeas = numpy.array(wcs_path.pixel_to_world_values(xyCents))
+            raDecMeas = numpy.array(wcs.pixel_to_world_values(xyCents))
             centroids["raMeas"] = raDecMeas[:, 0]
             centroids["decMeas"] = raDecMeas[:, 1]
             # import pdb; pdb.set_trace()
@@ -1347,8 +1490,8 @@ class SolvePointing:
             [self.allCentroids, centroids], ignore_index=True
         )
 
-        # if wcs_path is not None:
-        #     self.gfaWCS[gfaNum] = WCS(open(wcs_path).read())
+        # if wcs is not None:
+        #     self.gfaWCS[gfaNum] = WCS(open(wcs).read())
 
         ff.close()
 
@@ -1358,6 +1501,7 @@ class SolvePointing:
         query += " WHERE q3c_radial_query"
         query += "(ra, dec, %.4f, %.4f, %.4f)" % (ra, dec, radius)
         query += " AND phot_g_mean_mag < %.2f" % magLimit
+        # print(query)
         df = pandas.read_sql(query, self.db_conn_st)
         return df.dropna().reset_index(drop=True)
 
@@ -1418,6 +1562,7 @@ class SolvePointing:
         matched["yWokPred"] = yPred
 
         self.matchedSources = matched
+        # print("sources matched", len(self.matchedSources))
 
     def _matchWok(self):
         output = radec2wokxy(
@@ -1463,6 +1608,7 @@ class SolvePointing:
         # plt.show()
         goodMatches = matched[matched.dr < self.wokDistThresh]
         self.matchedSources = goodMatches
+        print("matched sources", len(self.matchedSources))
 
     def _iter(self):
         # matched_df = self.matchedSources
@@ -1491,6 +1637,8 @@ class SolvePointing:
             dRot = st.rotation
             dTrans = st.translation
             dScale = st.scale
+            self.rotation += dRot
+            self.translation += dTrans
         else:
             dTrans = numpy.mean(xyMeas - xyPred, axis=0)
             dxy = xyPred + dTrans - xyMeas
@@ -1543,7 +1691,7 @@ class SolvePointing:
             lastRMS = None
             for ii in range(5):
                 # maximum of 5 iters
-                print("wcs iter", ii)
+                # print("wcs iter", ii)
                 self._matchWCS()
                 self._iter()
                 self.nIterWCS += 1
@@ -1552,40 +1700,60 @@ class SolvePointing:
                     continue
                 if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                     # less than 3 micron difference
-                    print("breaking wcs loop")
+                    # print("breaking wcs loop")
                     break
                 lastRMS = self.fit_rms
 
-        if len(self.gfaHeaders) == len(self.gfaWCS):
-            # no chip was missing a WCS exit here
-            return
+        if len(self.gfaHeaders) != len(self.gfaWCS):
+            # at least one chip missing a WCS,
+            # add in gfa's without WCS solution  and re-fit
+            gaiaGFAs = list(set(self.allGaia.gfaNum))
+            for gfaNum in self.gfaHeaders.keys():
+                if gfaNum in gaiaGFAs:
+                    continue  # already got gaia sources for this GFA
+                ra, dec = self.gfa2radec(gfaNum)
+                gaiaDF = self.getGaiaSources(ra, dec)
+                gaiaDF["gfaNum"] = gfaNum
+                self.allGaia = pandas.concat([self.allGaia, gaiaDF])
 
-        # add in gfa's without WCS solution  and re-fit
-        gaiaGFAs = list(set(self.allGaia.gfaNum))
-        for gfaNum in self.gfaHeaders.keys():
-            if gfaNum in gaiaGFAs:
-                continue  # already got gaia sources for this GFA
-            ra, dec = self.gfa2radec(gfaNum)
-            gaiaDF = self.getGaiaSources(ra, dec)
-            gaiaDF["gfaNum"] = gfaNum
-            self.allGaia = pandas.concat([self.allGaia, gaiaDF])
-
-        lastRMS = None
-        for ii in range(100):
-            print("coordio iter", ii)
-            self._matchWok()
-            self._iter()
-            self.nIterAll += 1
-            if lastRMS is None:
+            lastRMS = None
+            for ii in range(100):
+                print("coordio iter", ii)
+                self._matchWok()
+                self._iter()
+                self.nIterAll += 1
+                if lastRMS is None:
+                    lastRMS = self.fit_rms
+                    continue
+                if numpy.abs(lastRMS - self.fit_rms) < 0.003:
+                    # less than 3 micron difference
+                    print("breaking wok loop")
+                    break
                 lastRMS = self.fit_rms
-                continue
-            if numpy.abs(lastRMS - self.fit_rms) < 0.003:
-                # less than 3 micron difference
-                print("breaking wok loop")
-                break
-            lastRMS = self.fit_rms
 
+        rms_df = self.rms_df()
+        fit_rms_df = self.rms_df(fit=True)
 
+        result = GuiderFit(
+            list(self.used_cameras),
+            self.gfa_wok,
+            self.astro_wok,
+            self.coeffs,
+            self.delta_ra,
+            self.delta_dec,
+            self.delta_rot,
+            self.delta_scale,
+            rms_df.loc[0].xrms,
+            rms_df.loc[0].yrms,
+            rms_df.loc[0].rms,
+            rms_df,
+            self.fit_data,
+            fit_rms_df,
+            only_radec=False,
+        )
+
+        return result
+        # return self.result
 
 
 
