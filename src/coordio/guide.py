@@ -1144,6 +1144,36 @@ class SolvePointing:
         yPred = output[1]
         return xPred, yPred
 
+    @property
+    def fitWCS(self):
+        # return a dictionary keyed by GFA ID
+        out = {}
+        for gfaNum in range(1,7):
+            _df = self.matchedSources[self.matchedSources.gfaNum==gfaNum]
+            out[gfaNum] = None
+            if len(_df) < 3:
+                # require at least 3 stars for a wcs solution?
+                continue
+
+            xy = _df[["x", "y"]].to_numpy()
+            raDec = _df[["ra", "dec"]].to_numpy()
+
+            # Build the WCS.
+            reference_skycoord_valid = SkyCoord(
+                ra=raDec[:, 0],
+                dec=raDec[:, 1],
+                unit="deg",
+            )
+
+            wcs = fit_wcs_from_points(
+                (xy[:, 0], xy[:, 1]),
+                reference_skycoord_valid,
+            )
+            out[gfaNum] = wcs
+
+        return out
+
+
     def rms_df(self, fit=False):
         """
         returns rms for expected vs solved pointing
@@ -1282,6 +1312,31 @@ class SolvePointing:
         return df
 
     @property
+    def guider_fit(self:)
+        rms_df = self.rms_df()
+        fit_rms_df = self.rms_df(fit=True)
+
+        result = GuiderFit(
+            list(self.used_cameras),
+            self.gfa_wok,
+            self.astro_wok,
+            self.coeffs,
+            self.delta_ra,
+            self.delta_dec,
+            self.delta_rot,
+            self.delta_scale,
+            rms_df.loc[0].xrms,
+            rms_df.loc[0].yrms,
+            rms_df.loc[0].rms,
+            rms_df,
+            self.fit_data,
+            fit_rms_df,
+            only_radec=False,
+        )
+
+        return result
+
+    @property
     def coeffs(self):
         rotMat = numpy.array([
             [numpy.cos(self.rotation), -numpy.sin(self.rotation)],
@@ -1305,6 +1360,13 @@ class SolvePointing:
     @property
     def delta_scale(self):
         return self.scaleMeas
+
+    def checkNextImg(gimgPath, offset):
+        gimgPath = str(gimgPath)
+        imgNum = int(gimgPath.split("-")[-1].strip(".fits"))
+        ff = fits.open(gimgPath)
+
+
 
     def pix2wok(self, x, y, gfaNum):
         g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
@@ -1731,28 +1793,71 @@ class SolvePointing:
                     break
                 lastRMS = self.fit_rms
 
-        rms_df = self.rms_df()
-        fit_rms_df = self.rms_df(fit=True)
+        return self.guider_fit
 
-        result = GuiderFit(
-            list(self.used_cameras),
-            self.gfa_wok,
-            self.astro_wok,
-            self.coeffs,
-            self.delta_ra,
-            self.delta_dec,
-            self.delta_rot,
-            self.delta_scale,
-            rms_df.loc[0].xrms,
-            rms_df.loc[0].yrms,
-            rms_df.loc[0].rms,
-            rms_df,
-            self.fit_data,
-            fit_rms_df,
-            only_radec=False,
-        )
+    def reSolve(
+        self,
+        imgNum: int,
+        date_obs: str,
+        exptime: float,
+        newCentroids: pandas.DataFrame,
+        skyDistThresh: float = 3,  # arcseconds
+    ):
+        """ warning only use if:
+                imgNum = self.imgNum + 1 (next image in sequence)
+                previous guide rms was small (eg < 1 arcsecond)
+                pointing reference is same as previous frame
+                same gfas included as previous frame
 
-        return result
+        centroids needs (at least) columns x,y,peak,gfaNum
+        date_obs, exptime come from GFA header
+
+        this skips all db queries and relies on pre-existing
+        guide star table and doesn't require any pre-existing WCS
+        solutions
+        """
+        self.skyDistThresh = skyDistThresh
+        self.imgNum = imgNum
+
+
+        print("resolving field")
+
+        dfList = []
+        for gfaNum, group in newCentroids.groupby("gfaNum")
+            group = group[group.peak < 55000].reset_index(drop=True)
+            # calculate wok coordinates for each centroid
+            xWokMeas, yWokMeas = self.pix2wok(
+                group.x.to_numpy(),
+                group.y.to_numpy(),
+                gfaNum
+            )
+            group["xWokMeas"] = xWokMeas
+            group["yWokMeas"] = yWokMeas
+            dfList.append(group)
+
+        self.allCentroids = pandas.concat(dfList)
+
+        lastRMS = None
+        self.nIterAll = 0
+
+        for ii in range(100):
+            print("coordio iter", ii)
+            self._matchWok()
+            self._iter()
+            self.nIterAll += 1
+            if lastRMS is None:
+                lastRMS = self.fit_rms
+                continue
+            if numpy.abs(lastRMS - self.fit_rms) < 0.003:
+                # less than 3 micron difference
+                print("breaking wok loop")
+                break
+            lastRMS = self.fit_rms
+
+        return self.guider_fit
+
+
+            # compute wok position of each centroid
         # return self.result
 
 
