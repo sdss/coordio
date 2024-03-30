@@ -1144,34 +1144,31 @@ class SolvePointing:
         yPred = output[1]
         return xPred, yPred
 
-    @property
-    def fitWCS(self):
+    def fitWCS(self, gfaNum):
         # return a dictionary keyed by GFA ID
-        out = {}
-        for gfaNum in range(1,7):
-            _df = self.matchedSources[self.matchedSources.gfaNum==gfaNum]
-            out[gfaNum] = None
-            if len(_df) < 3:
-                # require at least 3 stars for a wcs solution?
-                continue
 
-            xy = _df[["x", "y"]].to_numpy()
-            raDec = _df[["ra", "dec"]].to_numpy()
+        _df = self.matchedSources[self.matchedSources.gfaNum==gfaNum]
 
-            # Build the WCS.
-            reference_skycoord_valid = SkyCoord(
-                ra=raDec[:, 0],
-                dec=raDec[:, 1],
-                unit="deg",
-            )
+        if len(_df) < 3:
+            # require at least 3 stars for a wcs solution?
+            return None
 
-            wcs = fit_wcs_from_points(
-                (xy[:, 0], xy[:, 1]),
-                reference_skycoord_valid,
-            )
-            out[gfaNum] = wcs
+        xy = _df[["x", "y"]].to_numpy()
+        raDec = _df[["ra", "dec"]].to_numpy()
 
-        return out
+        # Build the WCS.
+        reference_skycoord_valid = SkyCoord(
+            ra=raDec[:, 0],
+            dec=raDec[:, 1],
+            unit="deg",
+        )
+
+        wcs = fit_wcs_from_points(
+            (xy[:, 0], xy[:, 1]),
+            reference_skycoord_valid,
+        )
+
+        return wcs
 
 
     def rms_df(self, fit=False):
@@ -1253,7 +1250,10 @@ class SolvePointing:
     def used_cameras(self):
         gfaNums = set(self.matchedSources.gfaNum)
         return sorted(list(gfaNums))
-        # return set(["gfa%i"%x for x in gfaNums])
+
+    @property
+    def n_stars_used(self):
+        return len(self.matchedSources)
 
     @property
     def gfa_wok(self):
@@ -1312,7 +1312,7 @@ class SolvePointing:
         return df
 
     @property
-    def guider_fit(self:)
+    def guider_fit(self):
         rms_df = self.rms_df()
         fit_rms_df = self.rms_df(fit=True)
 
@@ -1360,13 +1360,6 @@ class SolvePointing:
     @property
     def delta_scale(self):
         return self.scaleMeas
-
-    def checkNextImg(gimgPath, offset):
-        gimgPath = str(gimgPath)
-        imgNum = int(gimgPath.split("-")[-1].strip(".fits"))
-        ff = fits.open(gimgPath)
-
-
 
     def pix2wok(self, x, y, gfaNum):
         g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
@@ -1798,8 +1791,7 @@ class SolvePointing:
     def reSolve(
         self,
         imgNum: int,
-        date_obs: str,
-        exptime: float,
+        obsTimeRef: Time,
         newCentroids: pandas.DataFrame,
         skyDistThresh: float = 3,  # arcseconds
     ):
@@ -1818,12 +1810,16 @@ class SolvePointing:
         """
         self.skyDistThresh = skyDistThresh
         self.imgNum = imgNum
+        self.obsTimeRef = obsTimeRef
 
+        # self.saved_nstars = self.n_stars_used
+        # self.saved_fit_rms = self.fit_rms
+        # self.saved_used_cameras = self.used_cameras
 
         print("resolving field")
 
         dfList = []
-        for gfaNum, group in newCentroids.groupby("gfaNum")
+        for gfaNum, group in newCentroids.groupby("gfaNum"):
             group = group[group.peak < 55000].reset_index(drop=True)
             # calculate wok coordinates for each centroid
             xWokMeas, yWokMeas = self.pix2wok(
@@ -1835,7 +1831,7 @@ class SolvePointing:
             group["yWokMeas"] = yWokMeas
             dfList.append(group)
 
-        self.allCentroids = pandas.concat(dfList)
+        self.allCentroids = pandas.concat(dfList).reset_index(drop=True)
 
         lastRMS = None
         self.nIterAll = 0
@@ -1853,6 +1849,8 @@ class SolvePointing:
                 print("breaking wok loop")
                 break
             lastRMS = self.fit_rms
+
+        # self.
 
         return self.guider_fit
 
