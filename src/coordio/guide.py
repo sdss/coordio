@@ -1103,8 +1103,8 @@ class SolvePointing:
             ("REF_DEC", self.decCenRef, "reference Dec (deg)"),
             ("REF_PA", self.paCenRef, "reference PA (deg)"),
             ("REF_SCL", self.scale, "reference scale factor"),
-            ("TAI_MID", self.obsTimeMid, "tai seconds at middle of exposure"),
-            ("N_WCS", len(self.gfaWCS), "number of GFAs with astronet solutions"),
+            # ("TAI_MID", self.obsTimeMid, "tai seconds at middle of exposure"),
+            # ("N_WCS", len(self.gfaWCS), "number of GFAs with astronet solutions"),
             ("N_STARS", len(self.matchedSources), "number of stars used in fit"),
             ("N_GFAS", len(set(self.matchedSources.gfaNum)), "number of GFAs used in fit"),
             ("NITR_WCS", self.nIterWCS, "number of iterations for wcs solve"),
@@ -1610,8 +1610,8 @@ class SolvePointing:
         phiField = output[8]
         altPred = output[9]
         azPred = output[10]
-        self.fieldCenAltMeas = output[11]
-        self.fieldCenAzMeas = output[12]
+        self.altCenMeas = output[11]
+        self.azCenMeas = output[12]
 
         matched["xWokPred"] = xPred
         matched["yWokPred"] = yPred
@@ -1663,7 +1663,7 @@ class SolvePointing:
         # plt.show()
         goodMatches = matched[matched.dr < self.wokDistThresh]
         self.matchedSources = goodMatches
-        print("matched sources", len(self.matchedSources))
+        # print("matched sources", len(self.matchedSources))
 
     def _iter(self):
         # matched_df = self.matchedSources
@@ -1705,7 +1705,7 @@ class SolvePointing:
         self.fit_rms = numpy.sqrt(
             numpy.mean(numpy.sum(dxy**2, axis=1))
         )
-        print("%.3f"%self.fit_rms, len(self.matchedSources), set(self.matchedSources.gfaNum))
+        # print("%.3f"%self.fit_rms, len(self.matchedSources), set(self.matchedSources.gfaNum))
 
         # plt.figure(figsize=(8,8))
         # plt.quiver(x,y,dx,dy,angles="xy", units="xy", width=.2)
@@ -1773,7 +1773,7 @@ class SolvePointing:
 
             lastRMS = None
             for ii in range(100):
-                print("coordio iter", ii)
+                # print("coordio iter", ii)
                 self._matchWok()
                 self._iter()
                 self.nIterAll += 1
@@ -1782,7 +1782,7 @@ class SolvePointing:
                     continue
                 if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                     # less than 3 micron difference
-                    print("breaking wok loop")
+                    # print("breaking wok loop")
                     break
                 lastRMS = self.fit_rms
 
@@ -1816,7 +1816,7 @@ class SolvePointing:
         # self.saved_fit_rms = self.fit_rms
         # self.saved_used_cameras = self.used_cameras
 
-        print("resolving field")
+        # print("resolving field")
 
         dfList = []
         for gfaNum, group in newCentroids.groupby("gfaNum"):
@@ -1835,9 +1835,10 @@ class SolvePointing:
 
         lastRMS = None
         self.nIterAll = 0
+        self.nIterWCS = 0
 
         for ii in range(100):
-            print("coordio iter", ii)
+            # print("coordio iter", ii)
             self._matchWok()
             self._iter()
             self.nIterAll += 1
@@ -1846,7 +1847,7 @@ class SolvePointing:
                 continue
             if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                 # less than 3 micron difference
-                print("breaking wok loop")
+                # print("breaking wok loop")
                 break
             lastRMS = self.fit_rms
 
