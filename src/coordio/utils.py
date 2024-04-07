@@ -1099,3 +1099,41 @@ def _offset_radec(ra=None, dec=None, delta_ra=0., delta_dec=0.):
     decoff = numpy.arcsin(zoff) / deg2rad
     raoff = ((numpy.arctan2(yoff, xoff) / deg2rad) + 360.) % 360.
     return(raoff, decoff)
+
+
+def gaia_mags2sdss_gri(gaia_g, gaia_bp=None, gaia_rp=None, gaia_bp_rp=None):
+    '''
+    Stolen from Tom Dwelly's dither_work:
+
+    https://github.com/sdss/dither_work/blob/main/python/dither_work/utils.py#L75
+
+    There are some fairly accurate+reliable G,BP-RP -> SDSS gri
+    transforms available in the literature. Evans et al (2018,
+    https://www.aanda.org/articles/aa/full_html/2018/08/aa32756-18/aa32756-18.html)
+    give transforms for main sequence stars. Paraphrased below:
+
+    sdss_g_from_gdr2 = phot_g_mean_mag_gdr2 - (0.13518 - 0.46245*bp_rp_gdr2 +
+                                               -0.25171*bp_rp_gdr2**2 + 0.021349*bp_rp_gdr2**3)
+
+    sdss_r_from_gdr2 = phot_g_mean_mag_gdr2 - (-0.12879 + 0.24662*bp_rp_gdr2 +
+                                               -0.027464*bp_rp_gdr2**2 - 0.049465*bp_rp_gdr2**3)
+
+    sdss_i_from_gdr2 = phot_g_mean_mag_gdr2 - (-0.29676 + 0.64728*bp_rp_gdr2 +
+                                               -0.10141*bp_rp_gdr2**2)
+
+    '''
+    if (gaia_bp is not None) and (gaia_rp is not None) and (gaia_bp_rp is None):
+        gaia_bp_rp = gaia_bp - gaia_rp
+    elif (gaia_bp is None) and (gaia_rp is None) and (gaia_bp_rp is not None):
+        pass
+    else:
+        raise Exception("Error - you must supply either bp and rp or just bp-rp")
+
+    sdss_g = gaia_g - (0.13518 - 0.46245 * gaia_bp_rp -
+                       0.25171 * gaia_bp_rp**2 + 0.021349 * gaia_bp_rp**3)
+    sdss_r = gaia_g - (-0.12879 + 0.24662 * gaia_bp_rp -
+                       0.027464 * gaia_bp_rp**2 - 0.049465 * gaia_bp_rp**3)
+    sdss_i = gaia_g - (-0.29676 + 0.64728 * gaia_bp_rp -
+                       0.10141 * gaia_bp_rp**2)
+
+    return sdss_g, sdss_r, sdss_i

@@ -30,7 +30,7 @@ from .exceptions import CoordIOError, CoordIOUserWarning
 from .extraction import sextractor_quick
 from .sky import ICRS, Observed
 from .telescope import Field, FocalPlane
-from .utils import radec2wokxy, wokxy2radec
+from .utils import radec2wokxy, wokxy2radec, gaia_mags2sdss_gri
 from .wok import Wok
 from .transforms import arg_nearest_neighbor
 
@@ -1443,14 +1443,15 @@ class SolvePointing:
         self.scaleMeas = self.scale
 
         self.tStart = Time(hdr["DATE-OBS"], format="iso", scale="tai")
-        dt = TimeDelta(hdr["EXPTIME"], format="sec", scale="tai")
+        self.exptime = hdr["EXPTIMEN"]
+        dt = TimeDelta(self.exptime/2.0, format="sec", scale="tai")
         # choose exposure end as reference time because
         # it better matches the telescope headers (eg for a pointing model)
         self.obsTimeRef = self.tStart + dt
-        dt = TimeDelta(hdr["EXPTIME"]/2., format="sec", scale="tai")
-        self.obsTimeMid = self.tStart + dt
-        # tcc need this in seconds
-        self.obsTimeMid = self.obsTimeMid.mjd * 24 * 60 * 60
+        # dt = TimeDelta(hdr["EXPTIME"]/2., format="sec", scale="tai")
+        # self.obsTimeMid = self.tStart + dt
+        # # tcc need this in seconds
+        # self.obsTimeMid = self.obsTimeMid.mjd * 24 * 60 * 60
         self.imgNum = imgNum
         self.ipa = hdr["IPA"]
         if self.observatory == "APO":
@@ -1551,7 +1552,7 @@ class SolvePointing:
         ff.close()
 
     def getGaiaSources(self, ra, dec, radius=0.16, magLimit=18):
-        query = "SELECT source_id, ra, dec, pmra, pmdec, parallax"
+        query = "SELECT source_id, ra, dec, pmra, pmdec, parallax, phot_g_mean_mag, bp_rp"
         query += " FROM %s" % self.db_tab_name
         query += " WHERE q3c_radial_query"
         query += "(ra, dec, %.4f, %.4f, %.4f)" % (ra, dec, radius)
@@ -1662,6 +1663,19 @@ class SolvePointing:
         # plt.hist(matched.dr, bins=200)
         # plt.show()
         goodMatches = matched[matched.dr < self.wokDistThresh]
+        goodMatches = goodMatches[goodMatches.flag == 0]  # sep extraction flag
+        goodMatches = goodMatches[goodMatches.fwhm_valid == 1]  # joses valid fwhm
+
+        # calculate zeropoints for each detection
+        sdss_g, sdss_r, sdss_i = gaia_mags2sdss_gri(
+            gaia_g=goodMatches.phot_g_mean_mag.to_numpy(),
+            gaia_bp_rp=goodMatches.bp_rp
+        )
+        goodMatches["sdss_r"] = sdss_r
+        zp = 2.5 * numpy.log10(goodMatches.aperflux/self.exptime) + sdss_r
+        goodMatches["zp"] = zp
+
+        import pdb; pdb.set_trace()
         self.matchedSources = goodMatches
         # print("matched sources", len(self.matchedSources))
 
@@ -1705,7 +1719,7 @@ class SolvePointing:
         self.fit_rms = numpy.sqrt(
             numpy.mean(numpy.sum(dxy**2, axis=1))
         )
-        # print("%.3f"%self.fit_rms, len(self.matchedSources), set(self.matchedSources.gfaNum))
+        print("%.3f"%self.fit_rms, len(self.matchedSources), set(self.matchedSources.gfaNum))
 
         # plt.figure(figsize=(8,8))
         # plt.quiver(x,y,dx,dy,angles="xy", units="xy", width=.2)
@@ -1734,6 +1748,7 @@ class SolvePointing:
         self,
         skyDistThresh: float = 3,  # arcseconds
     ):
+        print("field initial solve\n------------\n")
         self.skyDistThresh = skyDistThresh
         # initialize field center to
         # user supplied reference
@@ -1746,7 +1761,7 @@ class SolvePointing:
             lastRMS = None
             for ii in range(5):
                 # maximum of 5 iters
-                # print("wcs iter", ii)
+                print("wcs iter", ii)
                 self._matchWCS()
                 self._iter()
                 self.nIterWCS += 1
@@ -1773,7 +1788,7 @@ class SolvePointing:
 
             lastRMS = None
             for ii in range(100):
-                # print("coordio iter", ii)
+                print("coordio iter", ii)
                 self._matchWok()
                 self._iter()
                 self.nIterAll += 1
@@ -1792,6 +1807,7 @@ class SolvePointing:
         self,
         imgNum: int,
         obsTimeRef: Time,
+        exptime: float,
         newCentroids: pandas.DataFrame,
         skyDistThresh: float = 3,  # arcseconds
     ):
@@ -1811,12 +1827,13 @@ class SolvePointing:
         self.skyDistThresh = skyDistThresh
         self.imgNum = imgNum
         self.obsTimeRef = obsTimeRef
+        self.exptime = exptime
 
         # self.saved_nstars = self.n_stars_used
         # self.saved_fit_rms = self.fit_rms
         # self.saved_used_cameras = self.used_cameras
 
-        # print("resolving field")
+        print("resolving field")
 
         dfList = []
         for gfaNum, group in newCentroids.groupby("gfaNum"):
@@ -1838,7 +1855,7 @@ class SolvePointing:
         self.nIterWCS = 0
 
         for ii in range(100):
-            # print("coordio iter", ii)
+            print("coordio iter", ii)
             self._matchWok()
             self._iter()
             self.nIterAll += 1

@@ -230,6 +230,7 @@ def extract_marginal(
     plot: pathlib.Path | str | None = None,
     n_rows_plot: int = 9,
     plot_title: str | None = None,
+    aper_radius: float | None = None
 ):
     """Extracts regions from an image and fit them using the marginal distribution.
 
@@ -260,6 +261,9 @@ def extract_marginal(
         How many regions per page to plot.
     plot_title
         A title to be added to the plot.
+    aper_radius
+        radius in pixels for aperture photometry
+
 
     Returns
     -------
@@ -327,10 +331,35 @@ def extract_marginal(
 
             detections = pandas.concat([detections, fit_df], axis=1)
 
+        # circular aperture fluxes (5 arcsec radius, as specified by
+        # tom dwelly)
+        # could use x1 or y1 instead?
+        xs = detections.x.to_numpy()
+        ys = detections.y.to_numpy()
+        if aper_radius is None:
+            # if not specified set the radius
+            # to the FWHM
+            _stds = numpy.array(
+                [detections.xstd.to_numpy(),detections.ystd.to_numpy()]
+            ).flatten()
+            # https://brainder.org/2011/08/20/gaussian-kernels-convert-fwhm-to-sigma/
+            _fwhm = numpy.median(_stds) * 2.355
+            # print("_fwhm", _fwhm)
+            aper_radius = _fwhm
+
+        flux, fluxerr, flag = sep.sum_circle(
+            sub, xs, ys, aper_radius, err=back.globalrms
+        )
+        detections["aperflux"] = flux
+        detections["aperfluxerr"] = fluxerr
+        detections["aperrad"] = aper_radius
+        # import pdb; pdb.set_trace()
+
     else:
         # Add new columns. If there are no detections at least the columns will exist
         # on an empty data frame and the overall shape won't change.
         cols = ["x1", "xstd", "xrms", "y1", "ystd", "yrms", "xfitvalid", "yfitvalid"]
+        cols += ["aperflux", "aperfluxerr", "aperrad"]
         detections[cols] = numpy.nan
 
     if plot is not None:
