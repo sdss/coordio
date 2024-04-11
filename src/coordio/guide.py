@@ -17,6 +17,7 @@ from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import fit_wcs_from_points
 from matplotlib import pyplot as plt
 from scipy.spatial import KDTree
+from scipy.stats import sigmaclip
 from skimage.registration import phase_cross_correlation
 from skimage.transform import SimilarityTransform, EuclideanTransform
 
@@ -1103,15 +1104,19 @@ class SolvePointing:
             ("REF_DEC", self.decCenRef, "reference Dec (deg)"),
             ("REF_PA", self.paCenRef, "reference PA (deg)"),
             ("REF_SCL", self.scale, "reference scale factor"),
-            # ("TAI_MID", self.obsTimeMid, "tai seconds at middle of exposure"),
+            ("TAI_MID", self.obsTimeRef.mjd * 24 * 60 * 60, "tai seconds at middle of exposure"),
             # ("N_WCS", len(self.gfaWCS), "number of GFAs with astronet solutions"),
             ("N_STARS", len(self.matchedSources), "number of stars used in fit"),
             ("N_GFAS", len(set(self.matchedSources.gfaNum)), "number of GFAs used in fit"),
             ("NITR_WCS", self.nIterWCS, "number of iterations for wcs solve"),
-            ("NITER_ALL", self.nIterAll, "number of iterations for full solve")
+            ("NITR_ALL", self.nIterAll, "number of iterations for full solve")
         ]
 
         return metaDataList
+
+    def median_zeropoint(self, gfaNum):
+        _df = self.matchedSources[self.matchedSources.gfaNum == gfaNum]
+        return numpy.nanmedian(_df.zp)
 
     @property
     def plate_scale(self):
@@ -1451,7 +1456,7 @@ class SolvePointing:
         # dt = TimeDelta(hdr["EXPTIME"]/2., format="sec", scale="tai")
         # self.obsTimeMid = self.tStart + dt
         # # tcc need this in seconds
-        # self.obsTimeMid = self.obsTimeMid.mjd * 24 * 60 * 60
+        # self.taiMid = self.obsTimeRef.mjd * 24 * 60 * 60
         self.imgNum = imgNum
         self.ipa = hdr["IPA"]
         if self.observatory == "APO":
@@ -1466,7 +1471,8 @@ class SolvePointing:
         self,
         img_path: str | pathlib.Path,
         centroids: pandas.DataFrame | None = None,
-        wcs: WCS | None = None
+        wcs: WCS | None = None,
+        gain: float | None = None
     ):
         """
         Add gfa data to be used in fitting.  Don't add a gfa you don't want
@@ -1485,6 +1491,8 @@ class SolvePointing:
             from the data.
         wcs
             a WCS object
+        gain
+            electrons per adu for this camera
         """
         img_path = str(img_path)
         ff = fits.open(img_path)
@@ -1520,7 +1528,7 @@ class SolvePointing:
 
         centroids["gfaNum"] = gfaNum
         # remove saturated sources
-        centroids = centroids[centroids.peak < 55000].reset_index(drop=True)
+        # centroids = centroids[centroids.peak < 55000].reset_index(drop=True)
         # calculate wok coordinates for each centroid
         xWokMeas, yWokMeas = self.pix2wok(
             centroids.x.to_numpy(),
@@ -1541,6 +1549,8 @@ class SolvePointing:
             centroids["raMeas"] = raDecMeas[:, 0]
             centroids["decMeas"] = raDecMeas[:, 1]
             # import pdb; pdb.set_trace()
+
+        centroids["gain"] = gain
 
         self.allCentroids = pandas.concat(
             [self.allCentroids, centroids], ignore_index=True
@@ -1563,6 +1573,21 @@ class SolvePointing:
 
         # self.allGaia = pandas.concat(allGaia)
         # print("got", len(self.allGaia), " sources")
+
+    def _updateZP(self):
+        xWokPredRef, yWokPredRef = self.xyWokPredictRef
+        self.matchedSources["xWokPredRef"] = xWokPredRef
+        self.matchedSources["yWokPredRef"] = yWokPredRef
+        sdss_g, sdss_r, sdss_i = gaia_mags2sdss_gri(
+            gaia_g=self.matchedSources.phot_g_mean_mag.to_numpy(),
+            gaia_bp_rp=self.matchedSources.bp_rp.to_numpy()
+        )
+        self.matchedSources["sdss_r"] = sdss_r
+
+        zp = 2.5 * numpy.log10(
+            self.matchedSources.aperflux * self.matchedSources.gain / self.exptime
+        ) + sdss_r
+        self.matchedSources["zp"] = zp
 
     def _matchWCS(self):
         """Note, only works if there was at least 1 wcs solution provided!
@@ -1590,7 +1615,7 @@ class SolvePointing:
         dra = dra / numpy.cos(numpy.radians(matched.dec))
         ddec = (matched.dec - matched.decMeas)
         matched["dr"] = numpy.sqrt(dra**2 + ddec**2) * 3600
-        matched = matched[matched.dr < self.skyDistThresh]
+        matched = matched[matched.dr < self.skyDistThresh].reset_index(drop=True)
 
         output = radec2wokxy(
             matched.ra.to_numpy(), matched.dec.to_numpy(), self.GAIA_EPOCH,
@@ -1618,6 +1643,7 @@ class SolvePointing:
         matched["yWokPred"] = yPred
 
         self.matchedSources = matched
+        self._updateZP()
         # print("sources matched", len(self.matchedSources))
 
     def _matchWok(self):
@@ -1663,21 +1689,8 @@ class SolvePointing:
         # plt.hist(matched.dr, bins=200)
         # plt.show()
         goodMatches = matched[matched.dr < self.wokDistThresh]
-        goodMatches = goodMatches[goodMatches.flag == 0]  # sep extraction flag
-        goodMatches = goodMatches[goodMatches.fwhm_valid == 1]  # joses valid fwhm
-
-        # calculate zeropoints for each detection
-        sdss_g, sdss_r, sdss_i = gaia_mags2sdss_gri(
-            gaia_g=goodMatches.phot_g_mean_mag.to_numpy(),
-            gaia_bp_rp=goodMatches.bp_rp
-        )
-        goodMatches["sdss_r"] = sdss_r
-        zp = 2.5 * numpy.log10(goodMatches.aperflux/self.exptime) + sdss_r
-        goodMatches["zp"] = zp
-
-        import pdb; pdb.set_trace()
-        self.matchedSources = goodMatches
-        # print("matched sources", len(self.matchedSources))
+        self.matchedSources = goodMatches.reset_index(drop=True)
+        self._updateZP()
 
     def _iter(self):
         # matched_df = self.matchedSources
@@ -1719,7 +1732,7 @@ class SolvePointing:
         self.fit_rms = numpy.sqrt(
             numpy.mean(numpy.sum(dxy**2, axis=1))
         )
-        print("%.3f"%self.fit_rms, len(self.matchedSources), set(self.matchedSources.gfaNum))
+        print("%.8f"%self.fit_rms, len(self.matchedSources), set(self.matchedSources.gfaNum))
 
         # plt.figure(figsize=(8,8))
         # plt.quiver(x,y,dx,dy,angles="xy", units="xy", width=.2)
@@ -1837,7 +1850,7 @@ class SolvePointing:
 
         dfList = []
         for gfaNum, group in newCentroids.groupby("gfaNum"):
-            group = group[group.peak < 55000].reset_index(drop=True)
+            # group = group[group.peak < 55000].reset_index(drop=True)
             # calculate wok coordinates for each centroid
             xWokMeas, yWokMeas = self.pix2wok(
                 group.x.to_numpy(),

@@ -73,7 +73,7 @@ def sextractor_quick(
     df["ecc"] = numpy.sqrt(df.a**2 - df.b**2) / df.a
 
     if clean:
-        filter = (df.cpeak < 60000) & (df.ecc < 0.8) & (df.ecc > 0.05)
+        filter = (df.cpeak < 60000 - back.globalback) & (df.ecc < 0.8) & (df.ecc > 0.05)
         df = df.loc[filter]
 
     df = df.loc[df.tnpix > minarea]
@@ -276,6 +276,7 @@ def extract_marginal(
 
     """
 
+    # print("extractor_quick_options", sextractor_quick_options)
     data = data.astype("f8")
 
     sextractor_quick_options.pop("threshold", None)
