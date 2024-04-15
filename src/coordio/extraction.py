@@ -345,15 +345,18 @@ def extract_marginal(
             ).flatten()
             # https://brainder.org/2011/08/20/gaussian-kernels-convert-fwhm-to-sigma/
             _fwhm = numpy.median(_stds) * 2.355
-            # print("_fwhm", _fwhm)
+            print("_fwhm", _fwhm)
             aper_radius = _fwhm
 
         flux, fluxerr, flag = sep.sum_circle(
             sub, xs, ys, aper_radius, err=back.globalrms
         )
+
         detections["aperflux"] = flux
         detections["aperfluxerr"] = fluxerr
         detections["aperrad"] = aper_radius
+
+        detections["aperflux"] = detections.flux
         # import pdb; pdb.set_trace()
 
     else:
