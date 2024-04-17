@@ -356,7 +356,7 @@ def extract_marginal(
         detections["aperfluxerr"] = fluxerr
         detections["aperrad"] = aper_radius
 
-        detections["aperflux"] = detections.flux
+        # detections["aperflux"] = detections.flux
         # import pdb; pdb.set_trace()
 
     else:
