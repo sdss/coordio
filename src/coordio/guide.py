@@ -1566,6 +1566,7 @@ class SolvePointing:
         ff.close()
 
     def getGaiaSources(self, ra, dec, radius=0.16, magLimit=18):
+        import time; tstart=time.time()
         query = "SELECT source_id, ra, dec, pmra, pmdec, parallax, phot_g_mean_mag, bp_rp"
         query += " FROM %s" % self.db_tab_name
         query += " WHERE q3c_radial_query"
@@ -1573,6 +1574,7 @@ class SolvePointing:
         query += " AND phot_g_mean_mag < %.2f" % magLimit
         # print(query)
         df = pandas.read_sql(query, self.db_conn_st)
+        print("getGaiaSources took", time.time()-tstart)
         return df.dropna().reset_index(drop=True)
 
         # self.allGaia = pandas.concat(allGaia)
@@ -1596,14 +1598,14 @@ class SolvePointing:
     def _matchWCS(self):
         """Note, only works if there was at least 1 wcs solution provided!
         """
-        allGaia = []
-        for gfaNum, wcs in self.gfaWCS.items():
-            ra, dec = wcs.pixel_to_world_values([[1024,1024]])[0]
-            # print("wcs ra/decs", gfaNum, ra,dec)
-            gaiaDF = self.getGaiaSources(ra,dec)
-            gaiaDF["gfaNum"] = gfaNum
-            allGaia.append(gaiaDF)
-        self.allGaia = pandas.concat(allGaia)
+        # allGaia = []
+        # for gfaNum, wcs in self.gfaWCS.items():
+        #     ra, dec = wcs.pixel_to_world_values([[1024,1024]])[0]
+        #     # print("wcs ra/decs", gfaNum, ra,dec)
+        #     gaiaDF = self.getGaiaSources(ra,dec)
+        #     gaiaDF["gfaNum"] = gfaNum
+        #     allGaia.append(gaiaDF)
+        # self.allGaia = pandas.concat(allGaia)
         # self.allGaia = self.allGaia[self.allGaia.gfaNum==1]
 
         raDecGaia = self.allGaia[["ra", "dec"]].to_numpy()
@@ -1832,11 +1834,22 @@ class SolvePointing:
         # initialize field center to
         # user supplied reference
 
+
         self.nIterWCS = 0
         self.nIterAll = 0
         if len(self.gfaWCS) > 0:
             # match wcs gets gaia sources for matching based on
             # wcs if available
+            print("daaaaadddddaaaaa")
+            allGaia = []
+            for gfaNum, wcs in self.gfaWCS.items():
+                ra, dec = wcs.pixel_to_world_values([[1024,1024]])[0]
+                # print("wcs ra/decs", gfaNum, ra,dec)
+                gaiaDF = self.getGaiaSources(ra,dec)
+                gaiaDF["gfaNum"] = gfaNum
+                allGaia.append(gaiaDF)
+            self.allGaia = pandas.concat(allGaia)
+
             lastRMS = None
             self._matchWCS()
             for ii in range(10):
