@@ -1840,7 +1840,6 @@ class SolvePointing:
         if len(self.gfaWCS) > 0:
             # match wcs gets gaia sources for matching based on
             # wcs if available
-            print("daaaaadddddaaaaa")
             allGaia = []
             for gfaNum, wcs in self.gfaWCS.items():
                 ra, dec = wcs.pixel_to_world_values([[1024,1024]])[0]
