@@ -75,7 +75,7 @@ def wokCurveLCO(r):
 def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
                 obsSite, obsTime, focalScale=None, pmra=None, pmdec=None, parallax=None,
                 radVel=None, pressure=None, relativeHumidity=0.5,
-                temperature=10, fullOutput=False):
+                temperature=10, fullOutput=False, darLambda=None):
     r"""
     Convert from ra, dec ICRS coords to a flat-wok XY in mm.  At obsAngle=0
     wok +y is a aligned with +dec, and wok +x is aligned with +ra
@@ -203,6 +203,15 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 
     radec = numpy.array([ra, dec]).T
 
+    if pmra is not None:
+        pmra[numpy.isnan(pmra)] = 0
+
+    if pmdec is not None:
+        pmdec[numpy.isnan(pmdec)] = 0
+
+    if parallax is not None:
+        parallax[numpy.isnan(parallax)] = 0
+
     icrs = ICRS(
         radec, epoch=coordEpoch, pmra=pmra, pmdec=pmdec,
         parallax=parallax, rvel=radVel
@@ -213,7 +222,16 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
     if focalScale is None:
         focalScale = defaults.SITE_TO_SCALE[obsSite]
 
-    obs = Observed(icrs, site=site, wavelength=wavelength)
+    # check to see if darLambda was supplied, and if so
+    # use that wavelength (just for DAR not telescope distortion model)
+    darWavelength = wavelength.copy()
+    if darLambda is not None:
+        if hasattr(darLambda, "__len__"):
+            assert len(darLambda) == nCoords
+            darWavelength = darLambda
+        else:
+            darWavelength.fill(darLambda)
+    obs = Observed(icrs, site=site, wavelength=darWavelength)
     field = Field(obs, field_center=obsCen)
     focal = FocalPlane(field,
                        wavelength=wavelength,
