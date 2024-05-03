@@ -102,3 +102,35 @@ std::array<double, 5> tangentToPositioner2(
     double alphaOffDeg,
     double betaOffDeg
 );
+
+std::vector<vec3> positionerToWokArr(
+    std::vector<std::array<double,2>> & alphaBetaDeg,
+    std::vector<std::array<double,3>> & basePos,
+    std::vector<std::array<double,3>> & iHat,
+    std::vector<std::array<double,3>> & jHat,
+    std::vector<std::array<double,3>> & kHat,
+    double elementHeight,
+    std::vector<double> & dx,
+    std::vector<double> & dy,
+    std::vector<double> & dz,
+    std::vector<vec2> & xyBeta,
+    std::vector<double> & alphaLen,
+    std::vector<double> & alphaOffDeg,
+    std::vector<double> & betaOffDeg
+);
+
+std::vector<vec2> wokToPositionerArr(
+    std::vector<std::array<double,3>> & wokXYZ,
+    std::vector<std::array<double,3>> & basePos,
+    std::vector<std::array<double,3>> & iHat,
+    std::vector<std::array<double,3>> & jHat,
+    std::vector<std::array<double,3>> & kHat,
+    double elementHeight,
+    std::vector<double> & dx,
+    std::vector<double> & dy,
+    std::vector<double> & dz,
+    std::vector<vec2> & xyBeta,
+    std::vector<double> & alphaLen,
+    std::vector<double> & alphaOffDeg,
+    std::vector<double> & betaOffDeg
+);

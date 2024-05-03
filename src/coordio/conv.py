@@ -1586,6 +1586,87 @@ def guideToTangent(
 
     return xTangent, yTangent
 
+def positionerToWok(
+    alphaDeg, betaDeg, xBeta, yBeta, la, alphaOffDeg, betaOffDeg,
+    basePos, iHat, jHat, kHat, dx, dy, elementHeight=defaults.POSITIONER_HEIGHT
+):
+    """
+    alpha/betaDeg: angular coords for arm angles (deg)
+    xyBeta: location of fiber in beta arm (mm)
+    la: alpha arm length
+    alpha/betaOffDeg: calibrated angular zeropoint offsets for arm
+    b: xyz locations for holes in the wok
+    ijkHat: unit vectors to capture any calibrated rotation
+    dxy: offsets of element from hole centered (calibrated)
+    elementHeight (vertical distance from wok surface to fiber surface)
+
+    returns xWok, yWok, zWok
+    """
+    # all inputs except elementHeight must be arrays
+    # of same length
+    assert hasattr(alphaDeg, "__len__")
+    nCoords = len(alphaDeg)
+    assert len(betaDeg) == len(xBeta) == len(yBeta) == len(la) == nCoords
+    assert len(alphaOffDeg) == len(betaOffDeg) == len(basePos) == nCoords
+    assert len(iHat) == len(jHat) == len(dx) == len(dy) == nCoords
+
+    dz = [0]*nCoords
+
+    alphaBeta = numpy.array([alphaDeg, betaDeg]).T.tolist()
+    xyBeta = numpy.array([xBeta, yBeta]).T.tolist()
+    basePos = numpy.array(basePos).tolist()
+    iHat = numpy.array(iHat).tolist()
+    jHat = numpy.array(jHat).tolist()
+    kHat = numpy.array(kHat).tolist()
+
+    xyzWok = libcoordio.positionerToWokArr(
+        alphaBeta, basePos, iHat, jHat, kHat, elementHeight, list(dx),
+        list(dy), dz, xyBeta, list(la), list(alphaOffDeg), list(betaOffDeg)
+    )
+
+    xyzWok = numpy.array(xyzWok)
+    return xyzWok[:,0], xyzWok[:,1], xyzWok[:,2]
+
+def wokToPositioner(
+    xWok, yWok, zWok, xBeta, yBeta, la, alphaOffDeg, betaOffDeg,
+    basePos, iHat, jHat, kHat, dx, dy, elementHeight=defaults.POSITIONER_HEIGHT
+):
+    """
+    xyzWok: xyz wok location of fiber
+    xyBeta: location of fiber in beta arm (mm)
+    la: alpha arm length
+    alpha/betaOffDeg: calibrated angular zeropoint offsets for arm
+    b: xyz locations for holes in the wok
+    ijkHat: unit vectors to capture any calibrated rotation
+    dxy: offsets of element from hole centered (calibrated)
+    elementHeight (vertical distance from wok surface to fiber surface)
+
+    returns alpha, beta angles (deg)
+    """
+    assert hasattr(xWok, "__len__")
+    nCoords = len(xWok)
+    assert len(yWok) == len(zWok) == len(xBeta) == len(yBeta) == len(la) == nCoords
+    assert len(alphaOffDeg) == len(betaOffDeg) == nCoords
+    assert len(basePos) == len(iHat) == len(jHat) == nCoords
+    assert len(dx) == len(dy) == nCoords
+
+    dz = [0]*nCoords
+
+    xyzWok = numpy.array([xWok, yWok, zWok]).T.tolist()
+    xyBeta = numpy.array([xBeta, yBeta]).T.tolist()
+    basePos = numpy.array(basePos).tolist()
+    iHat = numpy.array(iHat).tolist()
+    jHat = numpy.array(jHat).tolist()
+    kHat = numpy.array(kHat).tolist()
+
+    alphaBeta = libcoordio.wokToPositionerArr(
+        xyzWok, basePos, iHat, jHat, kHat, elementHeight, list(dx), list(dy),
+        dz, xyBeta, list(la), list(alphaOffDeg), list(betaOffDeg)
+    )
+
+    alphaBeta = numpy.array(alphaBeta)
+    return alphaBeta[:,0], alphaBeta[:,1]
+
 
 # class FVCUW(object):
 #     # right now this is for UWs test bench, fix image scale and use

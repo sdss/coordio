@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <iostream>
 #include "coordio.h"
 
 // #include <pybind11/eigen.h>
@@ -463,6 +464,114 @@ std::array<double, 5> tangentToPositioner2(
     return output;
 }
 
+std::vector<vec2> wokToPositionerArr(
+    std::vector<std::array<double,3>> & wokXYZ,
+    std::vector<std::array<double,3>> & basePos,
+    std::vector<std::array<double,3>> & iHat,
+    std::vector<std::array<double,3>> & jHat,
+    std::vector<std::array<double,3>> & kHat,
+    double elementHeight,
+    std::vector<double> & dx,
+    std::vector<double> & dy,
+    std::vector<double> & dz,
+    std::vector<vec2> & xyBeta,
+    std::vector<double> & alphaLen,
+    std::vector<double> & alphaOffDeg,
+    std::vector<double> & betaOffDeg
+){
+
+    std::vector<vec2> outArr;
+    vec2 xyTangent;
+    double scaleFac = 1;
+
+    int nCoords = wokXYZ.size();
+
+    for (int ii = 0; ii < nCoords; ii++){
+        vec3 tangentCoords = wokToTangent(
+                wokXYZ[ii],
+                basePos[ii],
+                iHat[ii],
+                jHat[ii],
+                kHat[ii],
+                elementHeight,
+                scaleFac,
+                dx[ii],
+                dy[ii],
+                dz[ii]
+        );
+
+        // note assume right handed coords only
+        xyTangent[0] = tangentCoords[0];
+        xyTangent[1] = tangentCoords[1];
+        vec2 positionerCoords = tangentToPositioner(
+            xyTangent,
+            xyBeta[ii],
+            alphaLen[ii],
+            alphaOffDeg[ii],
+            betaOffDeg[ii],
+            false // not left handed
+        );
+        outArr.push_back(positionerCoords);
+    }
+
+    return outArr;
+
+}
+
+std::vector<vec3> positionerToWokArr(
+    std::vector<std::array<double,2>> & alphaBetaDeg,
+    std::vector<std::array<double,3>> & basePos,
+    std::vector<std::array<double,3>> & iHat,
+    std::vector<std::array<double,3>> & jHat,
+    std::vector<std::array<double,3>> & kHat,
+    double elementHeight,
+    std::vector<double> & dx,
+    std::vector<double> & dy,
+    std::vector<double> & dz,
+    std::vector<vec2> & xyBeta,
+    std::vector<double> & alphaLen,
+    std::vector<double> & alphaOffDeg,
+    std::vector<double> & betaOffDeg
+){
+
+    std::vector<vec3> outArr;
+    vec3 tangentCoords;
+    double scaleFac = 1;
+
+    int nCoords = alphaBetaDeg.size();
+
+    for (int ii = 0; ii < nCoords; ii++){
+        vec2 xyTangent = positionerToTangent(
+            alphaBetaDeg[ii],
+            xyBeta[ii],
+            alphaLen[ii],
+            alphaOffDeg[ii],
+            betaOffDeg[ii]
+        );
+
+        tangentCoords[0] = xyTangent[0];
+        tangentCoords[1] = xyTangent[1];
+        tangentCoords[2] = elementHeight;
+
+        vec3 xyzWok = tangentToWok(
+            tangentCoords,
+            basePos[ii],
+            iHat[ii],
+            jHat[ii],
+            kHat[ii],
+            elementHeight,
+            scaleFac,
+            dx[ii],
+            dy[ii],
+            dz[ii]
+        );
+        outArr.push_back(xyzWok);
+
+    }
+
+    return outArr;
+}
+
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -486,4 +595,7 @@ PYBIND11_MODULE(libcoordio, m) {
     );
     m.def("positionerToTangent", &positionerToTangent);
     m.def("positionerToTangentArr", &positionerToTangentArr);
+    m.def("wokToPositionerArr", &wokToPositionerArr);
+    m.def("positionerToWokArr", &positionerToWokArr);
+
 }
