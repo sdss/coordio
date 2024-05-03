@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+1.10.0 (2024-03-07)
+------------------
+
+* Change default focal plane scale factor to 1.0003 after new IMB installed
+* Add set of zbplus coefficients (probably bad ones, but whatever) to the transforms.FVCTransformLCO class.
+
 1.9.3 (2024-01-27)
 ------------------
 

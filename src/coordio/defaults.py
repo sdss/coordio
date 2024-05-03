@@ -15,7 +15,7 @@ from .exceptions import CoordIOError
 
 # SITE_TO_SCALE cale is focal plane scale mm / wok scale mm
 # found via dither analysis
-SITE_TO_SCALE = {"LCO": 0.9985, "APO": 0.99982}
+SITE_TO_SCALE = {"LCO": 1.0003, "APO": 0.99982}
 
 MICRONS_PER_MM = 1000
 GFA_PIXEL_SIZE = 13.5  # micron
