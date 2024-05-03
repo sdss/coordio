@@ -551,7 +551,7 @@ std::vector<vec3> positionerToWokArr(
 
         tangentCoords[0] = xyTangent[0];
         tangentCoords[1] = xyTangent[1];
-        tangentCoords[2] = elementHeight;
+        tangentCoords[2] = 0; //elementHeight;
 
         vec3 xyzWok = tangentToWok(
             tangentCoords,
