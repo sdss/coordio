@@ -1590,8 +1590,16 @@ class SolvePointing:
         )
         self.matchedSources["sdss_r"] = sdss_r
 
+        # when re-analyzing old images, aperflux is not available in the
+        # centroids table unless you re-extract sources.  For this case, just
+        # replace it with flux which has always been there.
+        if "aperflux" in list(self.matchedSources.columns):
+            flux = self.matchedSources.aperflux
+        else:
+            flux = self.matchedSources.flux
+
         zp = 2.5 * numpy.log10(
-            self.matchedSources.aperflux * self.matchedSources.gain / self.exptime
+            flux * self.matchedSources.gain / self.exptime
         ) + sdss_r
         self.matchedSources["zp"] = zp
 
