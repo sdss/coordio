@@ -46,8 +46,8 @@ def test_wok2positioner(plot=False):
     betaErr = betas - _betas
 
 
-    assert numpy.allclose(alphas, _alphas)
-    assert numpy.allclose(betas, _betas)
+    numpy.testing.assert_allclose(alphas, _alphas)
+    numpy.testing.assert_allclose(betas, _betas)
 
     print("std roundtrip", numpy.std(alphaErr), numpy.std(betaErr))
 
