@@ -23,28 +23,24 @@ jobs:
         python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12']
 
     env:
-      WOKCALIB_DIR: '/home/runner/work/coordio/coordio/fps_calibrations/apo/wok_calibs/sloanBase:/home/runner/work/coordio/coordio/fps_calibrations/lco/wok_calibs/duPontBase'
+      WOKCALIB_DIR: '/home/runner/work/coordio/coordio/fps_calibrations/apo/wok_calibs/sloanFlatCMM:/home/runner/work/coordio/coordio/fps_calibrations/lco/wok_calibs/duPontFlatCMM'
       PYTHONPATH: '/home/runner/work/coordio/coordio/fps_calibrations'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Cache Setup
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Clone fps_calibrations
-        uses: actions/checkout@v3
+      - name: Checkout fps_calibrations
+        uses: actions/checkout@v4
         with:
           repository: sdss/fps_calibrations
           path: fps_calibrations
+          ref: '2024.04.01'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -71,6 +67,6 @@ jobs:
           pytest
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
