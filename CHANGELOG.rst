@@ -4,11 +4,11 @@
 Change Log
 ==========
 
-1.11.1 (2024-03-07)
+1.11.1 (2024-05-08)
 ------------------
 * remove print statements
 
-1.11.0 (2024-03-07)
+1.11.0 (2024-05-08)
 ------------------
 * Add new guide fitter (SolvePointing class), implements a gaia based iterative fitter for pointing solutions.
 * Add sped up array based conversions between wok and positioner coords.
