@@ -1574,7 +1574,7 @@ class SolvePointing:
         query += " AND phot_g_mean_mag < %.2f" % magLimit
         # print(query)
         df = pandas.read_sql(query, self.db_conn_st)
-        print("getGaiaSources took", time.time()-tstart)
+        # print("getGaiaSources took", time.time()-tstart)
         return df.dropna().reset_index(drop=True)
 
         # self.allGaia = pandas.concat(allGaia)
@@ -1837,7 +1837,7 @@ class SolvePointing:
         self,
         skyDistThresh: float = 3,  # arcseconds
     ):
-        print("field initial solve\n------------\n")
+        # print("field initial solve\n------------\n")
         self.skyDistThresh = skyDistThresh
         # initialize field center to
         # user supplied reference
@@ -1864,7 +1864,7 @@ class SolvePointing:
                 self._iter()
                 self._matchWCS()
                 self.nIterWCS += 1
-                print("wcs fit_rms", ii, len(self.matchedSources), self.fit_rms)
+                # print("wcs fit_rms", ii, len(self.matchedSources), self.fit_rms)
                 if lastRMS is not None:
                     if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                         break
@@ -1890,7 +1890,7 @@ class SolvePointing:
                 self._iter()
                 self._matchWok()
                 self.nIterAll += 1
-                print("coordion fit_rms", ii, len(self.matchedSources), self.fit_rms)
+                # print("coordion fit_rms", ii, len(self.matchedSources), self.fit_rms)
                 if lastRMS is not None:
                     if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                         break
@@ -1928,7 +1928,7 @@ class SolvePointing:
         # self.saved_fit_rms = self.fit_rms
         # self.saved_used_cameras = self.used_cameras
 
-        print("resolving field")
+        # print("resolving field")
 
         dfList = []
         for gfaNum, group in newCentroids.groupby("gfaNum"):
@@ -1951,11 +1951,11 @@ class SolvePointing:
 
         self._matchWok()
         for ii in range(10):
-            print("coordio iter", ii)
+            # print("coordio iter", ii)
             self._iter()
             self._matchWok()
             self.nIterAll += 1
-            print("coordion fit_rms", ii, len(self.matchedSources), self.fit_rms)
+            # print("coordion fit_rms", ii, len(self.matchedSources), self.fit_rms)
             if lastRMS is not None:
                 if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                     break
