@@ -134,3 +134,15 @@ std::vector<vec2> wokToPositionerArr(
     std::vector<double> & alphaOffDeg,
     std::vector<double> & betaOffDeg
 );
+
+std::array<double, 3> positionerToWok(
+    vec2 alphaBetaDeg,
+    vec2 xyBeta,
+    double alphaLen,
+    double alphaOffDeg,
+    double betaOffDeg,
+    vec3 & basePos,
+    double elementHeight,
+    double dx,
+    double dy
+);

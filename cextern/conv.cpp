@@ -572,6 +572,68 @@ std::vector<vec3> positionerToWokArr(
     return outArr;
 }
 
+std::array<double, 3> positionerToWok(
+    vec2 alphaBetaDeg,
+    vec2 xyBeta,
+    double alphaLen,
+    double alphaOffDeg,
+    double betaOffDeg,
+    vec3 & basePos,
+    double elementHeight,
+    double dx,
+    double dy
+){
+    // ugly but this is one block of code with no
+    // external function calls to speed up the routine
+    // also some args are not used eg
+    // ijkHat are assumed to just be xyz unit vectors
+    // which is how things are definied in the positionerTable
+
+    // copied from positionerToTangent
+    vec2 outArr;
+
+    auto betaOffRad = betaOffDeg * M_PI / 180.0;
+    auto alphaOffRad = alphaOffDeg * M_PI / 180.0;
+    auto alphaRad = alphaBetaDeg[0] * M_PI / 180.0;
+    auto betaRad = alphaBetaDeg[1] * M_PI / 180.0;
+
+    auto thetaBAC = atan2(xyBeta[1], xyBeta[0]);  // radians!
+    auto rBAC = hypot(xyBeta[0], xyBeta[1]);
+    auto cosAlpha = cos(alphaRad + alphaOffRad);
+    auto sinAlpha = sin(alphaRad + alphaOffRad);
+    auto cosAlphaBeta = cos(alphaRad + betaRad + thetaBAC + betaOffRad + alphaOffRad);
+    auto sinAlphaBeta = sin(alphaRad + betaRad + thetaBAC + betaOffRad + alphaOffRad);
+
+    outArr[0] = alphaLen * cosAlpha + rBAC * cosAlphaBeta;
+    outArr[1] = alphaLen * sinAlpha + rBAC * sinAlphaBeta;
+
+    // copied from tangentToWok
+    vec3 wokXYZ = {outArr[0], outArr[1], 0};
+
+    // apply offset calibrations
+    if (dx != 0){
+        wokXYZ[0] += dx;
+    }
+    if (dy != 0){
+        wokXYZ[1] += dy;
+    }
+
+    // apply rotational calibrations
+    // if (dRot != 0){
+    //     // convert dRot to radians
+    //     wokXYZ = rotZ(wokXYZ, dRot, true);
+    // }
+
+    wokXYZ[2] += elementHeight;
+
+    // big assumption here ijkHat are unit vectors along x,y,z
+    wokXYZ[0] += basePos[0];
+    wokXYZ[1] += basePos[1];
+
+
+    return wokXYZ;
+
+}
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -597,5 +659,5 @@ PYBIND11_MODULE(libcoordio, m) {
     m.def("positionerToTangentArr", &positionerToTangentArr);
     m.def("wokToPositionerArr", &wokToPositionerArr);
     m.def("positionerToWokArr", &positionerToWokArr);
-
+    m.def("positionerToWok", &positionerToWok);
 }
