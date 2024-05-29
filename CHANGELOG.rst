@@ -4,6 +4,10 @@
 Change Log
 ==========
 
+1.11.2 (2024-05-29)
+------------------
+* limit gaia source queries to 250 brightest stars per gfa (speeds up crowded field guiding)
+
 1.11.1 (2024-05-08)
 ------------------
 * remove print statements
