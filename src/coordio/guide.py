@@ -1566,7 +1566,7 @@ class SolvePointing:
         ff.close()
 
     def getGaiaSources(self, ra, dec, radius=0.16, magLimit=18):
-        import time; tstart=time.time()
+        # import time; tstart=time.time()
         query = "SELECT source_id, ra, dec, pmra, pmdec, parallax, phot_g_mean_mag, bp_rp"
         query += " FROM %s" % self.db_tab_name
         query += " WHERE q3c_radial_query"
@@ -1574,6 +1574,9 @@ class SolvePointing:
         query += " AND phot_g_mean_mag < %.2f" % magLimit
         # print(query)
         df = pandas.read_sql(query, self.db_conn_st)
+        df = df.sort_values("phot_g_mean_mag")
+        df = df.head(250).reset_index(drop=True)
+        # print("max mag", numpy.max(df.phot_g_mean_mag))
         # print("getGaiaSources took", time.time()-tstart)
         return df.dropna().reset_index(drop=True)
 
@@ -1637,6 +1640,8 @@ class SolvePointing:
 
         matched = matched[matched.drSky < self.skyDistThresh].reset_index(drop=True)
 
+        # print("nmatched wcs", len(matched))
+
         # plt.figure(figsize=(8,8))
         # plt.plot(self.allGaia.ra, self.allGaia.dec, 'o', mfc="none", mec="red")
         # plt.plot(matched.raMeas, matched.decMeas, 'x', color="black")
@@ -1653,6 +1658,7 @@ class SolvePointing:
         #     plt.close("all")
 
         # import pdb; pdb.set_trace()
+        # import time; time.time(); tstart=time.time()
         output = radec2wokxy(
             matched.ra.to_numpy(), matched.dec.to_numpy(), self.GAIA_EPOCH,
             "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
@@ -1660,7 +1666,7 @@ class SolvePointing:
             pmra=matched.pmra.to_numpy(), pmdec=matched.pmdec.to_numpy(),
             parallax=matched.parallax.to_numpy(), fullOutput=True
         )
-
+        # print("radec2wokxy wcs took", time.time()-tstart)
         xPred = output[0]
         yPred = output[1]
         fieldWarn = output[2]
@@ -1703,6 +1709,7 @@ class SolvePointing:
         # print("sources matched", len(self.matchedSources))
 
     def _matchWok(self):
+        # import time; tstart=time.time()
         output = radec2wokxy(
             self.allGaia.ra.to_numpy(), self.allGaia.dec.to_numpy(), self.GAIA_EPOCH,
             "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
@@ -1710,7 +1717,7 @@ class SolvePointing:
             pmra=self.allGaia.pmra.to_numpy(), pmdec=self.allGaia.pmdec.to_numpy(),
             parallax=self.allGaia.parallax.to_numpy(), fullOutput=True
         )
-
+        # print("n gaia", len(self.allGaia), "radec2wokxy took", time.time()-tstart)
         xPred = output[0]
         yPred = output[1]
         fieldWarn = output[2]
@@ -1730,7 +1737,9 @@ class SolvePointing:
 
         xyWokMeas = self.allCentroids[["xWokMeas", "yWokMeas"]].to_numpy()
         xyWokPredict = self.allGaia[["xWokPred", "yWokPred"]].to_numpy()
+        # import time; t1 = time.time()
         matches, indices, minDists = arg_nearest_neighbor(xyWokMeas, xyWokPredict)
+        # print("arg_nearset took", time.time()-t1)
 
         gaiaNN = self.allGaia.iloc[indices].reset_index(drop=True)
         matched = pandas.concat([self.allCentroids, gaiaNN], axis=1)
@@ -1768,7 +1777,7 @@ class SolvePointing:
 
     def _iter(self):
         # matched_df = self.matchedSources
-
+        # print("called _iter()", self.fit_rms)
         nGFAS = len(set(self.matchedSources.gfaNum))
 
         # x = matched_df.xWokMeas.to_numpy()
