@@ -669,7 +669,8 @@ class Moffat2dInterp(object):
         if Noffset is None:
             Noffset = 1500
         if FWHM is None:
-            FWHM = [0.5, 0.8, 1.1, 1.4]
+            defualt = default_Moffat_params()[1]
+            FWHM = [defualt[l][o] for l in ['bright', 'dark'] for o in ['APO', 'LCO']]
         if beta is None:
             beta = default_Moffat_params()[0]
         rfibers = {'APO': 1., 'LCO': 1.33 / 2}
