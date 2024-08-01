@@ -880,8 +880,6 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
         if mag <= mag_limit and mag not in cases and can_offset and mag > offset_bright_limit:
             # linear portion in the wings
             r_wings = ((mag_limit + safety_factor) - mag - 8.2) / 0.05
-            # linear portion in transition area
-            r_trans = ((mag_limit + safety_factor) - mag - 4.5) / 0.25
             # core area
             if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
                 fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
@@ -891,7 +889,7 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
             # tom's old conservative core function
             # r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
-            r = numpy.nanmax([r_wings, r_trans, r_core])
+            r = numpy.nanmax([r_wings, r_core])
         else:
             r = 0.
             if mag > mag_limit:
@@ -912,7 +910,6 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
             can_offset = numpy.zeros(mag.shape, dtype=bool) + True
         # create empty arrays for each portion
         r_wings = numpy.zeros(mag.shape)
-        r_trans = numpy.zeros(mag.shape)
         r_core = numpy.zeros(mag.shape)
         # only do calc for valid mags and can_offsets for offset
         # to avoid warning
@@ -926,8 +923,6 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
         offset_flag[(mag <= offset_bright_limit) & ~((numpy.isin(mag, cases)) | (numpy.isnan(mag)))] += 32
         # linear portion in the wings
         r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
-        # linear portion in transition area
-        r_trans[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 4.5) / 0.25
         # core area
         if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
             fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
@@ -940,7 +935,6 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
         # r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
         r = numpy.nanmax(numpy.column_stack((r_wings,
-                                             r_trans,
                                              r_core)),
                          axis=1)
         if skybrightness is not None and offset_min_skybrightness is not None:
