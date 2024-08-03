@@ -893,7 +893,7 @@ class FVCTransformAPO(object):
        1.01954593e-06,  -2.25406706e-06,   2.50511002e-08,  -9.82154214e-09,
       -4.41479884e-09
     ])
-    telRotAngRef = 135.4
+    telRotAngRef = 147
     rotAngDir = 1
     centType = "zbplus2"
     telescopePlateScale = PLATE_SCALE["APO"]/3600. # mm/arcsec
