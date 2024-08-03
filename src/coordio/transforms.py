@@ -870,7 +870,8 @@ def applyNudgeModel(
 
 class FVCTransformAPO(object):
     # polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
-    polids = numpy.arange(33)
+    # polids = numpy.arange(33)
+    polids = numpy.array([0, 1, 2, 3, 4, 5, 6, 9, 20, 27, 28, 29, 30])
     zbCoeffs = numpy.array([
         3.30790633e-01, 4.13533378e-01, 1.71951213e-03, -9.90141758e-04,
         -4.48460907e-04, -3.68228879e-06, -2.45423918e-06, 3.06249618e-07,
