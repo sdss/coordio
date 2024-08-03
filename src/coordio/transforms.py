@@ -896,7 +896,7 @@ class FVCTransformAPO(object):
     ])
     telRotAngRef = 147
     rotAngDir = 1
-    centType = "zbplus2"
+    centType = "sep"
     telescopePlateScale = PLATE_SCALE["APO"]/3600. # mm/arcsec
     nudgeOffX = 0 #1000 # fix nudge model after FVC resize
     site = "APO"
