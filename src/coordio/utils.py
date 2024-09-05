@@ -642,6 +642,22 @@ class MoffatLossProfile(object):
         return magloss
 
 
+def default_Moffat_params():
+    """
+    Returns the dict of default parameters for
+    the Moffat profile base don observator and lunation
+    """
+    # set beta
+    beta = {}
+    beta['bright'] = {'APO': 1.6, 'LCO': 1.7}
+    beta['dark'] = {'APO': 1.9, 'LCO': 1.8}
+    # set FWHM
+    FWHM = {}
+    FWHM['bright'] = {'APO': 0.5, 'LCO': 0.8}
+    FWHM['dark'] = {'APO': 1.4, 'LCO': 1.1}
+    return beta, FWHM
+
+
 class Moffat2dInterp(object):
     """
     Create the dict of 1D interpolations function
@@ -653,33 +669,45 @@ class Moffat2dInterp(object):
         if Noffset is None:
             Noffset = 1500
         if FWHM is None:
-            FWHM = [1., 1.3, 1.5, 1.7, 1.9]
+            defualt = default_Moffat_params()[1]
+            FWHM = [defualt[l][o] for l in ['bright', 'dark'] for o in ['APO', 'LCO']]
         if beta is None:
-            beta = {'APO': 5., 'LCO': 2.}
+            beta = default_Moffat_params()[0]
         rfibers = {'APO': 1., 'LCO': 1.33 / 2}
         offsets = numpy.zeros((len(FWHM), Noffset))
         FWHMs = numpy.zeros((len(FWHM), Noffset))
         for i, f in enumerate(FWHM):
             FWHMs[i, :] = f
-            offsets[i, :] = numpy.linspace(0, 30, Noffset)
+            offsets[i, :] = numpy.linspace(0, 50, Noffset)
 
         magloss = numpy.zeros((FWHMs.shape[0], Noffset))
 
         fmagloss = {}
-        for obs, rfiber in zip(rfibers.keys(), rfibers.values()):
-            fmagloss[obs] = {}
-            if isinstance(beta, dict):
-                b = beta[obs]
-            else:
-                b = beta
-            for i, f in enumerate(FWHMs[:, 0]):
-                magloss[i, :] = MoffatLossProfile(offsets[i, :], b, f, rfiber=rfiber).func_magloss()
-                fmagloss[obs][f] = interp1d(magloss[i, :], offsets[i, :])
+        # this is for default case to have it by lunation as well
+        if isinstance(beta, dict) and 'bright' in beta.keys():
+            for lunation, beta_lun in zip(beta.keys(), beta.values()):
+                fmagloss[lunation] = {}
+                for obs, rfiber in zip(rfibers.keys(), rfibers.values()):
+                    fmagloss[lunation][obs] = {}
+                    b = beta_lun[obs]
+                    for i, f in enumerate(FWHMs[:, 0]):
+                        magloss[i, :] = MoffatLossProfile(offsets[i, :], b, f, rfiber=rfiber).func_magloss()
+                        fmagloss[lunation][obs][f] = interp1d(magloss[i, :], offsets[i, :])
+        else:
+            for obs, rfiber in zip(rfibers.keys(), rfibers.values()):
+                fmagloss[obs] = {}
+                if isinstance(beta, dict):
+                    b = beta[obs]
+                else:
+                    b = beta
+                for i, f in enumerate(FWHMs[:, 0]):
+                    magloss[i, :] = MoffatLossProfile(offsets[i, :], b, f, rfiber=rfiber).func_magloss()
+                    fmagloss[obs][f] = interp1d(magloss[i, :], offsets[i, :])
         self.fmagloss = fmagloss
         self.beta_interp2d = beta
         self.FWHM_interp2d = FWHM
 
-    def __call__(self, magloss, FWHM, obsSite):
+    def __call__(self, magloss, FWHM, obsSite, lunation=None):
         """
         The cal to return the offset value based on the desired
         magloss.
@@ -697,12 +725,21 @@ class Moffat2dInterp(object):
             The observatory of the observation. Should either be
             'APO' or 'LCO'.
 
+        lunation: str
+            If the designmode is bright time ('bright') or dark
+            time ('dark'). Required if set up using default params.
+
         Returns
         -------
         r: float or numpy.array
             The offset to get the desired magloss in arcseconds.
         """
-        r = self.fmagloss[obsSite][FWHM](magloss)
+        if 'bright' in self.fmagloss.keys():
+            if lunation is None:
+                raise ValueError('Must provide lunation for default function!')
+            r = self.fmagloss[lunation][obsSite][FWHM](magloss)
+        else:
+            r = self.fmagloss[obsSite][FWHM](magloss)
         return r
 
 
@@ -827,19 +864,14 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
                 offset_bright_limit = 13.
         else:
             offset_bright_limit = 1.
+    # assign correct FWHM
+    if FWHM is None:
+        FWHM = default_Moffat_params()[1][lunation][obsSite]
+    if beta is None:
+        beta = default_Moffat_params()[0]
     # get magloss function
     if fmagloss is None:
         fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
-    # assign correct FWHM
-    if FWHM is None:
-        if obsSite == 'APO':
-            FWHM = 1.7
-        elif obsSite == 'LCO':
-            FWHM = 1.
-        else:
-            raise ValueError('obsSite must be APO or LCO.')
-    if beta is None:
-        beta = {'APO': 5., 'LCO': 2.}
     if isinstance(mag, float) or isinstance(mag, int):
         # make can_offset always True if not supplied
         if can_offset is None:
@@ -848,18 +880,16 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
         if mag <= mag_limit and mag not in cases and can_offset and mag > offset_bright_limit:
             # linear portion in the wings
             r_wings = ((mag_limit + safety_factor) - mag - 8.2) / 0.05
-            # linear portion in transition area
-            r_trans = ((mag_limit + safety_factor) - mag - 4.5) / 0.25
             # core area
             if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
                 fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
-                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM, obsSite)
+                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM, obsSite, lunation=lunation)
             else:
-                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM, obsSite)
+                r_core = fmagloss((mag_limit + safety_factor) - mag, FWHM, obsSite, lunation=lunation)
             # tom's old conservative core function
             # r_core = 1.5 * ((mag_limit + safety_factor) - mag) ** 0.8
             # exlusion radius is the max of each section
-            r = numpy.nanmax([r_wings, r_trans, r_core])
+            r = numpy.nanmax([r_wings, r_core])
         else:
             r = 0.
             if mag > mag_limit:
@@ -880,7 +910,6 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
             can_offset = numpy.zeros(mag.shape, dtype=bool) + True
         # create empty arrays for each portion
         r_wings = numpy.zeros(mag.shape)
-        r_trans = numpy.zeros(mag.shape)
         r_core = numpy.zeros(mag.shape)
         # only do calc for valid mags and can_offsets for offset
         # to avoid warning
@@ -894,21 +923,18 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
         offset_flag[(mag <= offset_bright_limit) & ~((numpy.isin(mag, cases)) | (numpy.isnan(mag)))] += 32
         # linear portion in the wings
         r_wings[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 8.2) / 0.05
-        # linear portion in transition area
-        r_trans[mag_valid] = ((mag_limit + safety_factor) - mag[mag_valid] - 4.5) / 0.25
         # core area
         if beta != fmagloss.beta_interp2d or FWHM not in fmagloss.FWHM_interp2d:
             fmagloss = Moffat2dInterp(beta=beta, FWHM=[FWHM])
             r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
-                                         FWHM, obsSite)
+                                         FWHM, obsSite, lunation=lunation)
         else:
             r_core[mag_valid] = fmagloss((mag_limit + safety_factor) - mag[mag_valid],
-                                         FWHM, obsSite)
+                                         FWHM, obsSite, lunation=lunation)
         # tom's old conservative core function
         # r_core[mag_valid] = 1.5 * ((mag_limit + safety_factor) - mag[mag_valid]) ** 0.8
         # exlusion radius is the max of each section
         r = numpy.nanmax(numpy.column_stack((r_wings,
-                                             r_trans,
                                              r_core)),
                          axis=1)
         if skybrightness is not None and offset_min_skybrightness is not None:
@@ -1017,14 +1043,9 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
         else:
             safety_factor = 1.0
     if FWHM is None:
-        if obsSite == 'APO':
-            FWHM = 1.7
-        elif obsSite == 'LCO':
-            FWHM = 1.
-        else:
-            raise ValueError('obsSite must be APO or LCO.')
+        FWHM = default_Moffat_params()[1][lunation][obsSite]
     if beta is None:
-        beta = {'APO': 5., 'LCO': 2.}
+        beta = default_Moffat_params()[0]
     delta_ras = numpy.zeros(mags.shape)
     offset_flags = numpy.zeros(mags.shape)
     for i in range(len(mag_limits)):
