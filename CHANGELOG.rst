@@ -4,6 +4,10 @@
 Change Log
 ==========
 
+1.12.0 (2024-09-05)
+------------------
+* Add new parameters for offset function. Includes new parameters and expanding use of Moffar profile past core.
+
 1.11.2 (2024-05-29)
 ------------------
 * limit gaia source queries to 250 brightest stars per gfa (speeds up crowded field guiding)
