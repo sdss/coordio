@@ -1033,7 +1033,7 @@ class SolvePointing:
         offset_dec: float = 0,
         offset_pa: float = 0,
         db_conn_st: str = "postgresql://sdss_user@operations.sdss.org/sdss5db",
-        db_tab_name: str = "catalogdb.gaia_dr2_source"
+        db_tab_name: str = "catalogdb.gaia_dr2_source_g_lt_18"
     ):
 
         if pt_source is None and None in [raCen, decCen, paCen]:
