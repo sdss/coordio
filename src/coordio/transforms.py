@@ -1213,7 +1213,7 @@ class FVCTransformAPO(object):
         objects = objects.sort_values("rm")
         # take 20 centroids at largest radius
         _g = objects.iloc[-20:]
-        xc, yc, rc, keep = fit_circle(_g.x.to_numpy(), _g.y.to_numpy(), sigma_clip=2)
+        xc, yc, rc, keep = fit_circle(_g.x.to_numpy(), _g.y.to_numpy(), sigma_clip=2.5)
 
         objects["xcirc"] = xc
         objects["ycirc"] = yc
@@ -1694,4 +1694,4 @@ class FVCTransformLCO(FVCTransformAPO):
     nudgeOffX = 0  # fix nudge model after FVC resize
     site = "LCO"
     centroidMinNpix = 20
-    wokCenPix = None
+    wokCenPix = numpy.array([3092.2, 3036.4])
