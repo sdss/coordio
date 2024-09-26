@@ -1542,7 +1542,7 @@ class SolvePointing:
         centroids["xWokMeas"] = xWokMeas
         centroids["yWokMeas"] = yWokMeas
 
-        if wcs is not None:
+        if wcs is not None and "CTYPE1" in wcs.to_header():
             self.gfaWCS[gfaNum] = wcs
             # use wcs to calculate on-sky locations
             # of centroids note these are off by 0.5
