@@ -4,28 +4,41 @@
 Change Log
 ==========
 
+1.13.0 (2024-10-16)
+-------------------
+* Add WCS object validation check (passing an empty WCS in SolvePointing causes problems).
+* Add FVC center pixel info for LCO.
+* Switch to using Pramod's new Gaia DR2 table when running at Utah.
+* Re-implement nudge correction with flexure handling and separate model for outer FIFs.
+
+
 1.12.0 (2024-09-05)
 ------------------
 * Add new parameters for offset function. Includes new parameters and expanding use of Moffar profile past core.
+
 
 1.11.2 (2024-05-29)
 ------------------
 * limit gaia source queries to 250 brightest stars per gfa (speeds up crowded field guiding)
 
+
 1.11.1 (2024-05-08)
 ------------------
 * remove print statements
+
 
 1.11.0 (2024-05-08)
 ------------------
 * Add new guide fitter (SolvePointing class), implements a gaia based iterative fitter for pointing solutions.
 * Add sped up array based conversions between wok and positioner coords.
 
+
 1.10.0 (2024-03-07)
 ------------------
 
 * Change default focal plane scale factor to 1.0003 after new IMB installed
 * Add set of zbplus coefficients (probably bad ones, but whatever) to the transforms.FVCTransformLCO class.
+
 
 1.9.3 (2024-01-27)
 ------------------
