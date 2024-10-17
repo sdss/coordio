@@ -1033,7 +1033,7 @@ class SolvePointing:
         offset_dec: float = 0,
         offset_pa: float = 0,
         db_conn_st: str = "postgresql://sdss_user@operations.sdss.org/sdss5db",
-        db_tab_name: str = "catalogdb.gaia_dr2_source"
+        db_tab_name: str = "catalogdb.gaia_dr2_source_g_lt_18"
     ):
 
         if pt_source is None and None in [raCen, decCen, paCen]:
@@ -1542,7 +1542,7 @@ class SolvePointing:
         centroids["xWokMeas"] = xWokMeas
         centroids["yWokMeas"] = yWokMeas
 
-        if wcs is not None:
+        if wcs is not None and "CTYPE1" in wcs.to_header():
             self.gfaWCS[gfaNum] = wcs
             # use wcs to calculate on-sky locations
             # of centroids note these are off by 0.5

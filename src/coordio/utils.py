@@ -5,6 +5,9 @@ import os
 import numpy
 import pandas
 from scipy.interpolate import interp1d
+from scipy import optimize
+from functools import partial
+from astropy import stats
 
 from . import defaults
 from .site import Site
@@ -1176,3 +1179,65 @@ def gaia_mags2sdss_gri(gaia_g, gaia_bp=None, gaia_rp=None, gaia_bp_rp=None):
                        0.10141 * gaia_bp_rp**2)
 
     return sdss_g, sdss_r, sdss_i
+
+
+def calc_R(xc, yc, x, y):
+    """ calculate the distance of each 2D points from the center (xc, yc) """
+    return numpy.sqrt((x-xc)**2 + (y-yc)**2)
+
+
+def f_2(c, x, y):
+    """ calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
+    Ri = calc_R(c[0], c[1], x, y)
+    return Ri - Ri.mean()
+
+
+def fit_circle(xs, ys, sigma_clip=None):
+    """
+    Fit  a circle to xy inputs xs, ys
+
+    If sigma clip, iteratavely throw out xs ys outliers until no
+    outliers remain.
+
+    Based on https://scipy-cookbook.readthedocs.io/items/Least_Squares_Circle.html
+
+    returns:
+        xcenter: x center of the circle
+        ycenter: y center of the circle
+        radius: radius of the circle
+        keep: ndarray indicating indices in xs/ys used for fitting.
+
+    """
+    xs = numpy.array(xs)
+    ys = numpy.array(ys)
+
+    center_estimate = [xs.mean(), ys.mean()]
+    keep = numpy.array([True]*len(xs))
+
+    xkeep = xs[keep]
+    ykeep = ys[keep]
+    _f_2 = partial(f_2, x=xkeep, y=ykeep)
+    center_fit, ier = optimize.leastsq(_f_2, center_estimate)
+    rs = calc_R(center_fit[0], center_fit[1], xkeep, ykeep)
+    radius_fit = rs.mean()
+
+    if sigma_clip is not None:
+        # throw out data until there are no outliers
+        mask = stats.sigma_clip(rs, sigma=sigma_clip, masked=True)
+        keep = ~mask.mask
+        xkeep = xs[keep]
+        ykeep = ys[keep]
+        _f_2 = partial(f_2, x=xkeep, y=ykeep)
+        center_fit, ier = optimize.leastsq(_f_2, center_estimate)
+        rs = calc_R(center_fit[0], center_fit[1], xkeep, ykeep)
+        radius_fit = rs.mean()
+
+    return center_fit[0], center_fit[1], radius_fit, keep
+
+
+
+
+
+
+
+
