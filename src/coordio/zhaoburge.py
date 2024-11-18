@@ -1,6 +1,10 @@
-# code copied from https://github.com/desihub/desimeter/blob/0.6.7/py/desimeter/transform/zhaoburge.py
+# code in this file copied from
+# https://github.com/desihub/desimeter/blob/0.6.7/py/desimeter/transform/zhaoburge.py
 # with permission from  https://github.com/desihub/desimeter/blob/0.6.7/LICENSE.rst
 # and help from Stephen Bailey, Julien Guy, Michael Lampton et al.
+
+# several routines slightly modified from original
+# DESI implementation by C. Sayres.
 
 # code extracted from DESI-3798 IterFitter8.py
 
@@ -342,9 +346,11 @@ def fitZhaoBurge(x, y, xp, yp, polids=None, normFactor=1):
 
     # print("H shape", H.shape)
 
-    A = H.T.dot(H)
-    b = H.T.dot(np.concatenate([dx, dy]))
-    # print("shapes", A.shape, b.shape)
-    coeffs = np.linalg.solve(A, b)
+    # A = H.T.dot(H)
+    # b = H.T.dot(np.concatenate([dx, dy]))
+    # # print("shapes", A.shape, b.shape)
+    # coeffs = np.linalg.solve(A, b)
+
+    coeffs = np.linalg.leastsq(H, np.concatenate([dx, dy]))
 
     return polids, coeffs
