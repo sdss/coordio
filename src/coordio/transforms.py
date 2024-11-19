@@ -594,8 +594,8 @@ class ZhaoBurgeTransform(object):
             xyWok[:, 1],
             polids=self.polids,
             normFactor=self.normFactor,
-            x_var=_weights,
-            y_var=_weights
+            x_var=weights,
+            y_var=weights
         )
 
         dx, dy = getZhaoBurgeXY(
