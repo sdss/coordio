@@ -3,8 +3,8 @@
 # with permission from  https://github.com/desihub/desimeter/blob/0.6.7/LICENSE.rst
 # and help from Stephen Bailey, Julien Guy, Michael Lampton et al.
 
-# several routines slightly modified from original
-# DESI implementation by C. Sayres.
+# several routines slightly modified by C. Sayres from original
+# DESI implementation.
 
 # code extracted from DESI-3798 IterFitter8.py
 
@@ -317,7 +317,8 @@ def fit_scale_rotation_offset(x, y, xp, yp, fitzb=False, zbpolids=None, zbcoeffs
         return scale, rotation, offset_x, offset_y
 
 
-def fitZhaoBurge(x, y, xp, yp, polids=None, normFactor=1):
+def fitZhaoBurge(x, y, xp, yp, polids=None, normFactor=1, x_var=None, y_var=None):
+
     x = x / normFactor
     y = y / normFactor
     xp = xp / normFactor
@@ -350,7 +351,18 @@ def fitZhaoBurge(x, y, xp, yp, polids=None, normFactor=1):
     # b = H.T.dot(np.concatenate([dx, dy]))
     # # print("shapes", A.shape, b.shape)
     # coeffs = np.linalg.solve(A, b)
+    # print("n coeffs 1", len(coeffs))
+    b = np.concatenate([dx, dy])
+    if x_var is not None:
+        # perform weighted least squares fit
+        xy_invar = 1 / np.concatenate([x_var, y_var])
+        W = np.diag(xy_invar)
+        _H = H.T @ W @ H
+        _b = H.T @ W @ b
+        H = _H
+        b = _b
+    coeffs = np.linalg.lstsq(H, b)[0]
 
-    coeffs = np.linalg.leastsq(H, np.concatenate([dx, dy]))
+    # print("n coeffs 2", len(coeffs))
 
     return polids, coeffs

@@ -475,7 +475,7 @@ class ZhaoBurgeTransform(object):
     2D vector polynomials.
     """
 
-    def __init__(self, xyCCD, xyWok, polids=None, normFactor=1):
+    def __init__(self, xyCCD, xyWok, polids=None, normFactor=1, weights=None):
         """ Compute a transformation between xyCCD and xyWok using
         Zhao-Burge polynomials
 
@@ -495,6 +495,8 @@ class ZhaoBurgeTransform(object):
             use is for moving coordinates to unit circle. 330 is a good
             choice, but default is 1 to remain backwards compatible
             (no normalization)
+        weights : numpy.ndarray or None
+            Nx1 array of variances for weighting fit
 
         Attributes
         -------------
@@ -523,7 +525,7 @@ class ZhaoBurgeTransform(object):
 
         if polids is None:
             self.polids = numpy.array(
-                [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29], dtype=numpy.int16
+                [0, 1, 2, 3, 4, 5, 6, 9, 20, 27, 28, 29, 30], dtype=numpy.int16
             )
         else:
             self.polids = numpy.array(polids, dtype=numpy.int16)
@@ -545,9 +547,15 @@ class ZhaoBurgeTransform(object):
         self.unbiasedErrs = []
         for ii in range(len(xyCCD)):
             _xyWok = xyWok.copy()
+            if weights is not None:
+                _weights = weights.copy()
+            else:
+                _weights = None
             _xySimTransFit = xySimTransFit.copy()
+
             _xyWok = numpy.delete(_xyWok, ii, axis=0)
             _xySimTransFit = numpy.delete(_xySimTransFit, ii, axis=0)
+            _weights = numpy.delete(_weights, ii)
             fitCheck = numpy.array(xySimTransFit[ii, :]).reshape((1, 2))
             destCheck = numpy.array(xyWok[ii, :]).reshape((1, 2))
 
@@ -557,7 +565,9 @@ class ZhaoBurgeTransform(object):
                 _xyWok[:, 0],
                 _xyWok[:, 1],
                 polids=self.polids,
-                normFactor=self.normFactor
+                normFactor=self.normFactor,
+                x_var=_weights,
+                y_var=_weights
             )
 
             dx, dy = getZhaoBurgeXY(
@@ -583,7 +593,9 @@ class ZhaoBurgeTransform(object):
             xyWok[:, 0],
             xyWok[:, 1],
             polids=self.polids,
-            normFactor=self.normFactor
+            normFactor=self.normFactor,
+            x_var=_weights,
+            y_var=_weights
         )
 
         dx, dy = getZhaoBurgeXY(
@@ -1382,6 +1394,10 @@ class FVCTransformAPO(object):
         ].to_numpy()
 
         xyWokFIF = self.fiducialCoords[["xWok", "yWok"]].to_numpy()
+        if "xyVar" in self.fiducialCoords.columns:
+            fifWeights = self.fiducialCoords.xyVar.to_numpy()
+        else:
+            fifWeights = None
 
         # if self.centType == "winpos":
         #     xyCCDRot = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
@@ -1466,6 +1482,10 @@ class FVCTransformAPO(object):
         self.nFIF_expect = len(xyWokFIF)
         _xyWokFIF = xyWokFIF[xyWokFIF_idx]
         self.nFIF_found = len(_xyWokFIF)
+        if fifWeights is not None:
+            _fifWeights = fifWeights[xyWokFIF_idx]
+        else:
+            _fifWeights = None
 
         #plot similarity transform
         if self.plotPathPrefix is not None:
@@ -1491,7 +1511,8 @@ class FVCTransformAPO(object):
             xyCCDFIF,
             _xyWokFIF,
             polids=self.polids,
-            normFactor=self.zbNormFactor
+            normFactor=self.zbNormFactor,
+            weights=_fifWeights
         )
 
         xyWokMeas = self.fullTransform.apply(xyCCD)
