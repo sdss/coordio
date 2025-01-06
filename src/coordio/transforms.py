@@ -8,6 +8,7 @@ import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
 import numpy
 import pandas
+pandas.options.mode.chained_assignment = None
 import scipy
 import sep
 from skimage.transform import SimilarityTransform
