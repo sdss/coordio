@@ -420,7 +420,7 @@ class ZernFit(object):
 
         # solve Ax=b for x (the coefficients)
         self.coeff, resid, rank, s = numpy.linalg.lstsq(
-            self.zxyStack, self.exyStack
+            self.zxyStack, self.exyStack, rcond=None
         )
 
     def apply(self, xMeas, yMeas):

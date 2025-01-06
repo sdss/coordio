@@ -363,7 +363,7 @@ def fitZhaoBurge(x, y, xp, yp, polids=None, normFactor=1, x_var=None, y_var=None
         _b = H.T @ W @ b
         H = _H
         b = _b
-    coeffs = np.linalg.lstsq(H, b)[0]
+    coeffs = np.linalg.lstsq(H, b, rcond=None)[0]
 
     # print("n coeffs 2", len(coeffs))
 

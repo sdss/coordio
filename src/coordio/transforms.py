@@ -955,11 +955,11 @@ class FVCTransformAPO(object):
     ])
     telRotAngRef = 147
     rotAngDir = 1
-    centType = "sep"
+    centType = "nudge"
     telescopePlateScale = PLATE_SCALE["APO"]/3600. # mm/arcsec
     nudgeOffX = 0 #1000 # fix nudge model after FVC resize
     site = "APO"
-    centroidMinNpix = 100
+    centroidMinNpix = 20
     wokCenPix = numpy.array([2915.5, 2995.6])
 
     def __init__(
@@ -1353,7 +1353,7 @@ class FVCTransformAPO(object):
         self,
         centType=None,
         maxRoughDist=10,
-        maxMidDist=4,
+        maxMidDist=2.5,
         maxFinalDist=0.5,
         newInvKin=True
     ):
