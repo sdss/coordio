@@ -8,7 +8,7 @@ import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
 import numpy
 import pandas
-pandas.options.mode.chained_assignment = None
+# pandas.options.mode.chained_assignment = None
 import scipy
 import sep
 from skimage.transform import SimilarityTransform
@@ -1240,34 +1240,61 @@ class FVCTransformAPO(object):
             objects["yFlex"] = objects.yFlex + dy
 
 
-        objects["xNudge"] = objects.xFlex
-        objects["yNudge"] = objects.yFlex
-        objects["outerNudge"] = False
+        # objects["xNudge"] = objects.xFlex
+        # objects["yNudge"] = objects.yFlex
+        # objects["outerNudge"] = False
+
+        _xNudge = objects.xFlex.to_numpy()
+        _yNudge = objects.yFlex.to_numpy()
+        _outerNudge = numpy.array([False]*len(_xNudge))
+
+        # objcopy  = objects.copy()
 
         # apply nudge model
         # perturb outer fifs by fourier modeling
         for ii, _keep in enumerate(keep):
             if _keep:
-                objects["outerNudge"].iloc[-20+ii] = True
-                xOld = objects["xNudge"].iloc[-20+ii]
-                yOld = objects["yNudge"].iloc[-20+ii]
+                _outerNudge[-20+ii] = True
+                xOld = _xNudge[-20+ii]
+                yOld = _yNudge[-20+ii]
+
+                # objects["outerNudge"].iloc[-20+ii] = True
+                # xOld = objects["xNudge"].iloc[-20+ii]
+                # yOld = objects["yNudge"].iloc[-20+ii]
+
                 xNew, yNew = applyNudgeModelOuter(
                     xOld, yOld, self.wokCenPix[0], self.wokCenPix[1], site=self.site
                     )
-                objects["xNudge"].iloc[-20+ii] = xNew
-                objects["yNudge"].iloc[-20+ii] = yNew
+
+                _xNudge[-20+ii] = xNew
+                _yNudge[-20+ii] = yNew
+
+                # objects["xNudge"].iloc[-20+ii] = xNew
+                # objects["yNudge"].iloc[-20+ii] = yNew
+
+                # objcopy.iloc[-20+ii, "xNudge"] = xNew
+                # objcopy.iloc[-20+ii, "yNudge"] = yNew
 
         # apply global nudge model to every other centroid
         xNudge, yNudge = applyNudgeModel(
-            objects["xNudge"], objects["yNudge"], site=self.site, beta_x=beta_x, beta_y=beta_y
+            _xNudge, _yNudge, site=self.site, beta_x=beta_x, beta_y=beta_y
         )
-        innerNudge = objects.outerNudge == False
-        objects["xNudge"].iloc[innerNudge] = xNudge[innerNudge]
-        objects["yNudge"].iloc[innerNudge] = yNudge[innerNudge]
+
+        innerNudge = _outerNudge == False
+        _xNudge[innerNudge] = xNudge[innerNudge]
+        _yNudge[innerNudge] = yNudge[innerNudge]
+
+        objects["xNudge"] = _xNudge
+        objects["yNudge"] = _yNudge
+        objects["outerNudge"] = _outerNudge
+
+        # objcopy.iloc[innerNudge, "xNudge"] = xNudge[innerNudge]
+        # objcopy.iloc[innerNudge, "yNudge"] = yNudge[innerNudge]
 
         objects["xSimple"] = objects.x
         objects["ySimple"] = objects.y
 
+        # import pdb; pdb.set_trace()
         ### compute nudge
 
         # don't fit anything with an absolute correction > 0.75 pixels
