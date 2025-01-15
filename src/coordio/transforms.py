@@ -556,7 +556,8 @@ class ZhaoBurgeTransform(object):
 
             _xyWok = numpy.delete(_xyWok, ii, axis=0)
             _xySimTransFit = numpy.delete(_xySimTransFit, ii, axis=0)
-            _weights = numpy.delete(_weights, ii)
+            if _weights is not None:
+                _weights = numpy.delete(_weights, ii)
             fitCheck = numpy.array(xySimTransFit[ii, :]).reshape((1, 2))
             destCheck = numpy.array(xyWok[ii, :]).reshape((1, 2))
 
