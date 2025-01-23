@@ -353,7 +353,15 @@ def fitZhaoBurge(x, y, xp, yp, polids=None, normFactor=1, x_var=None, y_var=None
     # coeffs = np.linalg.solve(A, b)
     # print("n coeffs 1", len(coeffs))
     b = np.concatenate([dx, dy])
-    if bool(x_var) and not True in np.isnan(x_var):
+    varsOK = True
+    if x_var is None:
+        varsOK = False
+    elif hasattr(x_var, "__len__"):
+        if len(x_var) != len(x):
+            varsOK = False
+        if True in np.isnan(x_var):
+            varsOK = False
+    if varsOK:
         # x_var (and presumably y_var) are defined
         # so do weighted fit instead
         # perform weighted least squares fit
