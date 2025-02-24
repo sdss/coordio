@@ -4,6 +4,10 @@
 Change Log
 ==========
 
+1.14.0 (2025-02-24)
+-------------------
+* Add a weighted fitting routine for the zhao burge transforms based on fiducial variance seen in dither analysis.
+
 1.13.0 (2024-10-16)
 -------------------
 * Add WCS object validation check (passing an empty WCS in SolvePointing causes problems).
