@@ -1198,8 +1198,12 @@ class FVCTransformAPO(object):
             err=self.bkg.globalrms,
         )
 
+        if len(objects) == 0:
+            raise CoordIOError("Too few centroids found in image")
         # get rid of obvious bogus detections
         objects = objects[objects["npix"] > self.centroidMinNpix]
+        if len(objects) < 80:
+            raise CoordIOError("Too few centroids found in image")
         # remove detections near edges of chip
         # (causes issues for unlucky winpos detections)
         # objects = objects[objects["x"] > 500]
