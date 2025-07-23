@@ -652,12 +652,12 @@ def default_Moffat_params():
     """
     # set beta
     beta = {}
-    beta['bright'] = {'APO': 1.6, 'LCO': 1.7}
-    beta['dark'] = {'APO': 1.9, 'LCO': 1.8}
+    beta['bright'] = {'APO': 1.66, 'LCO': 1.78}
+    beta['dark'] = {'APO': 1.87, 'LCO': 1.90}
     # set FWHM
     FWHM = {}
-    FWHM['bright'] = {'APO': 0.5, 'LCO': 0.8}
-    FWHM['dark'] = {'APO': 1.4, 'LCO': 1.1}
+    FWHM['bright'] = {'APO': 0.57, 'LCO': 0.69}
+    FWHM['dark'] = {'APO': 0.70, 'LCO': 0.62}
     return beta, FWHM
 
 
