@@ -15,7 +15,6 @@ import numpy
 from . import config, sofa
 from .exceptions import CoordIOError, CoordIOUserWarning
 
-
 BASE_URL = 'https://datacenter.iers.org/products/eop/rapid/'
 
 

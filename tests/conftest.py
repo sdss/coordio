@@ -10,7 +10,9 @@ import pathlib
 import urllib.request
 
 import pytest
+
 from coordio import config
+from coordio.iers import IERS
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +37,8 @@ def iers_data_path():
 
 @pytest.fixture(autouse=True)
 def mock_iers(mocker, iers_data_path):
+    # Mock MJD
+    mocker.patch.object(IERS, '_get_current_jd', return_value= 2448690)
 
     iers_data_file = iers_data_path / 'finals2000A.data.csv'
 
