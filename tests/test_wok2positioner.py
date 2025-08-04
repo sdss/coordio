@@ -12,15 +12,16 @@ def test_wok2positioner(plot=False):
 
     nCoords = 10000
     alphas = numpy.random.uniform(size=nCoords)*360
-    betas = numpy.random.uniform(size=nCoords)*178 + 2
+    # betas = numpy.random.uniform(size=nCoords)*178 + 2
+    betas = numpy.random.uniform(size=nCoords)*180
 
     mtSamp = mt.sample(n=nCoords, replace=True)
 
-    xBeta = mtSamp.bossX.to_numpy()
-    yBeta = mtSamp.bossY.to_numpy()
+    xBeta = mtSamp.metX.to_numpy()
+    yBeta = mtSamp.metY.to_numpy()
     la = mtSamp.alphaArmLen.to_numpy()
-    alphaOffDeg = mtSamp.alphaOffset.to_numpy()
-    betaOffDeg = mtSamp.betaOffset.to_numpy()
+    alphaOffDeg = mtSamp.alphaOffset.to_numpy() * 0
+    betaOffDeg = mtSamp.betaOffset.to_numpy() * 0
     basePos = mtSamp[["xWok", "yWok", "zWok"]].to_numpy()
     iHat = mtSamp[["ix", "iy", "iz"]].to_numpy()
     jHat = mtSamp[["jx", "jy", "jz"]].to_numpy()
@@ -57,10 +58,10 @@ def test_wok2positioner(plot=False):
         plt.axis('equal')
 
         plt.figure()
-        plt.plot(alphas, _alphas, '.k')
+        plt.plot(alphas, alphaErr, '.k')
 
         plt.figure()
-        plt.plot(betas, _betas, '.k')
+        plt.plot(betas, betaErr, '.k')
 
         # plt.figure()
         # plt.hist(alphaErr, bins=numpy.linspace(-.01, .01, 100))
