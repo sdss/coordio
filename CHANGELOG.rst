@@ -4,9 +4,18 @@
 Change Log
 ==========
 
+1.15.0 (2025-08-04)
+-------------------
+* Update default scale settings for APO and LCO.
+* Add new default offset function values for iota.
+* Pin ``pybind11`` to 3.0.0.
+* Fix some tests.
+
+
 1.14.0 (2025-02-24)
 -------------------
 * Add a weighted fitting routine for the zhao burge transforms based on fiducial variance seen in dither analysis.
+
 
 1.13.0 (2024-10-16)
 -------------------
