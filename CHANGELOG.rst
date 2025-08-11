@@ -4,6 +4,11 @@
 Change Log
 ==========
 
+Next release
+------------
+* Update SOFA library to 2023-10-11.
+
+
 1.15.0 (2025-08-04)
 -------------------
 * Update default scale settings for APO and LCO.
