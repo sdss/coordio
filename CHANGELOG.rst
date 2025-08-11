@@ -4,8 +4,8 @@
 Change Log
 ==========
 
-Next release
-------------
+1.16.0 (2025-08-11)
+-------------------
 * Update SOFA library to 2023-10-11.
 
 
