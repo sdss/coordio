@@ -947,9 +947,81 @@ def offset_definition(mag, mag_limits, lunation, waveName, obsSite, fmagloss=Non
     return r, offset_flag
 
 
+def offset_valid_check(mags, mag_limits, offset_flag, program):
+    """
+    check if the offset returned is a valid value or not for a set of targets
+
+    Parameters
+    ----------
+    mags: numpy.array
+        The magniutdes of the objects. Should be a 2D, Nx10 array, where
+        N is number of objects and length of 10 index should correspond
+        to magntidues: [g, r, i, z, bp, gaia_g, rp, J, H, K].
+
+    mag_limits: numpy.array
+        Magnitude limits for the designmode of the design.
+        This should be an array of length N=10 where indexes
+        correspond to magntidues: [g, r, i, z, bp, gaia_g, rp, J, H, K].
+        This matches the apogee_bright_limit_targets_min or
+        boss_bright_limit_targets_min (depending on instrument) from
+        targetdb.DesignMode for the design_mode of the design.
+    
+    offset_flag: numpy.array
+        bitmask for how offset was set in
+        numpy array of length N. Flags are:
+            - 0: offset applied normally (i.e. when mag <= mag_limit)
+            - 1: no offset applied because mag > mag_limit
+            - 2: no offset applied because magnitude was null value.
+            - 8: offsets should not be used as sky brightness is <=
+                 minimum offset sky brightness
+            - 16: no offsets applied because can_offset = False
+            - 32: no offset applied because mag <= offset_bright_limit
+                  (offset_bright_limit is G = 6 for Boss bright time and
+                   G = 13 for Boss dark time, and
+                   H = 1 for Apogee).
+            - 64: no offset applied because no valid magnitude limits
+    
+    program: numpy.array
+        The program for each object
+    
+    Returns
+    ---------
+    offset_valid: numpy.array
+        Boolean array if the offset is valid or not
+    """
+    # make bad mag cases nan
+    cases = [-999, -9999, 999, 0.0, numpy.nan, 99.9, None]
+    mags[numpy.isin(mags, cases)] = numpy.nan
+
+    # check stars that are too bright for design mode
+    mag_limits = numpy.array(mag_limits)
+    valid_ind = numpy.where(numpy.array(mag_limits) != -999.0)[0]
+    mag_bright = numpy.any(mags[:, valid_ind] < mag_limits[valid_ind], axis=1)
+
+    # check offset flags to see if should be used or not
+    offset_valid = numpy.zeros(len(mags), dtype=bool)
+    for i, fl in enumerate(offset_flag):
+        # manually check bad flags
+        if program[i] == "SKY" or "ops" in program[i]:
+            offset_valid[i] = True
+        elif 8 & int(fl) and mag_bright[i]:
+            # if below sky brightness and brighter than mag limit
+            offset_valid[i] = False
+        elif 16 & int(fl) and mag_bright[i]:
+            # if can_offset False and brighter than mag limit
+            offset_valid[i] = False
+        elif 32 & int(fl):
+            # if brighter than safety limit
+            offset_valid[i] = False
+        else:
+            offset_valid[i] = True
+    return offset_valid
+
+
 def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
                   safety_factor=None, beta=None, FWHM=None, skybrightness=None,
-                  offset_min_skybrightness=None, can_offset=None):
+                  offset_min_skybrightness=None, can_offset=None,
+                  check_valid_offset=False, program=None):
     """
     Returns the offset needed for object with mag to be
     observed at mag_limit. Currently assumption is all offsets
@@ -1008,6 +1080,14 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
         can_offset value from targetdb for the target(s) to be
         offset. Only set if
         want to check for offset_flag NO_CAN_OFFSET (16).
+    
+    check_valid_offset: boolean
+        Whether or not to check for valid offsets. Program must be
+        set for this to be returned as well.
+    
+    program: numpy.array
+        Program of the targets being offset. Needed for valid offset
+        check.
 
     Returns
     -------
@@ -1033,6 +1113,10 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
                    G = 13 for Boss dark time, and
                    H = 1 for Apogee).
             - 64: no offset applied because no valid magnitude limits
+    
+    offset_valid: numpy.array
+        Boolean array if the offset is valid or not. Only returned if 
+        check_valid_offset = True and program is not None
     """
     # check if 2D array
     if len(mags.shape) != 2:
@@ -1076,9 +1160,12 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
         total_flags = numpy.sum(numpy.unique(unq_flags))
         return numpy.zeros(flags.shape) + total_flags
     try:
-        offset_flags[numpy.all(delta_ras == 0., 1)] = numpy.apply_along_axis(unique_offset_flags,
-                                                                             1,
-                                                                             offset_flags[numpy.all(delta_ras == 0., 1)])
+        # catch all where entire row is == 0 or flag 32 thrown
+        # need to remove flag 32 things
+        ev_off = (numpy.all(delta_ras == 0., 1)) | (numpy.any(offset_flags == 32, 1))
+        offset_flags[ev_off] = numpy.apply_along_axis(unique_offset_flags,
+                                                      1,
+                                                      offset_flags[ev_off])
     except ValueError:
         pass
     # use max offset
@@ -1087,7 +1174,16 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
     offset_flag = numpy.array([offset_flags[i, j] for i, j in enumerate(ind_max)],
                               dtype=int)
     delta_dec = numpy.zeros(len(delta_ra))
-    return delta_ra, delta_dec, offset_flag
+
+    # zero out things with flag 32 in them but delta_ra > 0
+    delta_ra[(delta_ra > 0) & (offset_flag > 0)] = 0.
+    if check_valid_offset:
+        if program is None:
+            raise ValueError('Must provide program to check valid offsets!')
+        offset_valid = offset_valid_check(mags, mag_limits, offset_flag, program)
+        return delta_ra, delta_dec, offset_flag, offset_valid
+    else:
+        return delta_ra, delta_dec, offset_flag
 
 def _offset_radec(ra=None, dec=None, delta_ra=0., delta_dec=0.):
     """Offsets ra and dec according to specified amount. From Mike's

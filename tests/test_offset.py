@@ -65,7 +65,7 @@ def test_all_flags():
     offset_min_skybrightness = 1
     waveName = 'Boss'
     lunation = 'bright'
-    flags_test = [0, 1, 2, 8, 16, 32]
+    flags_test = [0, 1, 2, 8, 16, 32, 32]
     flags_test = [f if f == 0 else f + 64 for f in flags_test]
 
     test_mags = []
@@ -75,9 +75,11 @@ def test_all_flags():
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([5. if m != -999. else m for m in mag_limits[lunation][waveName]]))
+    test_mags.append(numpy.array([7. if m != -999. else m for m in mag_limits[lunation][waveName]]))
+    test_mags[-1][0] = 5.
 
-    skybrightness = [None, None, None, 0.3, None, None]
-    can_offset = [None, None, None, None, False, None]
+    skybrightness = [None, None, None, 0.3, None, None, None]
+    can_offset = [None, None, None, None, False, None, None]
     for flag, mag, sky, can_off in zip(flags_test, test_mags, skybrightness, can_offset):
         test_flags(flag, mag, mag_limits[lunation][waveName], lunation, waveName,
                    sky, offset_min_skybrightness, can_off)
@@ -86,7 +88,7 @@ def test_all_flags():
     offset_min_skybrightness = 1
     waveName = 'Boss'
     lunation = 'dark'
-    flags_test = [0, 1, 2, 8, 16, 32]
+    flags_test = [0, 1, 2, 8, 16, 32, 32]
     flags_test = [f if f == 0 else f + 64 for f in flags_test]
     
     test_mags = []
@@ -96,9 +98,11 @@ def test_all_flags():
     test_mags.append(numpy.array([m - 1 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([m - 1 if m != -999. else m for m in mag_limits[lunation][waveName]]))
     test_mags.append(numpy.array([12. if m != -999. else m for m in mag_limits[lunation][waveName]]))
+    test_mags.append(numpy.array([14. if m != -999. else m for m in mag_limits[lunation][waveName]]))
+    test_mags[-1][0] = 12.
 
-    skybrightness = [None, None, None, 0.3, None, None]
-    can_offset = [None, None, None, None, False, None]
+    skybrightness = [None, None, None, 0.3, None, None, None]
+    can_offset = [None, None, None, None, False, None, None]
     for flag, mag, sky, can_off in zip(flags_test, test_mags, skybrightness, can_offset):
         test_flags(flag, mag, mag_limits[lunation][waveName], lunation, waveName,
                    sky, offset_min_skybrightness, can_off)
