@@ -17,7 +17,7 @@ fmagloss = Moffat2dInterp()
 
 def test_all_flags():
     def  test_flags(flag, mag, mag_limits, lunation, waveName,
-                    sky, offset_min_skybrightness, can_off):
+                    sky, offset_min_skybrightness, can_off, offset_val):
         # test APO fails with 1D array
         with pytest.raises(ValueError, match='mags must be a 2D numpy.array of shape \\(N, 10\\)'):
             delta_ra, delta_dec, offset_flag = object_offset(mag, mag_limits, lunation,
@@ -61,12 +61,39 @@ def test_all_flags():
             assert numpy.all(delta_ra == 0.)
         else:
             assert numpy.all(delta_ra > 0.)
+
+        # check offset_valid
+        with pytest.raises(ValueError, match='Must provide program to check valid offsets!'):
+            delta_ra, delta_dec, offset_flag, valid_offset = object_offset(
+                numpy.vstack((mag, mag)), mag_limits, lunation,
+                waveName, 'APO', fmagloss=fmagloss,
+                skybrightness=sky,
+                offset_min_skybrightness=offset_min_skybrightness,
+                can_offset=can_off,
+                check_valid_offset=True)
+        delta_ra, delta_dec, offset_flag, valid_offset = object_offset(
+            numpy.vstack((mag, mag)), mag_limits, lunation,
+            waveName, 'APO', fmagloss=fmagloss,
+            skybrightness=sky,
+            offset_min_skybrightness=offset_min_skybrightness,
+            can_offset=can_off,
+            check_valid_offset=True,
+            program=numpy.array(['science',
+                                'science']))
+        assert numpy.all(offset_flag == flag)
+        assert numpy.all(delta_dec == 0.)
+        if flag > 0:
+            assert numpy.all(delta_ra == 0.)
+        else:
+            assert numpy.all(delta_ra > 0.)
+        assert numpy.all(valid_offset == offset_val)
     # Boss Bright
     offset_min_skybrightness = 1
     waveName = 'Boss'
     lunation = 'bright'
     flags_test = [0, 1, 2, 8, 16, 32, 32]
     flags_test = [f if f == 0 else f + 64 for f in flags_test]
+    offset_valid = [True, True, True, False, False, False, False]
 
     test_mags = []
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
@@ -80,9 +107,9 @@ def test_all_flags():
 
     skybrightness = [None, None, None, 0.3, None, None, None]
     can_offset = [None, None, None, None, False, None, None]
-    for flag, mag, sky, can_off in zip(flags_test, test_mags, skybrightness, can_offset):
+    for flag, mag, sky, can_off, offset_val in zip(flags_test, test_mags, skybrightness, can_offset, offset_valid):
         test_flags(flag, mag, mag_limits[lunation][waveName], lunation, waveName,
-                   sky, offset_min_skybrightness, can_off)
+                   sky, offset_min_skybrightness, can_off, offset_val)
 
     # Boss dark
     offset_min_skybrightness = 1
@@ -90,6 +117,7 @@ def test_all_flags():
     lunation = 'dark'
     flags_test = [0, 1, 2, 8, 16, 32, 32]
     flags_test = [f if f == 0 else f + 64 for f in flags_test]
+    offset_valid = [True, True, True, False, False, False, False]
     
     test_mags = []
     test_mags.append(numpy.array([m - 1 if m != -999. else m for m in mag_limits[lunation][waveName]]))
@@ -103,9 +131,9 @@ def test_all_flags():
 
     skybrightness = [None, None, None, 0.3, None, None, None]
     can_offset = [None, None, None, None, False, None, None]
-    for flag, mag, sky, can_off in zip(flags_test, test_mags, skybrightness, can_offset):
+    for flag, mag, sky, can_off, offset_val in zip(flags_test, test_mags, skybrightness, can_offset, offset_valid):
         test_flags(flag, mag, mag_limits[lunation][waveName], lunation, waveName,
-                   sky, offset_min_skybrightness, can_off)
+                   sky, offset_min_skybrightness, can_off, offset_val)
 
     # Apogee bright
     offset_min_skybrightness = 1
@@ -113,6 +141,7 @@ def test_all_flags():
     lunation = 'bright'
     flags_test = [0, 1, 2, 8, 16, 32]
     flags_test = [f if f == 0 else f + 64 for f in flags_test]
+    offset_valid = [True, True, True, False, False, False]
     
     test_mags = []
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
@@ -124,9 +153,9 @@ def test_all_flags():
 
     skybrightness = [None, None, None, 0.3, None, None]
     can_offset = [None, None, None, None, False, None]
-    for flag, mag, sky, can_off in zip(flags_test, test_mags, skybrightness, can_offset):
+    for flag, mag, sky, can_off, offset_val in zip(flags_test, test_mags, skybrightness, can_offset, offset_valid):
         test_flags(flag, mag, mag_limits[lunation][waveName], lunation, waveName,
-                   sky, offset_min_skybrightness, can_off)
+                   sky, offset_min_skybrightness, can_off, offset_val)
 
     # Apogee dark
     offset_min_skybrightness = 1
@@ -134,6 +163,7 @@ def test_all_flags():
     lunation = 'dark'
     flags_test = [0, 1, 2, 8, 16, 32]
     flags_test = [f if f == 0 else f + 64 for f in flags_test]
+    offset_valid = [True, True, True, False, False, False]
     
     test_mags = []
     test_mags.append(numpy.array([m - 2 if m != -999. else m for m in mag_limits[lunation][waveName]]))
@@ -145,9 +175,9 @@ def test_all_flags():
 
     skybrightness = [None, None, None, 0.3, None, None]
     can_offset = [None, None, None, None, False, None]
-    for flag, mag, sky, can_off in zip(flags_test, test_mags, skybrightness, can_offset):
+    for flag, mag, sky, can_off, offset_val in zip(flags_test, test_mags, skybrightness, can_offset, offset_valid):
         test_flags(flag, mag, mag_limits[lunation][waveName], lunation, waveName,
-                   sky, offset_min_skybrightness, can_off)
+                   sky, offset_min_skybrightness, can_off, offset_val)
 
     # test engineering design_mode
     # Boss Bright
