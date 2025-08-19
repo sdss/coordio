@@ -191,7 +191,7 @@ def test_all_flags():
     can_offset = [None]
     for flag, mag, sky, can_off in zip(flags_test, test_mags, skybrightness, can_offset):
         test_flags(flag, mag, numpy.zeros(10) - 999., lunation, waveName,
-                   sky, offset_min_skybrightness, can_off)
+                   sky, offset_min_skybrightness, can_off, True)
 
     # test get combination of all flags
     # Boss Bright
@@ -209,7 +209,7 @@ def test_all_flags():
     can_offset = [None]
     for flag, mag, sky, can_off in zip(flags_test, test_mags, skybrightness, can_offset):
         test_flags(flag, mag, mag_limits[lunation][waveName], lunation, waveName,
-                   sky, offset_min_skybrightness, can_off)
+                   sky, offset_min_skybrightness, can_off, False)
 
 
     # test bright neighbor exclusion radius for very bright stars
