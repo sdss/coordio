@@ -1176,7 +1176,8 @@ def object_offset(mags, mag_limits, lunation, waveName, obsSite, fmagloss=None,
     delta_dec = numpy.zeros(len(delta_ra))
 
     # zero out things with flag 32 in them but delta_ra > 0
-    delta_ra[(delta_ra > 0) & (offset_flag > 0)] = 0.
+    flag_32 = numpy.array([32 & int(fl) for fl in offset_flag], dtype=bool)
+    delta_ra[(delta_ra > 0) & flag_32] = 0.
     if check_valid_offset:
         if program is None:
             raise ValueError('Must provide program to check valid offsets!')
