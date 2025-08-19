@@ -66,17 +66,15 @@ def test_all_flags():
         with pytest.raises(ValueError, match='Must provide program to check valid offsets!'):
             delta_ra, delta_dec, offset_flag, valid_offset = object_offset(
                 numpy.vstack((mag, mag)), mag_limits, lunation,
-                waveName, 'APO', fmagloss=fmagloss,
-                skybrightness=sky,
+                waveName, 'APO', fmagloss=fmagloss, skybrightness=sky,
                 offset_min_skybrightness=offset_min_skybrightness,
-                can_offset=can_off,
+                can_offset=can_off_arr,
                 check_valid_offset=True)
         delta_ra, delta_dec, offset_flag, valid_offset = object_offset(
             numpy.vstack((mag, mag)), mag_limits, lunation,
-            waveName, 'APO', fmagloss=fmagloss,
-            skybrightness=sky,
+            waveName, 'APO', fmagloss=fmagloss, skybrightness=sky,
             offset_min_skybrightness=offset_min_skybrightness,
-            can_offset=can_off,
+            can_offset=can_off_arr,
             check_valid_offset=True,
             program=numpy.array(['science',
                                 'science']))
