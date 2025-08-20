@@ -4,6 +4,12 @@
 Change Log
 ==========
 
+1.17.0 (2025-08-20)
+-------------------
+* Correctly identify and propogate offset flags for targets brighter than offset limit.
+* Add option to return valid offset boolean.
+
+
 1.16.0 (2025-08-11)
 -------------------
 * Update SOFA library to 2023-10-11.
