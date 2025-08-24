@@ -4,6 +4,11 @@
 Change Log
 ==========
 
+main
+----
+* Back to using the official `sep` package from `sep-developers/sep` now that it's maintained again.
+
+
 1.17.0 (2025-08-20)
 -------------------
 * Correctly identify and propogate offset flags for targets brighter than offset limit.
