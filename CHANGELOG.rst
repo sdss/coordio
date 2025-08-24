@@ -6,6 +6,7 @@ Change Log
 
 main
 ----
+* Deprecate Python 3.8.
 * Back to using the official `sep` package from `sep-developers/sep` now that it's maintained again.
 
 
