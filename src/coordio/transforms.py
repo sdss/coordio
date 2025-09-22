@@ -11,7 +11,7 @@ import pandas
 # pandas.options.mode.chained_assignment = None
 import scipy
 import sep
-from skimage.transform import SimilarityTransform
+from skimage.transform import SimilarityTransform, resize
 
 from .conv import positionerToTangent, tangentToWok, wokToTangent
 from .defaults import POSITIONER_HEIGHT, calibration, PLATE_SCALE
@@ -1149,7 +1149,7 @@ class FVCTransformAPO(object):
         self,
         centroidMinNpix=None,
         backgroundSigma=3.5,
-        winposSigma=0.7,
+        winposSigma=1,
         winposBoxSize=3,
         simpleSigma=5,
         simpleBoxSize=19,
@@ -1196,14 +1196,92 @@ class FVCTransformAPO(object):
             self.data_sub,
             backgroundSigma,
             err=self.bkg.globalrms,
+            # filter_kernel=None
         )
+        # objects = objects[objects["npix"] > self.centroidMinNpix]
+        # print("n objects", len(objects))
+        # plt.figure(figsize=(8,8))
+        # plt.imshow(self.data_sub, origin="lower")
+        # for x,y in zip(objects["x"], objects["y"]):
+        #     plt.plot(x,y,'o', mfc="none", mec="red")
 
+        # plt.figure()
+        # plt.hist(objects["npix"])
+
+        # plt.show()
+
+        # import pdb; pdb.set_trace()
         if len(objects) == 0:
             raise CoordIOError("Too few centroids found in image")
         # get rid of obvious bogus detections
         objects = objects[objects["npix"] > self.centroidMinNpix]
         if len(objects) < 80:
             raise CoordIOError("Too few centroids found in image")
+
+        # try winpos again
+        xNew, yNew, flags = sep.winpos(
+            self.data_sub,
+            objects["x"],
+            objects["y"],
+            sig=winposSigma
+        )
+
+        objects["x"] = xNew
+        objects["y"] = yNew
+
+        # try convolution trick
+        # epsf = numpy.load("/Users/csayres/Desktop/apoShutdown2025/epsfup.npy")
+
+        # import time; tstart = time.time()
+        # psfRad = 6
+        # upsample = 31
+        # _x = []
+        # _y = []
+        # for xp,yp in zip(objects["xpeak"],objects["ypeak"]):
+        #     cutout = self.data_sub[yp-psfRad:yp+psfRad+1, xp-psfRad:xp+psfRad+1]
+
+        #     newSize = cutout.shape[0]*upsample
+        #     cutout = resize(cutout, (newSize, newSize), order=0, anti_aliasing=False)
+
+        #     cutoutConv = scipy.signal.correlate(cutout, epsf, mode="same")
+        #     ym, xm = numpy.argwhere(cutoutConv==numpy.max(cutoutConv))[0]
+
+        #     # next fit poly to peak of each marginal distribution
+        #     xmarg = numpy.sum(cutoutConv, axis=0)
+        #     ymarg = numpy.sum(cutoutConv, axis=1)
+
+        #     amax = numpy.argmax(xmarg)
+        #     xs = numpy.array([amax-2, amax-1, amax, amax+1, amax+2])
+        #     amax = numpy.argmax(ymarg)
+        #     ys = numpy.array([amax-2, amax-1, amax, amax+1, amax+2])
+
+        #     X = numpy.ones((5,3))
+        #     X[:,1] = xs
+        #     X[:,2] = xs**2
+
+        #     a,b,c = numpy.linalg.lstsq(X, xmarg[xs], rcond=None)[0]
+        #     xm = -b/(2*c)
+
+        #     X[:,1] = ys
+        #     X[:,2] = ys**2
+        #     a,b,c = numpy.linalg.lstsq(X, ymarg[ys], rcond=None)[0]
+        #     ym = -b/(2*c)
+
+        #     xm = xm / upsample
+        #     ym = ym / upsample
+
+        #     xsimp2 = xp - psfRad + xm
+        #     ysimp2 = yp - psfRad + ym
+        #     _x.append(xsimp2)
+        #     _y.append(ysimp2)
+
+        # print("convolv took", time.time()-tstart)
+        # objects["x"] = numpy.array(_x)
+        # objects["y"] = numpy.array(_y)
+
+
+
+
         # remove detections near edges of chip
         # (causes issues for unlucky winpos detections)
         # objects = objects[objects["x"] > 500]
@@ -1298,6 +1376,7 @@ class FVCTransformAPO(object):
 
         objects["xSimple"] = objects.x
         objects["ySimple"] = objects.y
+
 
         # import pdb; pdb.set_trace()
         ### compute nudge
