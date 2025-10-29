@@ -17,7 +17,7 @@ from .conv import positionerToTangent, tangentToWok, wokToTangent
 from .defaults import POSITIONER_HEIGHT, calibration, PLATE_SCALE
 from .exceptions import CoordIOError
 from .libcoordio import tangentToPositioner, tangentToPositioner2
-from .utils import refinexy, fit_circle
+from .utils import fit_circle
 from .zhaoburge import fitZhaoBurge, getZhaoBurgeXY
 
 
