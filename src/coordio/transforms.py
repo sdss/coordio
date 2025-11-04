@@ -142,7 +142,7 @@ def wokToPositioner(
         )
     else:
         lefthand = False
-        alpha, beta, isOK = tangentToPositioner(
+        alpha, beta = tangentToPositioner(
             [xt, yt], [xBeta, yBeta], la, alphaOffDeg, betaOffDeg, lefthand
         )
     return alpha, beta
@@ -240,6 +240,7 @@ def plotFVCResults(
     xyFiberWarn=None,
     title=None,
     xyFIFLost=None,
+    xyFiberBroken=None
 ):
     """
     Visualize the results of transformation/association.
@@ -271,6 +272,8 @@ def plotFVCResults(
         title for the plot
     xyFIFLost : numpy.ndarray or None
         nx2 array, expected locations of fiducial fibers in wok space that weren't matched
+    xyFiberBroken : numpy.ndarray or None
+        nx2 array, expected locations of broken fibers
 
     """
 
@@ -393,6 +396,18 @@ def plotFVCResults(
             markeredgecolor="orange",
             markeredgewidth=1,
             label="Unmatched FIF",
+        )
+
+    if xyFiberBroken is not None:
+        plt.plot(
+            xyFiberBroken[:,0],
+            xyFiberBroken[:,1],
+            "H",
+            ms=10,
+            markerfacecolor="None",
+            markeredgecolor="fuchsia",
+            markeredgewidth=1,
+            label="Broken Fiber?",
         )
 
     if assoc_used is not None:
@@ -1329,7 +1344,58 @@ class FVCTransformAPO(object):
             ["xWokReportMetrology", "yWokReportMetrology"]
         ].to_numpy()
 
+        # finally try to identify broken metrology/fiducial fibers
+        # these will be centroids that belong to another robot or fiducial
+        centIDs = self.positionerTableMeas.centroidID.to_list() + self.fiducialCoordsMeas.centroidID.to_list()
+        uniqueCentIDs, counts = numpy.unique(centIDs, return_counts=True)
+        # find multiple associations to the same centroid
+        multiMatchCentIDs = uniqueCentIDs[counts > 1]
+        fifBroken = []
+        metBroken = []
+        for mm in multiMatchCentIDs:
+            _fif = self.fiducialCoordsMeas[self.fiducialCoordsMeas.centroidID == mm]
+            _fif = _fif[["wokErr", "id"]]
+            _fif["type"] = "fiducial"
+            _ptm = self.positionerTableMeas[self.positionerTableMeas.centroidID == mm]
+            _ptm = _ptm[["wokErr", "positionerID"]]
+            _ptm["type"] = "robot"
+            _ptm["id"] = _ptm[["positionerID"]]
 
+            _fif = _fif[["id", "type", "wokErr"]]
+            _ptm = _ptm[["id", "type", "wokErr"]]
+
+            _errs = pandas.concat([_fif, _ptm])
+            _errs = _errs.sort_values("wokErr")
+            _ids = _errs.id.to_numpy()[1:]
+            _type = _errs.type.to_numpy()[1:]
+            for _i, _t in zip(_ids,_type):
+                if _t == "robot":
+                    metBroken.append(_i)
+                else:
+                    fifBroken.append(_i)
+
+        broken = [False] * len(self.fiducialCoordsMeas)
+        self.fiducialCoordsMeas["fiberBroken"] = broken
+        self.fiducialCoordsMeas.loc[self.fiducialCoordsMeas.id.isin(fifBroken), "fiberBroken"] = True
+
+        broken = [False] * len(self.positionerTableMeas)
+        self.positionerTableMeas["fiberBroken"] = broken
+        self.positionerTableMeas.loc[self.positionerTableMeas.positionerID.isin(metBroken), "fiberBroken"] = True
+
+        xyMetBroken = self.positionerTableMeas[self.positionerTableMeas.fiberBroken]
+        xyMetBroken = xyMetBroken[
+            ["xWokReportMetrology", "yWokReportMetrology"]
+        ].to_numpy()
+
+        xyFifBroken = self.fiducialCoordsMeas[self.fiducialCoordsMeas.fiberBroken]
+        xyFifBroken = xyFifBroken[
+            ["xWok", "yWok"]
+        ].to_numpy()
+
+        xyFiberBroken = numpy.vstack([xyMetBroken,xyFifBroken])
+
+        # print("broken robot fibers", self.positionerTableMeas[self.positionerTableMeas.fiberBroken]["positionerID"].to_list())
+        print("broken fif fibers", self.fiducialCoordsMeas[self.fiducialCoordsMeas.fiberBroken]["id"].to_list())
 
         if self.plotPathPrefix is not None:
             pwarnStr = ",".join("%i"%pid for pid in self.positionerWarnList)
@@ -1346,7 +1412,8 @@ class FVCTransformAPO(object):
                 xyFitCentroidsUnmatched=unusedCentroidsXY,
                 xyFiberWarn=xyMetWarn,
                 title=title,
-                xyFIFLost=xyFIFLost
+                xyFIFLost=xyFIFLost,
+                xyFiberBroken=xyFiberBroken
             )
 
         # lastly compute measured alpha/beta and measured boss/Ap
