@@ -4,15 +4,12 @@
 Change Log
 ==========
 
-main
-----
-* Deprecate Python 3.8.
-* Back to using the official `sep` package from `sep-developers/sep` now that it's maintained again.
-
 1.18.0 (2025-12-04)
 --------------------
 * default to winpos+flex centroids for FVC analysis
 * remove a ton of unused code
+* Deprecate Python 3.8.
+* Back to using the official `sep` package from `sep-developers/sep` now that it's maintained again.
 
 
 1.17.0 (2025-08-20)
