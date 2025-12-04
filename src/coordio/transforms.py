@@ -11,13 +11,13 @@ import pandas
 # pandas.options.mode.chained_assignment = None
 import scipy
 import sep
-from skimage.transform import SimilarityTransform
+from skimage.transform import SimilarityTransform, resize
 
 from .conv import positionerToTangent, tangentToWok, wokToTangent
 from .defaults import POSITIONER_HEIGHT, calibration, PLATE_SCALE
 from .exceptions import CoordIOError
 from .libcoordio import tangentToPositioner, tangentToPositioner2
-from .utils import refinexy, fit_circle
+from .utils import fit_circle
 from .zhaoburge import fitZhaoBurge, getZhaoBurgeXY
 
 
@@ -142,7 +142,7 @@ def wokToPositioner(
         )
     else:
         lefthand = False
-        alpha, beta, isOK = tangentToPositioner(
+        alpha, beta = tangentToPositioner(
             [xt, yt], [xBeta, yBeta], la, alphaOffDeg, betaOffDeg, lefthand
         )
     return alpha, beta
@@ -240,6 +240,7 @@ def plotFVCResults(
     xyFiberWarn=None,
     title=None,
     xyFIFLost=None,
+    xyFiberBroken=None
 ):
     """
     Visualize the results of transformation/association.
@@ -271,6 +272,8 @@ def plotFVCResults(
         title for the plot
     xyFIFLost : numpy.ndarray or None
         nx2 array, expected locations of fiducial fibers in wok space that weren't matched
+    xyFiberBroken : numpy.ndarray or None
+        nx2 array, expected locations of broken fibers
 
     """
 
@@ -393,6 +396,18 @@ def plotFVCResults(
             markeredgecolor="orange",
             markeredgewidth=1,
             label="Unmatched FIF",
+        )
+
+    if xyFiberBroken is not None:
+        plt.plot(
+            xyFiberBroken[:,0],
+            xyFiberBroken[:,1],
+            "H",
+            ms=10,
+            markerfacecolor="None",
+            markeredgecolor="fuchsia",
+            markeredgewidth=1,
+            label="Broken Fiber?",
         )
 
     if assoc_used is not None:
@@ -793,173 +808,14 @@ def alphaBetaFromMetMeas(fullTable, newInvKin=True):
     return fullTable
 
 
-# hogg fourier basis fit stuff
-
-IMAX = 32 # maximum integer wave number
-DELTAK = 2. * numpy.pi / 10000.0 # wave number spacing in inverse pixels
-_wcd = os.environ.get('WOKCALIB_DIR', None)
-### BIG WARNING ### if two wok calib dirs are present just take the first one
-### should eventually move this to calibrations for better handling
-beta_x_apo = None
-beta_y_apo = None
-beta_x_lco = None
-beta_y_lco = None
-
-beta_x_outer_apo = None
-beta_y_outer_apo = None
-beta_x_outer_lco = None
-beta_y_outer_lco = None
-
-
-if _wcd is not None:
-    for _path in _wcd.split(":"):
-        with open(os.path.join(_path, "beta_x.npy"), "rb") as f:
-            beta_x = numpy.load(f)
-        with open(os.path.join(_path, "beta_y.npy"), "rb") as f:
-            beta_y = numpy.load(f)
-        with open(os.path.join(_path, "beta_x_outer.npy"), "rb") as f:
-            beta_x_outer = numpy.load(f)
-        with open(os.path.join(_path, "beta_y_outer.npy"), "rb") as f:
-            beta_y_outer = numpy.load(f)
-
-        if "/lco/" in _path:
-            beta_x_lco = beta_x.copy()
-            beta_y_lco = beta_y.copy()
-            beta_x_outer_lco = beta_x_outer.copy()
-            beta_y_outer_lco = beta_y_outer.copy()
-        elif "/apo/" in _path:
-            beta_x_apo = beta_x.copy()
-            beta_y_apo = beta_y.copy()
-            beta_x_outer_apo = beta_x_outer.copy()
-            beta_y_outer_apo = beta_y_outer.copy()
-beta_x = None
-beta_y = None
-beta_x_outer = None
-beta_y_outer = None
-
-
-# functions to set up design matrices
-def fourier_functions_outer(thetaFVC, nOrder):
-    # different nudge model for outer FIFs
-    X = []
-    for ii in range(nOrder):
-        X.append(numpy.cos(ii*thetaFVC))
-        X.append(numpy.sin((ii+1)*thetaFVC))
-    X = numpy.array(X).T
-    return X
-
-
-def fourier_functions(xs, ys):
-    n = len(xs)
-    assert len(ys) == n
-    fxs = numpy.zeros((n, IMAX * 2 + 2))
-    fys = numpy.zeros((n, IMAX * 2 + 2))
-    iis = numpy.zeros(IMAX * 2 + 2).astype(int)
-    for i in range(IMAX+1):
-        fxs[:, i * 2] = numpy.cos(i * DELTAK * xs)
-        fys[:, i * 2] = numpy.cos(i * DELTAK * ys)
-        iis[i * 2] = i
-        fxs[:, i * 2 + 1] = numpy.sin((i + 1) * DELTAK * xs)
-        fys[:, i * 2 + 1] = numpy.sin((i + 1) * DELTAK * ys)
-        iis[i * 2 + 1] = i + 1
-    return fxs, fys, iis
-
-
-def design_matrix(xs, ys):
-    fxs, fys, iis = fourier_functions(xs, ys)
-    n, p = fxs.shape
-    Xbig = (fxs[:, :, None] * fys[:, None, :]).reshape((n, p * p))
-    i2plusj2 = (iis[:, None] ** 2 + iis[None, :] ** 2).reshape(p * p)
-    return Xbig[:, i2plusj2 <= IMAX ** 2]
-
-
-def applyNudgeModel(
-        x, y, dxythresh=1,
-        site="APO", beta_x=None, beta_y=None
-    ):
-
-    if beta_x is None and beta_y is None:
-        if site == "APO":
-            beta_x = beta_x_apo
-            beta_y = beta_y_apo
-        else:
-            beta_x = beta_x_lco
-            beta_y = beta_y_lco
-
-    X = design_matrix(x,y)
-    dx = X @ beta_x
-    dy = X @ beta_y
-
-    # clip dxs and dys at thresh value
-    if dxythresh is not None:
-        dx[dx>dxythresh] = dxythresh
-        dy[dy>dxythresh] = dxythresh
-
-        dx[dx<-dxythresh] = -dxythresh
-        dy[dy<-dxythresh] = -dxythresh
-
-    # rejectInds = (numpy.abs(dx) > dxythresh) | (numpy.abs(dy) > dxythresh)
-
-    newX = x - dx
-    newY = y - dy
-
-    # newX[rejectInds] = x[rejectInds]
-    # newY[rejectInds] = y[rejectInds]
-
-    return newX, newY
-
-
-def applyNudgeModelOuter(
-    x, y, xc, yc, site="APO"
-    ):
-    if site=="APO":
-        beta_x = beta_x_outer_apo
-        beta_y = beta_y_outer_apo
-    else:
-        beta_x = beta_x_outer_lco
-        beta_y = beta_y_outer_lco
-    nOrder = int(len(beta_x) / 2)
-    thetaFVC = numpy.arctan2(y-yc,x-xc)
-    X = fourier_functions_outer(thetaFVC, nOrder=nOrder)
-    dx = X @ beta_x
-    dy = X @ beta_y
-
-    newX = x - dx
-    newY = y - dy
-    return newX, newY
-
 
 class FVCTransformAPO(object):
-    # polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults
-    # polids = numpy.arange(33)
+
     polids = numpy.array([0, 1, 2, 3, 4, 5, 6, 9, 20, 27, 28, 29, 30])
-    zbCoeffs = numpy.array([
-        3.30790633e-01, 4.13533378e-01, 1.71951213e-03, -9.90141758e-04,
-        -4.48460907e-04, -3.68228879e-06, -2.45423918e-06, 3.06249618e-07,
-        1.52595326e-06, -1.73037375e-08, 9.09750974e-09, 1.40858150e-08,
-        -8.69986544e-11, 2.25009469e-09, 5.94658320e-12, 5.67065198e-12,
-        -1.99111356e-12, 6.33175666e-13, -2.82452951e-12, 1.94818210e-12,
-        4.03105186e-14, -2.79909483e-14, -1.46249329e-14, -5.04644513e-15,
-        1.41549916e-15, 1.27613775e-15, -8.70792948e-15, 2.00843998e-04,
-        -1.05007864e-06, 2.48271534e-07, -9.28099433e-10, 6.13172886e-10,
-        -1.31799608e-09
-    ])
-    zbCoeffsFieldCenter = numpy.array([
-        -7.25143224e-02,  -3.89886320e-02,   1.21470501e-02,  -4.36545180e-04,
-       5.77221153e-05,  -6.80419618e-06,   3.47687303e-06,  -7.22841296e-06,
-       3.36246434e-07,  -7.10874816e-07,   9.00745018e-09,   2.40442049e-08,
-       1.67481779e-08,   4.90264973e-09,   1.75289911e-11,   2.59249932e-10,
-      -8.03748666e-11,   2.04240068e-10,  -9.05440334e-11,   2.60323630e-10,
-       1.12381521e-11,  -8.56685856e-14,  -1.37273897e-13,   1.03610076e-14,
-      -6.97673027e-13,   1.77283795e-12,   6.96794275e-13,  -5.97070297e-04,
-       1.01954593e-06,  -2.25406706e-06,   2.50511002e-08,  -9.82154214e-09,
-      -4.41479884e-09
-    ])
+
     telRotAngRef = 147
     rotAngDir = 1
-    centType = "nudge"
-    telescopePlateScale = PLATE_SCALE["APO"]/3600. # mm/arcsec
-    nudgeOffX = 0 #1000 # fix nudge model after FVC resize
+    centType = "flex"
     site = "APO"
     centroidMinNpix = 20
     wokCenPix = numpy.array([2915.5, 2995.6])
@@ -1023,8 +879,6 @@ class FVCTransformAPO(object):
 
         self.fvcImgData = numpy.array(fvcImgData, dtype=numpy.float32)
 
-        # self.fvcImgData = self.fvcImgData[100:-100,:].copy()
-
         # apply rough bias/background subtraction
         # rough bias/bg subtract
         imbias = numpy.median(self.fvcImgData, axis=0)
@@ -1076,12 +930,8 @@ class FVCTransformAPO(object):
 
         self.backgroundSigma = None
         self.winposSigma = None
-        self.winposBoxSize = None
         self.ccdRotCenXY = None
         self.nCentroidFound = None
-
-        self.simpleSigma = None
-        self.simpleBoxSize = None
 
         ############## populated by self.fit() ####################
         # pandas.DataFrame join w/ centroids every positioner
@@ -1124,9 +974,6 @@ class FVCTransformAPO(object):
             ("FVC_BSIG", self.backgroundSigma, "above background sigma for centroid detection"),
             ("FVC_MNPX", self.centroidMinNpix, "minimum number of pixels for a valid centroid"),
             ("FVC_WSIG", self.winposSigma, "sigma for winpos centroid algorithm"),
-            ("FVC_WBSZ", self.winposBoxSize, "box size for winpos centroid algorithm (pix)"),
-            ("FVC_SSIG", self.simpleSigma, "sigma for simple centroid algorithm (pix)"),
-            ("FVC_SPLM", self.simpleBoxSize, "box size for simple centroid algorithm (pix)"),
             ("FVC_RMS", self.positionerRMS, "robot rms (mm)"),
             ("FVC_FRMS", self.fiducialRMS, "fiducial rms (mm)"),
             ("FVC_CRMS", self.positionerRMS_clipped, "in-spec (outlier-clipped) robot rms (mm)"),
@@ -1149,7 +996,7 @@ class FVCTransformAPO(object):
         self,
         centroidMinNpix=None,
         backgroundSigma=3.5,
-        winposSigma=0.7,
+        winposSigma=1,
         winposBoxSize=3,
         simpleSigma=5,
         simpleBoxSize=19,
@@ -1170,27 +1017,17 @@ class FVCTransformAPO(object):
             used by sep.winpos.  Gaussian sigma used for weighting pixels.
             Pixels within a circular aperture of radius 4*winposSigma are
             included.
-        winposBoxSize : int
-            odd integer.  winpos centroids will be searched for in a
-            winposBoxSize x winposBoxSize centered on the peak
-            pixel.
+        winposBoxSize : depricated
+        simpleSigma : depricated
+        simpleBoxSize : depricated
+        beta_x : depricated
+        beta_y : depricated
         """
         if centroidMinNpix is not None:
             self.centroidMinNpix = centroidMinNpix
         self.backgroundSigma = backgroundSigma
         self.winposSigma = winposSigma
-        self.winposBoxSize = winposBoxSize
         self.ccdRotCenXY = numpy.array(self.data_sub.shape) / 2.
-        self.simpleSigma = simpleSigma
-        self.simpleBoxSize = simpleBoxSize
-
-        if winposBoxSize % 2 == 0 or winposBoxSize <= 0:
-            raise CoordIOError("winposBoxSize must be a positive odd integer")
-
-        # ccdRotCenXY = numpy.array(ccdRotCenXY).squeeze()
-        # if len(ccdRotCenXY) != 2:
-        #     raise CoordIOError("ccdRotCenXY must be a 2 element vector")
-
 
         objects = sep.extract(
             self.data_sub,
@@ -1204,32 +1041,34 @@ class FVCTransformAPO(object):
         objects = objects[objects["npix"] > self.centroidMinNpix]
         if len(objects) < 80:
             raise CoordIOError("Too few centroids found in image")
-        # remove detections near edges of chip
-        # (causes issues for unlucky winpos detections)
-        # objects = objects[objects["x"] > 500]
-        # objects = objects[objects["x"] < 7500]
-        # objects = objects[objects["y"] > 30]
-        # objects = objects[objects["y"] < 5970]
 
-        # update based on CCD distortion model the "true location"
-        # of the fibers
-        # if self.data_sub.shape[1] < 8000 and self.nudgeAdjust:
-        #     # ccd was trimmed
-        #     xNudge, yNudge = applyNudgeModel(objects["x"]+self.nudgeOffX, objects["y"], site=self.site, beta_x=beta_x, beta_y=beta_y)
-        #     xNudge = xNudge - self.nudgeOffX
-        # else:
-        #     xNudge, yNudge = applyNudgeModel(objects["x"], objects["y"], site=self.site, beta_x=beta_x, beta_y=beta_y)
+        # use winpos for better centroids
+        xWinpos, yWinpos, flags = sep.winpos(
+            self.data_sub,
+            objects["x"],
+            objects["y"],
+            sig=winposSigma
+        )
+
+
+        flux, fluxerr, flag = sep.sum_circle(self.data_sub, xWinpos, yWinpos, 4)
+
+
         objects = pandas.DataFrame(objects)
+        objects["aperflux"] = flux
+        objects["xFlex"] = xWinpos
+        objects["yFlex"] = yWinpos
+        objects["xWinpos"] = xWinpos
+        objects["yWinpos"] = yWinpos
 
-        objects["xFlex"] = objects.x.to_numpy()
-        objects["yFlex"] = objects.y.to_numpy()
-
-        # nudge correction find outer fifs, fit a circle to them
+        # find outer fifs, fit a circle to them
         xm = objects.xFlex - numpy.mean(objects.xFlex)
         ym = objects.yFlex - numpy.mean(objects.yFlex)
         objects["rm"] = numpy.sqrt(xm**2+ym**2)
         objects = objects.sort_values("rm")
         # take 20 centroids at largest radius
+        # fit a circle to them (they should be fiducials...)
+        # throw out outliers
         _g = objects.iloc[-20:]
         xc, yc, rc, keep = fit_circle(_g.x.to_numpy(), _g.y.to_numpy(), sigma_clip=2.5)
 
@@ -1244,129 +1083,11 @@ class FVCTransformAPO(object):
             objects["xFlex"] = objects.xFlex + dx
             objects["yFlex"] = objects.yFlex + dy
 
-
-        # objects["xNudge"] = objects.xFlex
-        # objects["yNudge"] = objects.yFlex
-        # objects["outerNudge"] = False
-
-        _xNudge = objects.xFlex.to_numpy()
-        _yNudge = objects.yFlex.to_numpy()
-        _outerNudge = numpy.array([False]*len(_xNudge))
-
-        # objcopy  = objects.copy()
-
-        # apply nudge model
-        # perturb outer fifs by fourier modeling
-        for ii, _keep in enumerate(keep):
-            if _keep:
-                _outerNudge[-20+ii] = True
-                xOld = _xNudge[-20+ii]
-                yOld = _yNudge[-20+ii]
-
-                # objects["outerNudge"].iloc[-20+ii] = True
-                # xOld = objects["xNudge"].iloc[-20+ii]
-                # yOld = objects["yNudge"].iloc[-20+ii]
-
-                xNew, yNew = applyNudgeModelOuter(
-                    xOld, yOld, self.wokCenPix[0], self.wokCenPix[1], site=self.site
-                    )
-
-                _xNudge[-20+ii] = xNew
-                _yNudge[-20+ii] = yNew
-
-                # objects["xNudge"].iloc[-20+ii] = xNew
-                # objects["yNudge"].iloc[-20+ii] = yNew
-
-                # objcopy.iloc[-20+ii, "xNudge"] = xNew
-                # objcopy.iloc[-20+ii, "yNudge"] = yNew
-
-        # apply global nudge model to every other centroid
-        xNudge, yNudge = applyNudgeModel(
-            _xNudge, _yNudge, site=self.site, beta_x=beta_x, beta_y=beta_y
-        )
-
-        innerNudge = _outerNudge == False
-        _xNudge[innerNudge] = xNudge[innerNudge]
-        _yNudge[innerNudge] = yNudge[innerNudge]
-
-        objects["xNudge"] = _xNudge
-        objects["yNudge"] = _yNudge
-        objects["outerNudge"] = _outerNudge
-
-        # objcopy.iloc[innerNudge, "xNudge"] = xNudge[innerNudge]
-        # objcopy.iloc[innerNudge, "yNudge"] = yNudge[innerNudge]
-
-        objects["xSimple"] = objects.x
-        objects["ySimple"] = objects.y
-
-        # import pdb; pdb.set_trace()
-        ### compute nudge
-
-        # don't fit anything with an absolute correction > 0.75 pixels
-        # rejectInds = (numpy.abs(xNudge) > 0.75) | (numpy.abs(yNudge) > 0.75)
-
-
-        # create mask and re-extract using winpos algorithm
-        # maskArr = numpy.ones(self.data_sub.shape, dtype=bool)
-        # boxRad = numpy.floor(winposBoxSize/2)
-        # boxSteps = numpy.arange(-boxRad, boxRad+1, dtype=int)
-
-        # for ii in range(len(objects)):
-        #     _xm = objects["xcpeak"][ii]
-        #     _ym = objects["ycpeak"][ii]
-        #     for xstep in boxSteps:
-        #         for ystep in boxSteps:
-        #             maskArr[_ym + ystep, _xm + xstep] = False
-
-        # xNew, yNew, flags = sep.winpos(
-        #     self.data_sub,
-        #     objects["xcpeak"],
-        #     objects["ycpeak"],
-        #     sig=winposSigma,
-        #     mask=maskArr
-        # )
-
-        # refinexy requires a square array
-        # trim and adjust results accordingly
-
-        # find the longest dimension
-        # clipDim = numpy.argmax(self.data_sub.shape)
-
-        # if clipDim == 0:
-        #     yOff = int((self.data_sub.shape[0]-self.data_sub.shape[1])/2)
-        #     im = self.data_sub[yOff:-yOff, :].copy()
-
-        #     xSimple, ySimple = refinexy(
-        #         im, objects["x"], objects["y"]-yOff,
-        #         psf_sigma=self.simpleSigma, cutout=self.simpleBoxSize
-        #     )
-        #     ySimple = ySimple + yOff
-        # else:
-        #     xOff = int((self.data_sub.shape[1]-self.data_sub.shape[0])/2)
-        #     im = self.data_sub[:, xOff:-xOff].copy()
-
-        #     xSimple, ySimple = refinexy(
-        #         im, objects["x"]-xOff, objects["y"],
-        #         psf_sigma=self.simpleSigma, cutout=self.simpleBoxSize
-        #     )
-        #     xSimple = xSimple + xOff
-
-        objects = pandas.DataFrame(objects)
-
-        # objects["xWinpos"] = xNew
-        # objects["yWinpos"] = yNew
-        # objects["xSimple"] = xSimple
-        # objects["ySimple"] = ySimple
-        # objects["xNudge"] = xNudge
-        # objects["yNudge"] = yNudge
-
         # rotate raw centroids by rotator angle
         _centTypes = [
             ["x", "y"],
-            # ["xWinpos", "yWinpos"],
-            ["xSimple", "ySimple"],
+            ["xWinpos", "yWinpos"],
             ["xFlex", "yFlex"],
-            ["xNudge", "yNudge"]
         ]
 
         for _centType in _centTypes:
@@ -1397,7 +1118,7 @@ class FVCTransformAPO(object):
         Parameters
         -----------
         centType : str
-            one of "zbplus2", zbplus", "zbminus", "sep", or "nudge", default is "nudge"
+            one of "flex", "sep", "winpos"
         maxRoughDist : float
             Max distance for an outer fiducial match (rough mm)
         maxMidDist : float
@@ -1419,7 +1140,7 @@ class FVCTransformAPO(object):
 
         if self.centroids is None:
             raise CoordIOError("Must run extractCentroids before fit")
-        if self.centType not in ["zbplus2", "zbplus", "zbminus", "sep", "nudge", "simple", "flex"]:
+        if self.centType not in ["sep", "flex", "winpos"]:
             raise CoordIOError("unknown centType: %s"%str(self.centType))
 
         xyMetFiber = self._fullTable[
@@ -1432,21 +1153,15 @@ class FVCTransformAPO(object):
         else:
             fifWeights = None
 
-        # if self.centType == "winpos":
-        #     xyCCDRot = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
-        #     xyCCD = self.centroids[["xWinpos", "yWinpos"]].to_numpy()
         if self.centType == "sep":
             xyCCDRot = self.centroids[["xRot", "yRot"]].to_numpy()
             xyCCD = self.centroids[["x", "y"]].to_numpy()
         elif self.centType == "flex":
             xyCCDRot = self.centroids[["xFlexRot", "yFlexRot"]].to_numpy()
             xyCCD = self.centroids[["xFlex", "yFlex"]].to_numpy()
-        elif self.centType == "simple":
-            xyCCDRot = self.centroids[["xSimpleRot", "ySimpleRot"]].to_numpy()
-            xyCCD = self.centroids[["xSimple", "ySimple"]].to_numpy()
-        elif self.centType in ["nudge", "zbplus", "zbminus", "zbplus2"]:
-            xyCCDRot = self.centroids[["xNudgeRot", "yNudgeRot"]].to_numpy()
-            xyCCD = self.centroids[["xNudge", "yNudge"]].to_numpy()
+        elif self.centType == "winpos":
+            xyCCDRot = self.centroids[["xWinposRot", "yWinposRot"]].to_numpy()
+            xyCCD = self.centroids[["xWinpos", "yWinpos"]].to_numpy()
         else:
             raise CoordIOError("unknown centroid type passed to fit")
 
@@ -1596,49 +1311,6 @@ class FVCTransformAPO(object):
         positionerMeas["wokErr"] = distances
         positionerMeas["wokErrWarn"] = distances > maxFinalDist
 
-        #### apply zb corrections if centype is zbplus or zbminus
-        if self.centType.startswith("zb") and self.zbCoeffs is not None:
-            _xWok = positionerMeas.xWokMeasMetrology.to_numpy()
-            _yWok = positionerMeas.yWokMeasMetrology.to_numpy()
-            dx_zb_fit, dy_zb_fit = getZhaoBurgeXY(
-                self.polids, self.zbCoeffs, _xWok, _yWok
-            )
-
-
-            if self.centType == "zbminus":
-                dx_zb_fit *= -1
-                dy_zb_fit *= -1
-            elif self.centType == "zbplus2":
-                # fit the inner region rWok < 100 mm with another
-                # set of zb coeffs determined from dither analysis
-                _xWok = _xWok + dx_zb_fit
-                _yWok = _yWok + dy_zb_fit
-                keep = numpy.sqrt(_xWok**2+_yWok**2) < 100
-                dx_zb_fit2, dy_zb_fit2 = getZhaoBurgeXY(
-                    self.polids, self.zbCoeffsFieldCenter,
-                    _xWok[keep], _yWok[keep]
-                )
-                # dx2 = numpy.zeros(len(_xWok))
-                # dy2 = numpy.zeros(len(_xWok))
-                # dx2[keep] = dx_zb_fit2
-                # dy2[keep] = dy_zb_fit2
-                dx_zb_fit[keep] += dx_zb_fit2
-                dy_zb_fit[keep] += dy_zb_fit2
-
-            # multiply by scale (arcsec to mm)
-            dx_zb_fit *= self.telescopePlateScale
-            dy_zb_fit *= self.telescopePlateScale
-
-        else:
-            dx_zb_fit = numpy.zeros(len(positionerMeas))
-            dy_zb_fit = numpy.zeros(len(positionerMeas))
-
-        positionerMeas["xWokMeasMetrology"] = positionerMeas["xWokMeasMetrology"] + dx_zb_fit
-        positionerMeas["yWokMeasMetrology"] = positionerMeas["yWokMeasMetrology"] + dy_zb_fit
-        positionerMeas["xWokAdjMetrology"] = dx_zb_fit
-        positionerMeas["yWokAdjMetrology"] = dy_zb_fit
-
-
         self.positionerTableMeas = positionerMeas
 
         dx = self.positionerTableMeas.xWokMeasMetrology - \
@@ -1672,7 +1344,55 @@ class FVCTransformAPO(object):
             ["xWokReportMetrology", "yWokReportMetrology"]
         ].to_numpy()
 
+        # finally try to identify broken metrology/fiducial fibers
+        # these will be centroids that belong to another robot or fiducial
+        centIDs = self.positionerTableMeas.centroidID.to_list() + self.fiducialCoordsMeas.centroidID.to_list()
+        uniqueCentIDs, counts = numpy.unique(centIDs, return_counts=True)
+        # find multiple associations to the same centroid
+        multiMatchCentIDs = uniqueCentIDs[counts > 1]
+        fifBroken = []
+        metBroken = []
+        for mm in multiMatchCentIDs:
+            _fif = self.fiducialCoordsMeas[self.fiducialCoordsMeas.centroidID == mm]
+            _fif = _fif[["wokErr", "id"]]
+            _fif["type"] = "fiducial"
+            _ptm = self.positionerTableMeas[self.positionerTableMeas.centroidID == mm]
+            _ptm = _ptm[["wokErr", "positionerID"]]
+            _ptm["type"] = "robot"
+            _ptm["id"] = _ptm[["positionerID"]]
 
+            _fif = _fif[["id", "type", "wokErr"]]
+            _ptm = _ptm[["id", "type", "wokErr"]]
+
+            _errs = pandas.concat([_fif, _ptm])
+            _errs = _errs.sort_values("wokErr")
+            _ids = _errs.id.to_numpy()[1:]
+            _type = _errs.type.to_numpy()[1:]
+            for _i, _t in zip(_ids,_type):
+                if _t == "robot":
+                    metBroken.append(_i)
+                else:
+                    fifBroken.append(_i)
+
+        broken = [False] * len(self.fiducialCoordsMeas)
+        self.fiducialCoordsMeas["fiberBroken"] = broken
+        self.fiducialCoordsMeas.loc[self.fiducialCoordsMeas.id.isin(fifBroken), "fiberBroken"] = True
+
+        broken = [False] * len(self.positionerTableMeas)
+        self.positionerTableMeas["fiberBroken"] = broken
+        self.positionerTableMeas.loc[self.positionerTableMeas.positionerID.isin(metBroken), "fiberBroken"] = True
+
+        xyMetBroken = self.positionerTableMeas[self.positionerTableMeas.fiberBroken]
+        xyMetBroken = xyMetBroken[
+            ["xWokReportMetrology", "yWokReportMetrology"]
+        ].to_numpy()
+
+        xyFifBroken = self.fiducialCoordsMeas[self.fiducialCoordsMeas.fiberBroken]
+        xyFifBroken = xyFifBroken[
+            ["xWok", "yWok"]
+        ].to_numpy()
+
+        xyFiberBroken = numpy.vstack([xyMetBroken,xyFifBroken])
 
         if self.plotPathPrefix is not None:
             pwarnStr = ",".join("%i"%pid for pid in self.positionerWarnList)
@@ -1689,7 +1409,8 @@ class FVCTransformAPO(object):
                 xyFitCentroidsUnmatched=unusedCentroidsXY,
                 xyFiberWarn=xyMetWarn,
                 title=title,
-                xyFIFLost=xyFIFLost
+                xyFIFLost=xyFIFLost,
+                xyFiberBroken=xyFiberBroken
             )
 
         # lastly compute measured alpha/beta and measured boss/Ap
@@ -1703,21 +1424,11 @@ class FVCTransformAPO(object):
             self.positionerTableMeas, angleType="Meas", doMetrology=False
         )
 
-        if self.centType in ["nudge", "zbplus", "zbminus", "zbplus2"]:
-            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xNudge"]
-            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yNudge"]
-            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xNudge"]
-            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["yNudge"]
-        # elif self.centType == "winpos":
-        #     self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xWinpos"]
-        #     self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yWinpos"]
-        #     self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xWinpos"]
-        #     self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["yWinpos"]
-        elif self.centType == "simple":
-            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xSimple"]
-            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["ySimple"]
-            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xSimple"]
-            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["ySimple"]
+        if self.centType == "winpos":
+            self.positionerTableMeas["xFVC"] = self.positionerTableMeas["xWinpos"]
+            self.positionerTableMeas["yFVC"] = self.positionerTableMeas["yWinpos"]
+            self.fiducialCoordsMeas["xFVC"] = self.fiducialCoordsMeas["xWinpos"]
+            self.fiducialCoordsMeas["yFVC"] = self.fiducialCoordsMeas["yWinpos"]
         elif self.centType == "sep":
             self.positionerTableMeas["xFVC"] = self.positionerTableMeas["x"]
             self.positionerTableMeas["yFVC"] = self.positionerTableMeas["y"]
@@ -1731,21 +1442,11 @@ class FVCTransformAPO(object):
 
 
 class FVCTransformLCO(FVCTransformAPO):
-    # polids = [0, 1, 2, 3, 4, 5, 6, 9, 20, 28, 29]  # Zhao-Burge basis defaults, best so far
 
     polids = numpy.array([0, 1, 2, 3, 4, 5, 6, 9, 20, 27, 28, 29, 30])
-    zbCoeffs = numpy.array([
-        -2.55885196e-02, -9.90203546e-02, -9.24054946e-04,  1.41515096e-04,
-          6.04621458e-04,  9.61477805e-07,  1.46716446e-06,  6.09027894e-09,
-         -8.62447285e-15, -4.44232617e-04, -4.40341216e-07,  4.87637920e-07,
-          1.35481743e-09,
-    ])
-    zbCoeffsFieldCenter = None
     telRotAngRef = 89  # rotator angle that puts xyWok aligned with xyCCD on FVC image
     rotAngDir = -1
-    centType = "nudge"
-    telescopePlateScale = PLATE_SCALE["LCO"]/3600. # mm/arcsec
-    nudgeOffX = 0  # fix nudge model after FVC resize
+    centType = "flex"
     site = "LCO"
     centroidMinNpix = 20
     wokCenPix = numpy.array([3092.2, 3036.4])

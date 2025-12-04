@@ -18,7 +18,7 @@ from distutils.core import Extension
 
 LIBSOFA_PATH = 'cextern/sofa'
 LIBCOORDIO_PATH = 'cextern/conv.cpp'
-LIBDIMAGE_PATH = 'cextern/dimage'
+# LIBDIMAGE_PATH = 'cextern/dimage'
 
 
 extra_compile_args = ['-c', '-pedantic', '-Wall', '-W', '-O']
@@ -43,7 +43,7 @@ class getPybindInclude(object):
 
 
 sofa_sources = glob.glob(LIBSOFA_PATH + '/*.c')
-dimage_sources = glob.glob(LIBDIMAGE_PATH + '/*.c')
+# dimage_sources = glob.glob(LIBDIMAGE_PATH + '/*.c')
 includes = [
     'include',
     'src/coordio/include',
@@ -82,16 +82,16 @@ ext_modules = [
         extra_compile_args=extra_compile_args2,
         extra_link_args=extra_link_args2,
         optional=False),
-    Extension(
-        'coordio.libdimage',
-        sources=dimage_sources,
-        include_dirs=[], #[LIBDIMAGE_PATH],
-        libraries=[],
-        define_macros=[],
-        extra_compile_args=extra_compile_args, #dimg_compile_args,
-        extra_link_args=extra_link_args,
-        language='c',
-        optional=False),
+    # Extension(
+    #     'coordio.libdimage',
+    #     sources=dimage_sources,
+    #     include_dirs=[], #[LIBDIMAGE_PATH],
+    #     libraries=[],
+    #     define_macros=[],
+    #     extra_compile_args=extra_compile_args, #dimg_compile_args,
+    #     extra_link_args=extra_link_args,
+    #     language='c',
+    #     optional=False),
 ]
 
 setup(ext_modules=ext_modules)
