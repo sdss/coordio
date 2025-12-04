@@ -1566,22 +1566,15 @@ class SolvePointing:
         ff.close()
 
     def getGaiaSources(self, ra, dec, radius=0.16, magLimit=18):
-        # import time; tstart=time.time()
         query = "SELECT source_id, ra, dec, pmra, pmdec, parallax, phot_g_mean_mag, bp_rp"
         query += " FROM %s" % self.db_tab_name
         query += " WHERE q3c_radial_query"
         query += "(ra, dec, %.4f, %.4f, %.4f)" % (ra, dec, radius)
         query += " AND phot_g_mean_mag < %.2f" % magLimit
-        # print(query)
         df = pandas.read_sql(query, self.db_conn_st)
         df = df.sort_values("phot_g_mean_mag")
         df = df.head(250).reset_index(drop=True)
-        # print("max mag", numpy.max(df.phot_g_mean_mag))
-        # print("getGaiaSources took", time.time()-tstart)
         return df.dropna().reset_index(drop=True)
-
-        # self.allGaia = pandas.concat(allGaia)
-        # print("got", len(self.allGaia), " sources")
 
     def _updateZP(self):
         xWokPredRef, yWokPredRef = self.xyWokPredictRef
@@ -1609,15 +1602,7 @@ class SolvePointing:
     def _matchWCS(self):
         """Note, only works if there was at least 1 wcs solution provided!
         """
-        # allGaia = []
-        # for gfaNum, wcs in self.gfaWCS.items():
-        #     ra, dec = wcs.pixel_to_world_values([[1024,1024]])[0]
-        #     # print("wcs ra/decs", gfaNum, ra,dec)
-        #     gaiaDF = self.getGaiaSources(ra,dec)
-        #     gaiaDF["gfaNum"] = gfaNum
-        #     allGaia.append(gaiaDF)
-        # self.allGaia = pandas.concat(allGaia)
-        # self.allGaia = self.allGaia[self.allGaia.gfaNum==1]
+
 
         raDecGaia = self.allGaia[["ra", "dec"]].to_numpy()
         # na values in centroids mean no wcs soln was present, so drop them
@@ -1640,25 +1625,7 @@ class SolvePointing:
 
         matched = matched[matched.drSky < self.skyDistThresh].reset_index(drop=True)
 
-        # print("nmatched wcs", len(matched))
 
-        # plt.figure(figsize=(8,8))
-        # plt.plot(self.allGaia.ra, self.allGaia.dec, 'o', mfc="none", mec="red")
-        # plt.plot(matched.raMeas, matched.decMeas, 'x', color="black")
-        # plt.savefig("skymatch_%i.png"%self.nIterWCS, dpi=200)
-        # plt.close("all")
-
-        # for gfaNum in list(set(matched.gfaNum)):
-        #     plt.figure(figsize=(8,8))
-        #     ag = self.allGaia[self.allGaia.gfaNum==gfaNum]
-        #     mm = matched[matched.gfaNum==gfaNum]
-        #     plt.plot(ag.ra, ag.dec, 'o', mfc="none", mec="red")
-        #     plt.plot(mm.raMeas, mm.decMeas, 'x', color="black")
-        #     plt.savefig("skymatch_%i_gfa%i.png"%(self.nIterWCS, gfaNum), dpi=200)
-        #     plt.close("all")
-
-        # import pdb; pdb.set_trace()
-        # import time; time.time(); tstart=time.time()
         output = radec2wokxy(
             matched.ra.to_numpy(), matched.dec.to_numpy(), self.GAIA_EPOCH,
             "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
@@ -1666,7 +1633,7 @@ class SolvePointing:
             pmra=matched.pmra.to_numpy(), pmdec=matched.pmdec.to_numpy(),
             parallax=matched.parallax.to_numpy(), fullOutput=True
         )
-        # print("radec2wokxy wcs took", time.time()-tstart)
+
         xPred = output[0]
         yPred = output[1]
         fieldWarn = output[2]
@@ -1687,29 +1654,12 @@ class SolvePointing:
         matched["dy"] = matched.yWokMeas - matched.yWokPred
         matched["dr"] = numpy.sqrt(matched.dx**2 + matched.dy**2)
 
-        # plt.figure(figsize=(8,8))
-        # plt.plot(matched.xWokPred, matched.yWokPred, 'o', mfc="none", mec="red")
-        # plt.plot(matched.xWokMeas, matched.yWokMeas, 'x', color="black")
-        # plt.savefig("wok_wcs_%i.png"%self.nIterWCS, dpi=200)
-        # plt.close("all")
-
-        # for gfaNum in list(set(matched.gfaNum)):
-        #     plt.figure(figsize=(8,8))
-        #     mm = matched[matched.gfaNum==gfaNum]
-        #     plt.figure(figsize=(8,8))
-        #     plt.plot(mm.xWokPred, mm.yWokPred, 'o', mfc="none", mec="red")
-        #     plt.plot(mm.xWokMeas, mm.yWokMeas, 'x', color="black")
-        #     plt.savefig("wok_wcs_%i_gfa%i.png"%(self.nIterWCS, gfaNum), dpi=200)
-        #     plt.close("all")
 
 
         self.matchedSources = matched
         self._updateZP()
-        # import pdb; pdb.set_trace()
-        # print("sources matched", len(self.matchedSources))
 
     def _matchWok(self):
-        # import time; tstart=time.time()
         output = radec2wokxy(
             self.allGaia.ra.to_numpy(), self.allGaia.dec.to_numpy(), self.GAIA_EPOCH,
             "GFA", self.raCenMeas, self.decCenMeas, self.paCenMeas,
@@ -1717,7 +1667,6 @@ class SolvePointing:
             pmra=self.allGaia.pmra.to_numpy(), pmdec=self.allGaia.pmdec.to_numpy(),
             parallax=self.allGaia.parallax.to_numpy(), fullOutput=True
         )
-        # print("n gaia", len(self.allGaia), "radec2wokxy took", time.time()-tstart)
         xPred = output[0]
         yPred = output[1]
         fieldWarn = output[2]
@@ -1737,9 +1686,9 @@ class SolvePointing:
 
         xyWokMeas = self.allCentroids[["xWokMeas", "yWokMeas"]].to_numpy()
         xyWokPredict = self.allGaia[["xWokPred", "yWokPred"]].to_numpy()
-        # import time; t1 = time.time()
+
         matches, indices, minDists = arg_nearest_neighbor(xyWokMeas, xyWokPredict)
-        # print("arg_nearset took", time.time()-t1)
+
 
         gaiaNN = self.allGaia.iloc[indices].reset_index(drop=True)
         matched = pandas.concat([self.allCentroids, gaiaNN], axis=1)
@@ -1750,47 +1699,17 @@ class SolvePointing:
         matched["dy"] = matched.yWokMeas - matched.yWokPred
         matched["dr"] = numpy.sqrt(matched.dx**2 + matched.dy**2)
 
-        # plt.figure()
-        # plt.hist(matched.dr, bins=200)
-        # plt.savefig("wokdist.png")
-        # plt.close("all")
-
-
-        # for gfaNum in range(1,7):
-        #     g1 = matched[matched.gfaNum==gfaNum]
-        #     plt.figure(figsize=(8,8))
-        #     plt.plot(g1.xWokPred, g1.yWokPred, 'o', mfc="none", mec="red")
-        #     plt.plot(g1.xWokMeas, g1.yWokMeas, 'x', color="black")
-        #     plt.savefig("wokmatch_%i_gfa%i.png"%(self.nIterAll, gfaNum), dpi=200)
-        #     plt.close("all")
-
-        # plt.figure(figsize=(8,8))
-        # plt.plot(matched.xWokPred, matched.yWokPred, 'o', mfc="none", mec="red")
-        # plt.plot(matched.xWokMeas, matched.yWokMeas, 'x', color="black")
-        # plt.savefig("wokmatch_%i.png"%self.nIterAll, dpi=200)
-        # plt.close("all")
 
         goodMatches = matched[matched.dr < self.wokDistThresh]
-        # import pdb; pdb.set_trace()
+
         self.matchedSources = goodMatches.reset_index(drop=True)
         self._updateZP()
 
     def _iter(self):
-        # matched_df = self.matchedSources
-        # print("called _iter()", self.fit_rms)
+
         nGFAS = len(set(self.matchedSources.gfaNum))
 
-        # x = matched_df.xWokMeas.to_numpy()
-        # y = matched_df.yWokMeas.to_numpy()
-        # dx = xPred - x
-        # dy = yPred - y
-        # measRMS = numpy.sqrt(numpy.mean(dx**2 + dy**2)) * 1000
-        # print("meas rms", measRMS)
 
-        # plt.figure(figsize=(8,8))
-        # plt.quiver(x,y,dx,dy,angles="xy",units="xy", width=.2)
-        # plt.axis("equal")
-        # plt.show()
         xyMeas = self.matchedSources[["xWokMeas", "yWokMeas"]].to_numpy()
         xyPred = self.matchedSources[["xWokPred", "yWokPred"]].to_numpy()
 
@@ -1801,7 +1720,6 @@ class SolvePointing:
             dxy = xyFit - xyMeas
             dRot = st.rotation
             dTrans = st.translation
-            # print("dTrans", dTrans, numpy.degrees(dRot), st.scale)
             dScale = st.scale
             self.rotation += dRot
             self.translation += dTrans
@@ -1811,16 +1729,6 @@ class SolvePointing:
             dRot = 0
             dScale = 1
 
-        # print(st.translation, numpy.degrees(st.rotation), st.scale)
-
-        # self.fit_rms = numpy.sqrt(
-        #     numpy.mean(numpy.sum(dxy**2, axis=1))
-        # )
-        # print("%.8f"%self.fit_rms, len(self.matchedSources), set(self.matchedSources.gfaNum))
-
-        # plt.figure(figsize=(8,8))
-        # plt.quiver(x,y,dx,dy,angles="xy", units="xy", width=.2)
-        # plt.axis("equal")
 
         # update field center
         self.paCenMeas += numpy.degrees(dRot)
@@ -1838,15 +1746,12 @@ class SolvePointing:
         dra = dra / numpy.cos(numpy.radians(self.decCenMeas))
         self.raCenMeas -= dra
         self.scaleMeas /= dScale
-        # print("len allGaia", len(self.allGaia))
-
-        # plt.show()
 
     def solve(
         self,
         skyDistThresh: float = 3,  # arcseconds
     ):
-        # print("field initial solve\n------------\n")
+
         self.skyDistThresh = skyDistThresh
         # initialize field center to
         # user supplied reference
@@ -1860,7 +1765,6 @@ class SolvePointing:
             allGaia = []
             for gfaNum, wcs in self.gfaWCS.items():
                 ra, dec = wcs.pixel_to_world_values([[1024,1024]])[0]
-                # print("wcs ra/decs", gfaNum, ra,dec)
                 gaiaDF = self.getGaiaSources(ra,dec)
                 gaiaDF["gfaNum"] = gfaNum
                 allGaia.append(gaiaDF)
@@ -1873,7 +1777,7 @@ class SolvePointing:
                 self._iter()
                 self._matchWCS()
                 self.nIterWCS += 1
-                # print("wcs fit_rms", ii, len(self.matchedSources), self.fit_rms)
+
                 if lastRMS is not None:
                     if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                         break
@@ -1894,12 +1798,10 @@ class SolvePointing:
             lastRMS = None
             self._matchWok()
             for ii in range(10):
-                # print("coordio iter", ii)
 
                 self._iter()
                 self._matchWok()
                 self.nIterAll += 1
-                # print("coordion fit_rms", ii, len(self.matchedSources), self.fit_rms)
                 if lastRMS is not None:
                     if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                         break
@@ -1933,11 +1835,6 @@ class SolvePointing:
         self.obsTimeRef = obsTimeRef
         self.exptime = exptime
 
-        # self.saved_nstars = self.n_stars_used
-        # self.saved_fit_rms = self.fit_rms
-        # self.saved_used_cameras = self.used_cameras
-
-        # print("resolving field")
 
         dfList = []
         for gfaNum, group in newCentroids.groupby("gfaNum"):
@@ -1960,22 +1857,14 @@ class SolvePointing:
 
         self._matchWok()
         for ii in range(10):
-            # print("coordio iter", ii)
             self._iter()
             self._matchWok()
             self.nIterAll += 1
-            # print("coordion fit_rms", ii, len(self.matchedSources), self.fit_rms)
             if lastRMS is not None:
                 if numpy.abs(lastRMS - self.fit_rms) < 0.003:
                     break
             lastRMS = self.fit_rms
 
         return self.guider_fit
-
-
-            # compute wok position of each centroid
-        # return self.result
-
-
 
 

@@ -1394,9 +1394,6 @@ class FVCTransformAPO(object):
 
         xyFiberBroken = numpy.vstack([xyMetBroken,xyFifBroken])
 
-        # print("broken robot fibers", self.positionerTableMeas[self.positionerTableMeas.fiberBroken]["positionerID"].to_list())
-        print("broken fif fibers", self.fiducialCoordsMeas[self.fiducialCoordsMeas.fiberBroken]["id"].to_list())
-
         if self.plotPathPrefix is not None:
             pwarnStr = ",".join("%i"%pid for pid in self.positionerWarnList)
             title = "Zhao-Burge Transform of all Detections\n"
