@@ -1021,6 +1021,8 @@ class SolvePointing:
         connection string for the db
     db_tab_name : str
         table in database with gaia info
+    gfaCoords : pandas.DataFrame
+        coordiantes for gfa locations and rotations
     """
     def __init__(
         self,
@@ -1033,7 +1035,8 @@ class SolvePointing:
         offset_dec: float = 0,
         offset_pa: float = 0,
         db_conn_st: str = "postgresql://sdss_user@operations.sdss.org/sdss5db",
-        db_tab_name: str = "catalogdb.gaia_dr2_source_g_lt_18"
+        db_tab_name: str = "catalogdb.gaia_dr2_source_g_lt_18",
+        gfaCoords: calibration.gfaCoords
     ):
 
         if pt_source is None and None in [raCen, decCen, paCen]:
@@ -1046,6 +1049,7 @@ class SolvePointing:
                     "pt_source must be either 'telescope' or 'design'"
                 )
 
+        self.gfaCoords = gfaCoords
         self._raCen = raCen
         self._decCen = decCen
         self._paCen = paCen
@@ -1371,7 +1375,7 @@ class SolvePointing:
         return self.scaleMeas
 
     def pix2wok(self, x, y, gfaNum):
-        g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
+        g = self.gfaCoords.loc[(self.observatory, gfaNum), :]
         zt = numpy.zeros(len(x))
         b = g[["xWok", "yWok", "zWok"]].to_numpy()
         iHat = g[["ix", "iy", "iz"]].to_numpy()
@@ -1387,7 +1391,7 @@ class SolvePointing:
         return xw, yw
 
     def wok2pix(self, x, y, gfaNum):
-        g = calibration.gfaCoords.loc[(self.observatory, gfaNum), :]
+        g = self.gfaCoords.loc[(self.observatory, gfaNum), :]
         zw = numpy.zeros(len(x))
         b = g[["xWok", "yWok", "zWok"]].to_numpy()
         iHat = g[["ix", "iy", "iz"]].to_numpy()
