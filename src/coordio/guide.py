@@ -174,9 +174,10 @@ def gfa_to_wok(observatory: str, x_pix: float, y_pix: float, gfa_id: int):
     iHat = gfa_row[["ix", "iy", "iz"]].to_numpy().squeeze()
     jHat = gfa_row[["jx", "jy", "jz"]].to_numpy().squeeze()
     kHat = gfa_row[["kx", "ky", "kz"]].to_numpy().squeeze()
-    scale = gfa_row["scale"].iloc[0]
-
-    xt, yt = guideToTangent(x_pix, y_pix, scale=scale)
+    if "scale" in gfa_row:
+        xt, yt = guideToTangent(x_pix, y_pix, scale=gfa_row.scale)
+    else:
+        xt, yt = guideToTangent(x_pix, y_pix)
     zt = 0
 
     return tangentToWok(xt, yt, zt, b, iHat, jHat, kHat)  # type: ignore
@@ -1382,8 +1383,10 @@ class SolvePointing:
         iHat = g[["ix", "iy", "iz"]].to_numpy()
         jHat = g[["jx", "jy", "jz"]].to_numpy()
         kHat = g[["kx", "ky", "kz"]].to_numpy()
-
-        xt, yt = guideToTangent(x, y)
+        if "scale" in g:
+            xt, yt = guideToTangent(x, y, scale=g.scale)
+        else:
+            xt, yt = guideToTangent(x, y)
 
         xw, yw, zw = tangentToWok(
             xt, yt, zt,
@@ -1404,7 +1407,10 @@ class SolvePointing:
             b, iHat, jHat, kHat
         )
 
-        xyPix = tangentToGuide(xt,yt) #,y_0=float(g.y_0), y_1=float(g.y_1))
+        if "scale" in g:
+            xyPix = tangentToGuide(xt,yt,scale=g.scale) #,y_0=float(g.y_0), y_1=float(g.y_1))
+        else:
+            xyPix = tangentToGuide(xt,yt) #,y_0=float(g.y_0), y_1=float(g.y_1))
         return xyPix
 
     def gfa2radec(self, gfaNum):
