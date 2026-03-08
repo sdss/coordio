@@ -1547,16 +1547,17 @@ def _positionerToTangent(
 
 
 def tangentToGuide(
-    xTangent, yTangent, xBin=1, yBin=1, x_0=0, x_1=0, y_0=0, y_1=0
+    xTangent, yTangent, xBin=1, yBin=1, x_0=0, x_1=0, y_0=0, y_1=0,
+    scale=defaults.GFA_PIXEL_SIZE/defaults.MICRONS_PER_MM
 ):
 
     xPixDist = (1 / xBin) * (
-        defaults.MICRONS_PER_MM / defaults.GFA_PIXEL_SIZE * xTangent + \
+        1 / scale * xTangent + \
         defaults.GFA_CHIP_CENTER
     )
 
     yPixDist = (1 / yBin) * (
-        defaults.MICRONS_PER_MM / defaults.GFA_PIXEL_SIZE * yTangent + \
+        1 / scale * yTangent + \
         defaults.GFA_CHIP_CENTER
     )
 
@@ -1567,21 +1568,20 @@ def tangentToGuide(
 
 
 def guideToTangent(
-    xPix, yPix, xBin=1, yBin=1, x_0=0, x_1=0, y_0=0, y_1=0
+    xPix, yPix, xBin=1, yBin=1, x_0=0, x_1=0, y_0=0, y_1=0,
+    scale=defaults.GFA_PIXEL_SIZE/defaults.MICRONS_PER_MM
 ):
     xPixDist = xPix + x_0 + x_1 * xPix
     yPixDist = yPix + y_0 + y_1 * xPix
 
     xTangent = (
         (xPixDist * xBin - defaults.GFA_CHIP_CENTER)
-        * defaults.GFA_PIXEL_SIZE
-        / defaults.MICRONS_PER_MM
+        * scale
     )
 
     yTangent = (
         (yPixDist * yBin - defaults.GFA_CHIP_CENTER)
-        * defaults.GFA_PIXEL_SIZE
-        / defaults.MICRONS_PER_MM
+        * scale
     )
 
     return xTangent, yTangent
