@@ -4,6 +4,11 @@
 Change Log
 ==========
 
+Next release
+------------
+* Bump RTD OS to Ubuntu 24.04.
+
+
 1.18.1 (2025-12-04)
 -------------------
 * Fix release workflow.
