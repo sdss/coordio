@@ -262,8 +262,8 @@ def test_reasonable_field_focal_cycle():
         field2 = Field(fp, field_center=fc)
         assert not True in field2.field_warn
 
-        xyz = numpy.array([field.x.item(), field.y.item(), field.z.item()]).T
-        xyz2 = numpy.array([field2.x.item(), field2.y.item(), field2.z.item()]).T
+        xyz = numpy.array([field.x, field.y, field.z]).T
+        xyz2 = numpy.array([field2.x, field2.y, field2.z]).T
 
         angErrors = []
         for _xyz, _xyz2 in zip(xyz, xyz2):
@@ -304,8 +304,8 @@ def test_unreasonable_field_focal_cycle():
             field2 = Field(fp, field_center=fc)
         assert not False in field2.field_warn
 
-        xyz = numpy.array([field.x.item(), field.y.item(), field.z.item()]).T
-        xyz2 = numpy.array([field2.x.item(), field2.y.item(), field2.z.item()]).T
+        xyz = numpy.array([field.x, field.y, field.z]).T
+        xyz2 = numpy.array([field2.x, field2.y, field2.z]).T
 
         angErrors = []
         for _xyz, _xyz2 in zip(xyz, xyz2):
