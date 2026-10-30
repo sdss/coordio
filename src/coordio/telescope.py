@@ -125,7 +125,7 @@ class Field(Coordinate2D):
         altAz = numpy.array(obsCoords)
         alt, az = altAz[:, 0], altAz[:, 1]
         altCenter, azCenter = self.field_center.flatten()
-        pa = float(self.field_center.pa)  # position angle
+        pa = float(self.field_center.pa.item())  # position angle
         theta, phi = conv.observedToField(alt, az, altCenter, azCenter, pa)
         self[:, 0] = theta
         self[:, 1] = phi

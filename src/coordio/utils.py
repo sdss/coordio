@@ -225,7 +225,7 @@ def radec2wokxy(ra, dec, coordEpoch, waveName, raCen, decCen, obsAngle,
 
     output = (
         wok[:, 0], wok[:, 1], focal.field_warn,
-        float(obsCen.ha), float(obsCen.pa)
+        float(obsCen.ha.item()), float(obsCen.pa.item())
     )
 
     if fullOutput:

@@ -31,8 +31,8 @@ def test_observedToField_APO():
     obsCoord = Observed([[altCen+1, azCen]], site=apoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert abs(float(field.x)) < SMALL_NUM
-    assert float(field.y) > 0
+    assert abs(float(field.x.item())) < SMALL_NUM
+    assert float(field.y.item()) > 0
     assert numpy.abs(field.flatten()[0]-90) < SMALL_NUM
     assert numpy.abs(field.flatten()[1]-1) < SMALL_NUM
 
@@ -42,8 +42,8 @@ def test_observedToField_APO():
     obsCoord = Observed([[altCen+1, azCen]], site=apoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert abs(float(field.x)) < SMALL_NUM
-    assert float(field.y) < 0
+    assert abs(float(field.x.item())) < SMALL_NUM
+    assert float(field.y.item()) < 0
     assert numpy.abs(field.flatten()[0]-270) < SMALL_NUM
     assert numpy.abs(field.flatten()[1]-1) < SMALL_NUM
 
@@ -53,8 +53,8 @@ def test_observedToField_APO():
     obsCoord = Observed([[altCen+1, azCen]], site=apoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert abs(float(field.x)) < SMALL_NUM
-    assert float(field.y) > 0
+    assert abs(float(field.x.item())) < SMALL_NUM
+    assert float(field.y.item()) > 0
     assert numpy.abs(field.flatten()[0]-90) < SMALL_NUM
     assert numpy.abs(field.flatten()[1]-1) < SMALL_NUM
 
@@ -67,8 +67,8 @@ def test_observedToField_APO():
     obsCoord = Observed([[altCen+1, azCen]], site=apoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert float(field.x) > 0
-    assert float(field.y) > 0
+    assert float(field.x.item()) > 0
+    assert float(field.y.item()) > 0
     assert field.flatten()[0] > 1
     assert field.flatten()[0] < 89
 
@@ -80,8 +80,8 @@ def test_observedToField_APO():
     obsCoord = Observed([[altCen+1, azCen]], site=apoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert float(field.x) < 0
-    assert float(field.y) > 0
+    assert float(field.x.item()) < 0
+    assert float(field.y.item()) > 0
     assert field.flatten()[0] > 91
     assert field.flatten()[0] < 179
 
@@ -94,8 +94,8 @@ def test_observedToField_APO():
     obsCoord = Observed([[altCen+1, azCen]], site=apoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert float(field.x) < 0
-    assert float(field.y) > 0
+    assert float(field.x.item()) < 0
+    assert float(field.y.item()) > 0
 
     azCen = 10 # (slightly east of north)
     altCen = apoSite.latitude + 10
@@ -103,8 +103,8 @@ def test_observedToField_APO():
     obsCoord = Observed([[altCen+1, azCen]], site=apoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert float(field.x) < 0
-    assert float(field.y) < 0
+    assert float(field.x.item()) < 0
+    assert float(field.y.item()) < 0
 
 
 def test_observedToField_LCO():
@@ -117,8 +117,8 @@ def test_observedToField_LCO():
     obsCoord = Observed([[altCen+1, azCen]], site=lcoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert abs(float(field.x)) < SMALL_NUM
-    assert float(field.y) < 0
+    assert abs(float(field.x.item())) < SMALL_NUM
+    assert float(field.y.item()) < 0
 
     azCen = 180 # (south)
     altCen = numpy.abs(lcoSite.latitude) + 10 # above SCP, (lat is negative!)
@@ -126,16 +126,16 @@ def test_observedToField_LCO():
     obsCoord = Observed([[altCen+1, azCen]], site=lcoSite)
     field = Field(obsCoord, field_center=obsCen)
 
-    assert abs(float(field.x)) < SMALL_NUM
-    assert float(field.y) > 0
+    assert abs(float(field.x.item())) < SMALL_NUM
+    assert float(field.y.item()) > 0
 
     azCen = 180 # (south)
     altCen = numpy.abs(lcoSite.latitude) - 10 # below SCP, (lat is negative!)
     obsCen = Observed([[altCen, azCen]], site=lcoSite)
     obsCoord = Observed([[altCen+1, azCen]], site=lcoSite)
     field = Field(obsCoord, field_center=obsCen)
-    assert abs(float(field.x)) < SMALL_NUM
-    assert float(field.y) < 0
+    assert abs(float(field.x.item())) < SMALL_NUM
+    assert float(field.y.item()) < 0
 
     ##### check field rotation (off meridian)
     #########################################
@@ -145,8 +145,8 @@ def test_observedToField_LCO():
     obsCen = Observed([[altCen, azCen]], site=lcoSite)
     obsCoord = Observed([[altCen+1, azCen]], site=lcoSite)
     field = Field(obsCoord, field_center=obsCen)
-    assert float(field.x) < 0
-    assert float(field.y) < 0
+    assert float(field.x.item()) < 0
+    assert float(field.y.item()) < 0
 
     # remember +x is eastward
     azCen = 290 # (north-west)
@@ -154,8 +154,8 @@ def test_observedToField_LCO():
     obsCen = Observed([[altCen, azCen]], site=lcoSite)
     obsCoord = Observed([[altCen+1, azCen]], site=lcoSite)
     field = Field(obsCoord, field_center=obsCen)
-    assert float(field.x) > 0
-    assert float(field.y) < 0
+    assert float(field.x.item()) > 0
+    assert float(field.y.item()) < 0
 
     # # check field rotation (off meridian)
     # # remember +x is eastward
@@ -164,16 +164,16 @@ def test_observedToField_LCO():
     obsCen = Observed([[altCen, azCen]], site=lcoSite)
     obsCoord = Observed([[altCen+1, azCen]], site=lcoSite)
     field = Field(obsCoord, field_center=obsCen)
-    assert float(field.x) < 0
-    assert float(field.y) < 0
+    assert float(field.x.item()) < 0
+    assert float(field.y.item()) < 0
 
     azCen = 190 # (slightly west of south)
     altCen = lcoSite.latitude - 10
     obsCen = Observed([[altCen, azCen]], site=lcoSite)
     obsCoord = Observed([[altCen+1, azCen]], site=lcoSite)
     field = Field(obsCoord, field_center=obsCen)
-    assert float(field.x) > 0
-    assert float(field.y) < 0
+    assert float(field.x.item()) > 0
+    assert float(field.y.item()) < 0
 
 
 def test_raises():

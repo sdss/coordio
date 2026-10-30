@@ -377,7 +377,7 @@ class Observed(Coordinate2D):
         """
         # get field center info
         altCenter, azCenter = fieldCoords.field_center.flatten()
-        pa = float(fieldCoords.field_center.pa)  # parallactic angle
+        pa = float(fieldCoords.field_center.pa.item())  # parallactic angle
 
         alt, az = conv.fieldToObserved(
             fieldCoords.x, fieldCoords.y, fieldCoords.z,
