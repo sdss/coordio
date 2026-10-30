@@ -6,7 +6,9 @@ Change Log
 
 Next release
 ------------
+* Remove support for Python 3.9.
 * Bump RTD OS to Ubuntu 24.04.
+* Use Numpy 2.0.
 
 
 1.18.1 (2025-12-04)
